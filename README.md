@@ -1,2 +1,86 @@
-# terrain-flux
-A Sim City style terrain sandbox
+# ⛰️ Terrain Flux
+
+**Someone has to grade this mess.**
+
+A SimCity 2000 style terrain and city sandbox with real California elevation baked in. Sculpt hills, flood the coast, zone a town, and watch it grow. Or watch it refuse to grow, if you built it somewhere ridiculous.
+
+Part of [Lessel Geospatial Labs](https://lesselgeospatial.com).
+
+![Morro Bay in Terrain Flux](docs/morro-bay.png)
+
+## Play it
+
+**[Launch Terrain Flux](https://lesselgeospatial.com)** <!-- swap in the live URL -->
+
+It is one self-contained HTML file. No build step, no server, no install. Download `index.html` and open it, or host it anywhere static (GitHub Pages, Vercel, Cloudflare Pages).
+
+## What you can do
+
+- 🏔️ **Sculpt terrain** with raise, lower, level, and smooth tools. Hillsides follow the cursor the way they did in 1993.
+- 📍 **Start from a real place:** Morro Bay, Big Sur, Yosemite Valley, or San Francisco, built from 30 m SRTM elevation.
+- 🗺️ **Load your own DEM:** drop in any single-band GeoTIFF.
+- 🌍 **Generate a map** with sliders for hills, water, and trees, plus optional coastline and river.
+- 🌊 **Raise or lower the sea**, place lakes, and make waterfalls on slopes.
+- 🏙️ **Zone and grow a city.** 9 building types with 4 styles each, 36 designs, all drawn in code.
+- 🚗 **Watch traffic** fill the roads near homes and jobs, while the road to nowhere stays empty.
+- 🔄 **Rotate**, zoom, toggle a grid, switch between classic green and an elevation color ramp, or turn on chunky retro pixels.
+- 💾 **Save** to your browser or **export** a map as JSON.
+
+![A grown city](docs/city.png)
+
+## Controls
+
+| Action | Input |
+|---|---|
+| Use the selected tool | Left click or drag |
+| Pan | Right drag, middle drag, Alt + drag, arrows, or WASD |
+| Zoom | Mouse wheel, `+` / `-` |
+| Rotate view | `Q` / `E` |
+| Undo | `Ctrl` + `Z` |
+| Grid / tint / retro pixels | `G` / `T` / `P` |
+| Pause growth | `Space` |
+| Cancel a road | `Esc` |
+
+## How it works
+
+**Terrain.** Heights live on the 129 by 129 corners of a 128 by 128 tile grid, and neighboring corners (diagonals included) can differ by one step at most. Every edit locks the corners you touched and clamps the rest of the map between the highest and lowest surfaces the rule allows, computed with two-pass chamfer envelopes. That keeps every slope legal without ever moving what you just edited.
+
+**Real places.** Elevation is exported from Google Earth Engine in California Albers (EPSG:3310), cropped to the center square, box-averaged to 129 by 129, and stored in the HTML as 16-bit meters. Anything at or below 0 m becomes sea. Peaks steeper than the one-step rule allows are softened into slopes, which is why Yosemite's granite walls come out as stairs.
+
+**Growth.** Any zone next to a road can become a small building. Bigger buildings need a real neighborhood around them and demand nearby: homes need jobs, while shops and factories need residents. Lone zones stay rural forever. Buildings shrink if their demand disappears. Hover a zone to see what it is waiting for.
+
+**Traffic.** Each road tile scores the development within 3 tiles, then spreads that score along the road network with a 28% falloff per tile. Cars hide behind buildings using a small depth buffer of building silhouettes.
+
+## Add your own place
+
+1. Edit the place list in [`data/export_presets_gee.js`](data/export_presets_gee.js) (longitude, latitude, half-width in meters), run it in the [Earth Engine Code Editor](https://code.earthengine.google.com), and run the export tasks.
+2. Open [`data/build_presets.ipynb`](data/build_presets.ipynb) in Google Colab, upload the GeoTIFFs, and run the cells.
+3. Paste the printed `PRESETS` list over the one in `index.html`.
+
+The notebook reproduces the shipped presets byte for byte, so you can rebuild them from scratch.
+
+## Roadmap
+
+- [x] Real place presets
+- [x] About panel
+- [ ] Smoother traffic at medium zoom
+- [ ] Special buildings: parks, hospitals, fire and police stations, stadiums, each with real effects
+- [ ] Sea level rise scenarios in meters on real terrain
+- [ ] Contour line overlay
+- [ ] Wildfire, then post-fire debris flows
+- [ ] Bridges
+- [ ] Day and night cycle
+- [ ] Shareable map links
+- [ ] Hills that hide cars
+- [ ] Pinch to zoom on phones
+
+## Credits
+
+- Elevation: [SRTM 30 m](https://developers.google.com/earth-engine/datasets/catalog/USGS_SRTMGL1_003), NASA and USGS, via Google Earth Engine
+- GeoTIFF reading: [geotiff.js](https://github.com/geotiffjs/geotiff.js) (MIT)
+- Fonts: [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P) and [VT323](https://fonts.google.com/specimen/VT323) (SIL Open Font License)
+- Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.
+
+## License
+
+[MIT](LICENSE) © 2026 Jerrod Lessel
