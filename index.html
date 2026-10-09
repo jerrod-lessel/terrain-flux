@@ -33,12 +33,19 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
 .hud{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
 .lcd{background:var(--lcd);color:var(--lcd-ink);padding:1px 8px;font-size:19px;min-width:64px;text-align:center;border:2px solid;border-color:#000 #555 #555 #000;}
 .lcd b{font-weight:normal;color:#b9ffb0;opacity:.7;margin-right:4px;}
-#btn-about,.spd{min-width:34px;height:28px;font-size:16px;cursor:pointer;}
+#btn-about,#btn-report,.spd{min-width:34px;height:28px;font-size:16px;cursor:pointer;}
 .speeds{display:flex;gap:2px;padding:1px;}
 .spd{border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);background:var(--panel);padding:0 4px;}
 .spd.on{border-color:var(--lo) var(--hi) var(--hi) var(--lo);background:var(--well);}
 #aboutbox .body{display:block;font-size:17px;line-height:1.3;max-height:70vh;overflow-y:auto;}
 #aboutbox .body p{margin:0 0 9px;}
+#report-body{display:block;font-size:17px;line-height:1.25;max-height:70vh;overflow-y:auto;}
+table.rep{width:100%;border-collapse:collapse;}
+table.rep tr{cursor:pointer;border-top:1px solid var(--lo);}
+table.rep tr:hover,table.rep tr.on{background:var(--well);}
+table.rep td{padding:5px 4px;vertical-align:middle;}
+.grade{font-family:'Press Start 2P',monospace;font-size:14px;text-align:center;width:36px;}
+.gA{color:#2f8f3a}.gB{color:#6a9a2a}.gC{color:#c08a10}.gD{color:#d0601c}.gF{color:#c42020}
 #aboutbox h3{font-family:'Press Start 2P',monospace;font-size:9px;margin:12px 0 6px;color:var(--dim);font-weight:normal;}
 #aboutbox a{color:inherit;}
 #aboutbox .credit{font-size:16px;color:var(--dim);}
@@ -118,6 +125,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       <button class="spd on" data-s="2" title="Normal: a month every 1.6 seconds (2)">🦙</button>
       <button class="spd" data-s="3" title="Fast: a month every 0.6 seconds (3)">🐆</button>
     </div>
+    <button id="btn-report" class="bev" title="Hazard report card">📊</button>
     <button id="btn-about" class="bev" title="About Terrain Flux">ℹ️</button>
   </div>
 </header>
@@ -276,7 +284,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       GeoTIFF reading: geotiff.js (MIT license).<br>
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
-      <p class="credit">Version 4.7 · MIT license</p>
+      <p class="credit">Version 4.8 · MIT license</p>
       <div class="btns"><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -308,12 +316,24 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
   </div>
 </div>
 
+<div class="modal hidden" id="reportbox">
+  <div class="win bev" style="width:520px">
+    <div class="tbar">CITY HAZARD REPORT</div>
+    <div class="body" style="display:block">
+      <div id="report-body"></div>
+      <div class="btns" style="margin-top:10px"><button class="txt" id="report-close" style="text-align:center">Close</button></div>
+    </div>
+  </div>
+</div>
+
 <div class="modal hidden" id="helpbox">
   <div class="win bev">
     <div class="tbar">HOW THIS WORKS</div>
     <div class="body">
       <p>The ground can only rise or fall one step from one tile to the next, so raising a spot drags the hillside up with it, just like the 1993 original.</p>
-      <p>Zones only grow on flat tiles near a road. Use Level to make room. A lone zone stays small and rural. Taller buildings need a real neighborhood around them, and demand: homes need jobs nearby, and shops and factories need residents. Hover a zone to see what it is waiting for. Homes like water views and dislike factories.</p>
+      <p>📊 The report card grades your city on wildfire, debris flow, earthquake, sea level rise, air quality, and services, by the share of residents exposed. Click a row to see it on the map.</p>
+      <p>Factories, busy roads, and smoke pollute the air, and the wind carries it downwind. Homes grow slower in dirty air, so put industry downwind of town.</p>
+      <p>Zones only grow on flat tiles near a road. Use Level to make room. A lone zone stays small and rural. Taller buildings need a real neighborhood around them, and demand: homes need jobs nearby, and shops and factories need residents. Hover a zone to see what it is waiting for. Homes like water views and dislike dirty air.</p>
       <p>Traffic follows development. Busy neighborhoods fill their roads with cars, and a road to nowhere stays empty. Every building type comes in four styles.</p>
       <p>Civic buildings change the city around them. Parks make homes nicer, hospitals act like jobs, fire stations help factories, stadiums pack the shops and the roads, and every tower needs police coverage. Pick one to see its reach.</p>
       <p>Wind gusts roll across the map and set the trees they pass swaying. Watch the wind readout in the status bar.</p>
@@ -503,6 +523,7 @@ function drawTile(g, vx, vy, lod) {
       poly(g, [Tx, Ty, Rx, Ry, Bx, By], shadeCol(base, lit(0, 0, ht, 1, 0, hr, 1, 1, hb)));
       poly(g, [Tx, Ty, Bx, By, Lx, Ly], shadeCol(base, lit(0, 0, ht, 1, 1, hb, 0, 1, hl)));
     }
+    if (repView && repMask[t] > 0) { const c = REP_COL[repView]; polyNoStroke(g, [Tx, Ty, Rx, Ry, Bx, By, Lx, Ly], `rgba(${c[0]},${c[1]},${c[2]},${(0.6 * repMask[t]).toFixed(2)})`); }
     if (hazCls[t] && hazardView()) polyNoStroke(g, [Tx, Ty, Rx, Ry, Bx, By, Lx, Ly], HAZ_COL[hazCls[t]] + (accA[t] >= CHANNEL_A ? '0.78)' : '0.3)'));
     if (flood[t] === 1) { polyNoStroke(g, [Tx, Ty, Rx, Ry, Bx, By, Lx, Ly], 'rgba(52,128,212,0.8)'); if (!partialMode) waterVis.push(Tx, (Ty + By) / 2, ((wx * 7919) ^ (wy * 104729)) & 1023); }
     if (showGrid && !lod) outlinePts(g, [Tx, Ty, Rx, Ry, Bx, By, Lx, Ly], 'rgba(0,0,0,0.22)', px1);
@@ -965,7 +986,7 @@ const civDense = new Float32Array(N * N), civDemR = new Float32Array(N * N), civ
 const civPolice = new Uint8Array(N * N);
 function recomputeCivic() {
   civBoost[1].fill(1); civBoost[2].fill(1); civBoost[3].fill(1);
-  civDense.fill(0); civDemR.fill(0); civDemC.fill(0); civPolice.fill(0); civFire.fill(0);
+  civDense.fill(0); civDemR.fill(0); civDemC.fill(0); civPolice.fill(0); civFire.fill(0); civHosp.fill(0);
   for (let wy = 0; wy < N; wy++) for (let wx = 0; wx < N; wx++) {
     const id = civ[wy * N + wx]; if (!id) continue;
     if (id === 5 && civA[wy * N + wx] !== wy * N + wx) continue; // count each stadium once, from its anchor
@@ -975,7 +996,7 @@ function recomputeCivic() {
       const X = wx + dx, Y = wy + dy; if (!inW(X, Y)) continue;
       const t = Y * N + X;
       if (id === 1) { civBoost[1][t] *= 1.4; civDense[t] += 10; }
-      else if (id === 2) { civBoost[1][t] *= 1.2; civDemR[t] += 15; }
+      else if (id === 2) { civBoost[1][t] *= 1.2; civDemR[t] += 15; civHosp[t] = 1; }
       else if (id === 3) { civBoost[3][t] *= 1.3; civFire[t] = 1; }
       else if (id === 4) { civBoost[1][t] *= 1.2; civBoost[2][t] *= 1.2; civBoost[3][t] *= 1.2; civPolice[t] = 1; }
       else if (id === 5) { civBoost[2][t] *= 1.5; civDemC[t] += 20; }
@@ -1848,6 +1869,124 @@ function applyView(v, day) {
   if (day) setDayMode(day % 3);
 }
 
+// ===== Air pollution =====
+// Factories, busy roads and wildfire smoke put out pollution that the wind carries downwind as a plume:
+// it spreads sideways as it travels, and barely reaches upwind. Homes grow slower in dirty air,
+// so a factory downwind of town is fine and one upwind is a problem.
+const poll = new Float32Array(N * N);
+const POLL_SRC = { 11: 2, 6: 5, 12: 10 };
+const POLL_MOD = 3, POLL_HIGH = 8;
+function computePollution() {
+  poll.fill(0);
+  const ux = Math.cos(wind.a), uy = Math.sin(wind.a), R = 10;
+  const emit = (sx, sy, Q) => {
+    for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+      const X = sx + dx, Y = sy + dy; if (!inW(X, Y)) continue;
+      const along = dx * ux + dy * uy, cross = Math.abs(-dx * uy + dy * ux);
+      let k;
+      if (along >= 0) { const sg = 1 + 0.35 * along; k = Math.exp(-cross * cross / (2 * sg * sg)) * Math.exp(-along / 7) / sg; }
+      else k = Math.exp(along * 1.2 - cross * 0.8);
+      poll[Y * N + X] += Q * k;
+    }
+  };
+  for (let t = 0; t < N * N; t++) {
+    const x = t % N, y = (t / N) | 0;
+    if (POLL_SRC[bld[t]]) emit(x, y, POLL_SRC[bld[t]]);
+    else if (road[t] && traffic[t] > 0.3) emit(x, y, traffic[t] * 1.2);
+    if (burnT[t] > 0) emit(x, y, 6);
+  }
+}
+function pollFactor(t) { return Math.max(0.3, 1 - poll[t] / 12); } // growth multiplier for homes
+
+// ===== Hazard report card =====
+// For each hazard, the share of residents exposed, graded A to F. Clicking a row tints that exposure on the map.
+const civHosp = new Uint8Array(N * N);
+const repMask = new Float32Array(N * N);
+let repView = null;
+const REP_COL = { fire: [235, 110, 30], debris: [214, 52, 40], quake: [150, 90, 200], slr: [40, 120, 230], air: [120, 100, 70], svc: [220, 40, 80] };
+function homesAt(t) { if (zone[t] !== 1) return 0; const d = dens[t]; return POP[d >= 2.5 ? 3 : d >= 1.5 ? 2 : d >= 0.5 ? 1 : 0]; }
+function floodMaskFor(level) {
+  const m = new Uint8Array(N * N), q = [];
+  if (!(dem && dem.ocean)) return m;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (tMinMax(x, y)[0] < sea) { m[y * N + x] = 2; q.push(y * N + x); }
+  while (q.length) {
+    const t = q.pop(), x = t % N, y = (t / N) | 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (!inW(X, Y)) continue; const n = Y * N + X; if (!m[n] && tileM(X, Y) < level) { m[n] = 1; q.push(n); } }
+  }
+  return m;
+}
+function gradeFor(pct, higherIsBetter) {
+  if (higherIsBetter) return pct >= 90 ? 'A' : pct >= 75 ? 'B' : pct >= 55 ? 'C' : pct >= 35 ? 'D' : 'F';
+  return pct < 5 ? 'A' : pct < 15 ? 'B' : pct < 30 ? 'C' : pct < 50 ? 'D' : 'F';
+}
+function buildReport() {
+  let total = 0; for (let t = 0; t < N * N; t++) total += homesAt(t);
+  const rows = [];
+  if (!total) return { total, rows };
+  const sum = f => { let s = 0; for (let t = 0; t < N * N; t++) if (f(t)) s += homesAt(t); return s; };
+  // wildfire: homes within 3 tiles of forest (the wildland-urban interface)
+  const nearForest = t => { const x = t % N, y = (t / N) | 0; return near(x, y, 3, (X, Y) => tree[Y * N + X] > 0); };
+  const fire = sum(t => homesAt(t) && nearForest(t));
+  rows.push({ key: 'fire', icon: '🔥', name: 'Wildfire', note: 'homes within 3 tiles of forest', exposed: fire });
+  // debris flow: homes in Moderate or High drainages at a typical 24 mm/hr storm
+  const keep = i15; i15 = 24; computeHazard(); const debris = sum(t => hazCls[t] >= 2); const debrisMask = hazCls.slice(); i15 = keep; computeHazard();
+  rows.push({ key: 'debris', icon: '🌧️', name: 'Debris flow', note: 'homes in Moderate or High drainages at 24 mm/hr', exposed: debris, mask: t => debrisMask[t] >= 2 ? 1 : 0 });
+  // earthquake: homes on ground that can liquefy
+  let towers = 0; for (let t = 0; t < N * N; t++) if (bld[t] === 8 || bld[t] === 10) towers++;
+  const quakeX = sum(t => homesAt(t) && liquefiable(t % N, (t / N) | 0));
+  rows.push({ key: 'quake', icon: '🌎', name: 'Earthquake', note: `homes on liquefiable ground · ${towers} tower${towers === 1 ? '' : 's'}`, exposed: quakeX });
+  // sea level rise (coastal real places only)
+  if (dem && dem.ocean) {
+    const m1 = floodMaskFor(1), m2 = floodMaskFor(2);
+    const s1 = sum(t => m1[t] === 1), s2 = sum(t => m2[t] === 1);
+    rows.push({ key: 'slr', icon: '🌊', name: 'Sea level rise', note: `homes underwater at +1 m: ${s1.toLocaleString()}, at +2 m`, exposed: s2, mask: t => m2[t] === 1 ? 1 : 0 });
+  }
+  // air quality
+  const air = sum(t => poll[t] >= POLL_MOD);
+  rows.push({ key: 'air', icon: '🌫️', name: 'Air quality', note: 'homes in moderate or worse air', exposed: air });
+  // services
+  const cf = sum(t => civFire[t]), cp = sum(t => civPolice[t]), ch = sum(t => civHosp[t]);
+  const cov = (cf + cp + ch) / 3;
+  rows.push({ key: 'svc', icon: '🚒', name: 'Services', note: `covered by fire ${Math.round(cf / total * 100)}%, police ${Math.round(cp / total * 100)}%, hospital ${Math.round(ch / total * 100)}%`, covered: cov });
+  for (const r of rows) {
+    if (r.key === 'svc') { r.pct = r.covered / total * 100; r.grade = gradeFor(r.pct, true); }
+    else { r.pct = r.exposed / total * 100; r.grade = gradeFor(r.pct, false); }
+  }
+  return { total, rows };
+}
+const GPA = { A: 4, B: 3, C: 2, D: 1, F: 0 };
+function showReport() {
+  computePollution();
+  const { total, rows } = buildReport(), box = document.getElementById('report-body');
+  if (!total) { box.innerHTML = '<p>No residents yet. Zone some homes and let them grow to get a report.</p>'; }
+  else {
+    const g = rows.reduce((a, r) => a + GPA[r.grade], 0) / rows.length, overall = 'FDCBA'[Math.round(g)];
+    box.innerHTML = `<p style="margin:0 0 8px">${total.toLocaleString()} residents · overall grade <b class="grade g${overall}">${overall}</b></p>` +
+      '<table class="rep">' + rows.map(r => `<tr data-k="${r.key}" class="${repView === r.key ? 'on' : ''}"><td>${r.icon}</td><td><b>${r.name}</b><br><span class="small">${r.key === 'svc' ? Math.round(r.pct) + '% average coverage' : (r.exposed || 0).toLocaleString() + ' (' + r.pct.toFixed(0) + '%) exposed'} · ${r.note}</span></td><td class="grade g${r.grade}">${r.grade}</td></tr>`).join('') + '</table>' +
+      '<p class="small" style="margin:8px 0 0">Click a row to see it on the map. Click it again to hide it.</p>';
+    box.querySelectorAll('tr[data-k]').forEach(tr => tr.addEventListener('click', () => setRepView(repView === tr.dataset.k ? null : tr.dataset.k, rows)));
+  }
+  document.getElementById('reportbox').classList.remove('hidden');
+}
+function setRepView(k, rows) {
+  repView = k; repMask.fill(0);
+  if (k) {
+    const r = rows.find(x => x.key === k);
+    for (let t = 0; t < N * N; t++) {
+      const x = t % N, y = (t / N) | 0;
+      if (k === 'fire') repMask[t] = !isWaterW(x, y) && !tree[t] && near(x, y, 3, (X, Y) => tree[Y * N + X] > 0) ? 0.5 : 0;
+      else if (k === 'debris' || k === 'slr') repMask[t] = r.mask(t);
+      else if (k === 'quake') repMask[t] = liquefiable(x, y) ? 0.8 : 0;
+      else if (k === 'air') repMask[t] = Math.min(1, poll[t] / POLL_HIGH);
+      else if (k === 'svc') repMask[t] = zone[t] === 1 && !(civFire[t] && civPolice[t] && civHosp[t]) ? 0.7 : 0;
+    }
+    document.getElementById('reportbox').classList.add('hidden');
+    document.getElementById('st-hint').textContent = `📊 Showing ${r.icon} ${r.name} on the map. Open 📊 again to switch or hide it.`;
+  } else document.getElementById('st-hint').textContent = '';
+  cacheDirty = true;
+  if (!k) showReport();
+}
+
 // ===== Traffic & cars =====
 const BTIER = { 4: 1, 7: 2, 8: 3, 9: 1, 5: 2, 10: 3, 11: 1, 6: 2, 12: 3 };
 const TWT = [0, 1, 2.5, 5];
@@ -2400,15 +2539,18 @@ function tierCap(wx, wy, z) {
   const t = wy * N + wx;
   const demand = (z === 1 ? boxSum(SAT_J, wx, wy, 12) + civDemR[t] : boxSum(SAT_R, wx, wy, z === 3 ? 14 : 12) + (z === 2 ? civDemC[t] : 0));
   const dn = z === 1 ? 'jobs' : 'residents';
+  if (z === 1 && poll[t] >= POLL_HIGH) return [1, 'air too dirty to grow', true];
   if (nb < 3 || boxSum(SAT_ALL, wx, wy, 4) + civDense[t] < 14) return [1, 'rural, needs more neighbors', true];
   if (demand < 6) return [1, 'needs ' + dn + ' nearby', true];
   if (nb < 5 || boxSum(SAT_ALL, wx, wy, 6) + civDense[t] < 60) return [2, 'needs a denser neighborhood', true];
+  if (z === 1 && poll[t] >= POLL_MOD) return [2, 'air too dirty for towers', true];
   if (demand < 25) return [2, 'needs more ' + dn + ' nearby', true];
   if (!civPolice[t]) return [2, 'towers need police coverage', true];
   return [3, 'maxed out', true];
 }
 function simTick() {
   month++;
+  computePollution();
   recoverTick();
   buildSATs();
   let changed = false, pop = 0, jobs = 0;
@@ -2424,8 +2566,9 @@ function simTick() {
       let g = (d < 0.5 ? 0.06 : d < 1.5 ? 0.045 : 0.035) * (rn ? 1 : 0.2) * civBoost[z][t];
       if (z === 1) {
         if (near(wx, wy, 3, isWaterW)) g *= 1.3;
-        if (near(wx, wy, 3, (X, Y) => zone[Y * N + X] === 3)) g *= 0.5;
+        g *= pollFactor(t); // dirty air slows homes down (replaces the old 'near a factory' rule)
       }
+      if (z === 2) g *= Math.max(0.6, 1 - poll[t] / 30);
       d = Math.min(capD, d + g);
     } else if (d > capD) d = Math.max(capD, d - 0.01); // conditions lost: slowly shrink back
     dens[t] = d;
@@ -2885,6 +3028,8 @@ document.querySelectorAll('.spd').forEach(b => b.addEventListener('click', () =>
 function toggleSim() { setSpeed(speed ? 0 : lastSpeed); }
 document.getElementById('i15').addEventListener('input', e => { i15 = +e.target.value; document.getElementById('i15-v').textContent = i15; refreshHazard(); updateStatus(); });
 document.getElementById('mag').addEventListener('input', e => { mag = +e.target.value; document.getElementById('mag-v').textContent = mag.toFixed(1); compDirty = true; });
+document.getElementById('btn-report').addEventListener('click', showReport);
+document.getElementById('report-close').addEventListener('click', () => document.getElementById('reportbox').classList.add('hidden'));
 document.getElementById('btn-rain').addEventListener('click', () => { startStorm(); selectTool('pan'); });
 // About panel. Set REPO_URL once the GitHub repo exists and the source link appears.
 const REPO_URL = '';
@@ -2935,6 +3080,7 @@ function updateStatus() {
   }
   if (civ[t]) zt = `${CIVIC[civ[t]].icon} ${CIVIC[civ[t]].name} (reaches ${CIVIC[civ[t]].r} tiles)`;
   if (hazCls[t] && hazardView()) zt = (zt === '-' ? '' : zt + ' · ') + `🌧️ drainage likelihood ${hazP[t].toFixed(2)} (${HAZ_NAME[hazCls[t]]}) at ${i15} mm/hr`;
+  if (poll[t] >= POLL_MOD) zt = (zt === '-' ? '' : zt + ' · ') + (poll[t] >= POLL_HIGH ? '🌫️ unhealthy air' : '🌫️ moderate air');
   if (rubbleK(t) > 0) zt = (zt === '-' ? '' : zt + ' · ') + ['', '🏚️ earthquake rubble', '⛰️ landslide scar', '💧 liquefaction (sand boils)'][rubble[t]];
   if (mudK(t) > 0) zt = (zt === '-' ? '' : zt + ' · ') + '🟫 debris flow deposit';
   if (burnT[t] > 0) zt = (zt === '-' ? '' : zt + ' · ') + '🔥 burning';
@@ -3022,7 +3168,7 @@ window.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
   const k = e.key.toLowerCase();
   if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); undo(); return; }
-  if (k === 'escape') { roadGhost = []; if (drag && drag.mode === 'road') drag = null; genModal.classList.add('hidden'); helpBox.classList.add('hidden'); aboutBox.classList.add('hidden'); document.getElementById('sharebox').classList.add('hidden'); document.getElementById('filebox').classList.add('hidden'); compDirty = true; return; }
+  if (k === 'escape') { roadGhost = []; if (drag && drag.mode === 'road') drag = null; genModal.classList.add('hidden'); helpBox.classList.add('hidden'); aboutBox.classList.add('hidden'); document.getElementById('sharebox').classList.add('hidden'); document.getElementById('filebox').classList.add('hidden'); document.getElementById('reportbox').classList.add('hidden'); compDirty = true; return; }
   if (!genModal.classList.contains('hidden')) return;
   const PAN = 48;
   if (k === 'q') rotate(-1); else if (k === 'e') rotate(1);
