@@ -158,6 +158,12 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
 
     <div class="sect">Real places</div>
     <div id="preset-list" style="display:flex;flex-direction:column;gap:6px"></div>
+    <div class="sect">Sea level rise</div>
+    <div class="row" title="Sea level rise in meters"><input type="range" id="slr" min="0" max="10" step="0.1" value="0" disabled><span id="slr-v" style="min-width:42px;text-align:right">0 m</span></div>
+    <button class="txt slr-q" data-m="0.3" disabled>2050: +0.3 m</button>
+    <button class="txt slr-q" data-m="1" disabled>2100 mid: +1 m</button>
+    <button class="txt slr-q" data-m="2" disabled>2100 high: +2 m</button>
+    <div class="small" id="slr-stats">Load a coastal real place to try this.</div>
     <div class="sect">Your own DEM</div>
     <button class="txt" id="btn-dem" title="Load a GeoTIFF DEM">🗺️ Load DEM</button>
     <input type="file" id="file-dem" accept=".tif,.tiff" hidden>
@@ -194,7 +200,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
   <span class="help">Q/E rotate · wheel zoom · right-drag pan · Ctrl+Z undo · <a href="#" id="help-link" style="color:inherit">help</a> · <a href="#" id="about-link" style="color:inherit">about</a></span>
   </div>
   <div class="srow">
-  <span class="grow">Zone <span class="v" id="st-zone">-</span> &nbsp; <span class="v" id="st-hint"></span></span>
+  <span class="grow" id="st-row2">Zone <span class="v" id="st-zone">-</span> &nbsp; <span class="v" id="st-hint"></span></span>
   </div>
 </div>
 
@@ -240,7 +246,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       GeoTIFF reading: geotiff.js (MIT license).<br>
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
-      <p class="credit">Version 3.9.1 · MIT license</p>
+      <p class="credit">Version 4.0 · MIT license</p>
       <div class="btns"><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -255,6 +261,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       <p>Traffic follows development. Busy neighborhoods fill their roads with cars, and a road to nowhere stays empty. Every building type comes in four styles.</p>
       <p>Civic buildings change the city around them. Parks make homes nicer, hospitals act like jobs, fire stations help factories, stadiums pack the shops and the roads, and every tower needs police coverage. Pick one to see its reach.</p>
       <p>Wind gusts roll across the map and set the trees they pass swaying. Watch the wind readout in the status bar.</p>
+      <p>Sea level rise works on coastal real places. It floods using the real elevation, and only land connected to the ocean, so low spots behind high ground stay dry. Hover a flooded tile to see it, and the panel totals the land, buildings, and people affected.</p>
       <p>Water placed on a slope makes a waterfall. The sea level buttons flood or drain the whole map.</p>
       <p>Load DEM takes a real GeoTIFF, crops the center square, and squeezes it into 128 by 128 tiles. Cliffs get softened into slopes because the engine refuses to do anything else.</p>
       <p>Keys: Q/E rotate, +/- zoom, arrows or WASD pan, G grid, T tint, P pixels, Space pause, Esc cancel.</p>
@@ -422,6 +429,7 @@ function drawTile(g, vx, vy, lod) {
       poly(g, [Tx, Ty, Rx, Ry, Bx, By], shadeCol(base, lit(0, 0, ht, 1, 0, hr, 1, 1, hb)));
       poly(g, [Tx, Ty, Bx, By, Lx, Ly], shadeCol(base, lit(0, 0, ht, 1, 1, hb, 0, 1, hl)));
     }
+    if (flood[t] === 1) { polyNoStroke(g, [Tx, Ty, Rx, Ry, Bx, By, Lx, Ly], 'rgba(52,128,212,0.8)'); if (!partialMode) waterVis.push(Tx, (Ty + By) / 2, ((wx * 7919) ^ (wy * 104729)) & 1023); }
     if (showGrid && !lod) outlinePts(g, [Tx, Ty, Rx, Ry, Bx, By, Lx, Ly], 'rgba(0,0,0,0.22)', px1);
   } else {
     const sY = F - s * HS, depth = s - (ht + hr + hb + hl) / 4;
@@ -440,7 +448,7 @@ function drawTile(g, vx, vy, lod) {
   if (road[t]) { drawRoad(g, vx, vy, ht, hr, hb, hl, lod); if (!partialMode) roadVis.push(wx, wy); return; }
   if (bld[t]) { drawBuilding(g, bld[t], Tx, Ty + TH / 2, lod, hash2(wx, wy)); if (!partialMode) silhouette(Tx, Ty + TH / 2, bld[t], vx + vy); return; }
   if (civ[t] === 5 && isBigStadium(t)) { drawStadiumPart(g, vx, vy, t, Tx, Ty, lod); return; }
-  if (civ[t]) { drawCivic(g, civ[t], Tx, Ty + TH / 2, lod, hash2(wx, wy)); if (!partialMode) silhouette(Tx, Ty + TH / 2, 0, vx + vy, CIVIC[civ[t]].sil); return; }
+  if (civ[t]) { drawCivic(g, civ[t], Tx, Ty + TH / 2, lod, hash2(wx, wy)); if (!partialMode && civ[t] !== 1) silhouette(Tx, Ty + TH / 2, 0, vx + vy, CIVIC[civ[t]].sil); return; }
   if (zone[t]) {
     const zc = ['', 'rgba(70,200,70,0.30)', 'rgba(70,110,255,0.30)', 'rgba(255,140,50,0.32)'][zone[t]];
     polyNoStroke(g, [Tx, Ty, Rx, Ry, Bx, By, Lx, Ly], zc);
@@ -819,7 +827,8 @@ function drawStadiumPart(g, vx, vy, t, Tx, Ty, lod) {
   g.save(); g.translate(x, y); g.scale(2, 2); drawCivic(g, 5, 0, 0, lod, hash2(ax, ay)); g.restore();
   if (!partialMode) {
     dctx.fillStyle = `rgb(${vx + vy + 1},0,0)`; dctx.beginPath();
-    dctx.moveTo(x - 30, y); dctx.lineTo(x, y + 15); dctx.lineTo(x + 30, y); dctx.lineTo(x + 30, y - 22); dctx.lineTo(x, y - 37); dctx.lineTo(x - 30, y - 22);
+    const SH = [12, 26, 30, 12][hash2(ax, ay) % 4]; // real height of each stadium style
+    dctx.moveTo(x - 28, y); dctx.lineTo(x, y + 14); dctx.lineTo(x + 28, y); dctx.lineTo(x + 28, y - SH); dctx.lineTo(x, y - SH - 14); dctx.lineTo(x - 28, y - SH);
     dctx.closePath(); dctx.fill();
   }
 }
@@ -1291,6 +1300,7 @@ function drawMMBase() {
     const mn = Math.min(...c4), mx = Math.max(...c4), avg = (c4[0] + c4[1] + c4[2] + c4[3]) / 4;
     let col;
     if (lake[t] || mn < sea) { const s = Math.max(lake[t] ? mx : -1, mn < sea ? sea : -1), k = Math.min(1, (s - avg) / 4); col = [78 - 54 * k, 156 - 84 * k, 214 - 70 * k]; }
+    else if (flood[t] === 1) col = [70, 140, 220];
     else if (road[t]) col = [96, 96, 104];
     else if (civ[t]) col = CIVIC[civ[t]].color;
     else if (bld[t]) col = [226, 218, 196];
@@ -1530,7 +1540,8 @@ function undo() {
   HM.set(s.HM); lake.set(s.lake); tree.set(s.tree); road.set(s.road); zone.set(s.zone); bld.set(s.bld); dens.set(s.dens); civ.set(s.civ); civA.set(s.civA); sea = s.sea;
   dirtyAll();
 }
-function dirtyAll() { cacheDirty = true; mmBaseDirty = true; mmViewDirty = true; recomputeCivic(); computeTraffic(); }
+function dirtyAll() { cacheDirty = true; mmBaseDirty = true; mmViewDirty = true; recomputeCivic(); computeTraffic();
+  document.getElementById('slr').value = slr; document.getElementById('slr-v').textContent = (slr ? '+' : '') + slr.toFixed(1) + ' m'; computeFlood(); }
 
 // ===== Simulation =====
 const BLD = [null, [0, 4, 7, 8], [0, 9, 5, 10], [0, 11, 6, 12]];
@@ -1690,7 +1701,7 @@ function applyGen(g, keepUndo) {
   if (keepUndo) snapshot();
   HM.set(g.A); sea = g.sea; tree.set(g.tr); makePatches(g.seed);
   lake.fill(0); road.fill(0); zone.fill(0); bld.fill(0); dens.fill(0); civ.fill(0);
-  dem = null; month = 0;
+  dem = null; month = 0; hasDemM = false; slr = 0;
   document.getElementById('dem-status').innerHTML = 'Any GeoTIFF works. <a href="https://apps.nationalmap.gov/downloader/" target="_blank" rel="noopener" style="color:inherit">USGS downloader</a>';
   centerOn(N / 2, N / 2, sea + 2);
   dirtyAll();
@@ -1760,6 +1771,8 @@ function applyElevation(a, nd, opts) {
     for (let i = 0; i < a.length; i++) { const v = ok(a[i]) ? a[i] : mn; HM[i] = Math.round((v - mn) / (mx - mn || 1) * R); }
   }
   const tmp = Int16Array.from(HM); lipschitz(tmp); HM.set(tmp);
+  for (let i = 0; i < a.length; i++) demM[i] = ok(a[i]) ? a[i] : (ocean ? -1 : mn);
+  HMload.set(HM); hasDemM = true; slr = 0;
   sea = s0; dem = { min: mn, max: mx, ocean, sea: s0, maxL, name: opts.name || null, km: opts.km || null };
   lake.fill(0); tree.fill(0); road.fill(0); zone.fill(0); bld.fill(0); dens.fill(0); civ.fill(0); month = 0;
   plantRealTrees(opts.seed || 7);
@@ -1825,12 +1838,59 @@ presetButtons(document.getElementById('gen-presets'), 'txt', () => genModal.clas
 document.getElementById('btn-dem').addEventListener('click', () => document.getElementById('file-dem').click());
 document.getElementById('file-dem').addEventListener('change', e => { const f = e.target.files[0]; if (f) loadDEM(f); e.target.value = ''; });
 
+// ===== Sea level rise =====
+// Uses the real elevation (not the game's blocky steps) and floods only land connected to the ocean,
+// so low ground behind a ridge stays dry. A preview: nothing is destroyed.
+const demM = new Float32Array(NC * NC), HMload = new Int16Array(NC * NC).fill(-1);
+const flood = new Uint8Array(N * N);
+let slr = 0, hasDemM = false;
+function cornerM(c) { return (hasDemM && HM[c] === HMload[c]) ? demM[c] : metresAt(HM[c]); }
+function tileM(wx, wy) { const i = wy * NC + wx; return (cornerM(i) + cornerM(i + 1) + cornerM(i + NC) + cornerM(i + NC + 1)) / 4; }
+function computeFlood() {
+  flood.fill(0);
+  const st = document.getElementById('slr-stats');
+  const usable = !!(dem && dem.ocean);
+  document.getElementById('slr').disabled = !usable;
+  document.querySelectorAll('.slr-q').forEach(b => b.disabled = !usable);
+  if (!usable) { st.textContent = 'Load a coastal real place to try this.'; return; }
+  if (!(slr > 0)) { st.textContent = 'Drag the slider or pick a scenario. Scenarios follow NOAA\'s 2022 report. SRTM heights are only good to a few meters, so treat this as a sketch, not a forecast.'; return; }
+  const q = [];
+  for (let wy = 0; wy < N; wy++) for (let wx = 0; wx < N; wx++) if (tMinMax(wx, wy)[0] < sea) { flood[wy * N + wx] = 2; q.push(wy * N + wx); }
+  while (q.length) {
+    const t = q.pop(), x = t % N, y = (t / N) | 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const X = x + dx, Y = y + dy; if (!inW(X, Y)) continue;
+      const n = Y * N + X; if (flood[n]) continue;
+      if (tileM(X, Y) < slr) { flood[n] = 1; q.push(n); }
+    }
+  }
+  let tiles = 0, blds = 0, people = 0, roads = 0;
+  for (let t = 0; t < N * N; t++) {
+    if (flood[t] !== 1) continue;
+    tiles++; if (bld[t] || civ[t]) blds++; if (road[t]) roads++;
+    if (zone[t] === 1) { const d = dens[t]; people += POP[d >= 2.5 ? 3 : d >= 1.5 ? 2 : d >= 0.5 ? 1 : 0]; }
+  }
+  if (!tiles) { st.textContent = `+${slr.toFixed(1)} m: no tiles flood at this resolution. The change is smaller than 30 m SRTM data can see.`; return; }
+  const km2 = dem.km ? tiles * Math.pow(dem.km / N, 2) : null;
+  st.textContent = `+${slr.toFixed(1)} m floods ${km2 != null ? km2.toFixed(1) + ' km²' : tiles + ' tiles'}` +
+    (blds ? `, ${blds} building${blds > 1 ? 's' : ''}` : '') + (people ? `, ${people.toLocaleString()} people` : '') + (roads ? `, ${roads} road tile${roads > 1 ? 's' : ''}` : '') + '.';
+}
+function setSLR(m) {
+  slr = Math.max(0, Math.min(10, m));
+  document.getElementById('slr').value = slr;
+  document.getElementById('slr-v').textContent = (slr ? '+' : '') + slr.toFixed(1) + ' m';
+  computeFlood(); cacheDirty = true; mmBaseDirty = true; updateStatus();
+}
+document.getElementById('slr').addEventListener('input', e => setSLR(+e.target.value));
+document.querySelectorAll('.slr-q').forEach(b => b.addEventListener('click', () => setSLR(+b.dataset.m)));
+
 // ===== Save / load =====
 const SAVE_KEY = 'terrain-sandbox-v3';
 function serialize() {
   return JSON.stringify({ format: 'terrain-sandbox', v: 3, N, sea, rot, month, dem,
     HM: Array.from(HM), lake: Array.from(lake), tree: Array.from(tree), road: Array.from(road), zone: Array.from(zone), bld: Array.from(bld), civ: Array.from(civ), civA: Array.from(civA),
-    dens: Array.from(dens, x => Math.round(x * 100) / 100) });
+    dens: Array.from(dens, x => Math.round(x * 100) / 100),
+    demM: hasDemM ? Array.from(demM, x => Math.round(x * 10) / 10) : null, HMload: hasDemM ? Array.from(HMload) : null, slr });
 }
 function deserialize(txt) {
   const o = JSON.parse(txt);
@@ -1839,6 +1899,7 @@ function deserialize(txt) {
   HM.set(o.HM); lake.set(o.lake); tree.set(o.tree); road.set(o.road); zone.set(o.zone); bld.set(o.bld); dens.set(o.dens); civ.fill(0); if (o.civ) civ.set(o.civ);
   if (o.civA) civA.set(o.civA); else for (let i = 0; i < civ.length; i++) civA[i] = i;
   sea = o.sea; month = o.month || 0; dem = o.dem || null;
+  hasDemM = !!(o.demM && o.HMload); if (hasDemM) { demM.set(o.demM); HMload.set(o.HMload); } slr = hasDemM ? (o.slr || 0) : 0;
   if (o.rot !== rot) { rot = o.rot || 0; document.getElementById('viewlbl').textContent = 'View ' + ['N', 'E', 'S', 'W'][rot]; }
   centerOn(N / 2, N / 2, sea + 2);
   dirtyAll();
@@ -1921,12 +1982,31 @@ const helpBox = document.getElementById('helpbox');
 document.getElementById('help-link').addEventListener('click', e => { e.preventDefault(); helpBox.classList.remove('hidden'); });
 document.getElementById('help-close').addEventListener('click', () => helpBox.classList.add('hidden'));
 
+// Long status text: hover the bottom row and it scrolls so you can read the rest.
+(() => {
+  const row = document.getElementById('st-row2'); let raf = null;
+  row.addEventListener('mouseenter', () => {
+    const over = row.scrollWidth - row.clientWidth;
+    row.title = row.textContent.replace(/\s+/g, ' ').trim();
+    if (over <= 0) return;
+    row.style.textOverflow = 'clip';
+    let t0 = performance.now() + 400;
+    const step = ts => {
+      const px = Math.max(0, (ts - t0) / 1000 * 45);
+      row.scrollLeft = Math.min(over, px);
+      if (px > over + 60) { row.scrollLeft = 0; t0 = ts + 600; }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  });
+  row.addEventListener('mouseleave', () => { cancelAnimationFrame(raf); row.scrollLeft = 0; row.style.textOverflow = ''; });
+})();
 function updateStatus() {
   document.getElementById('st-sea').textContent = sea + (dem && dem.ocean ? ' (0 m)' : '');
-  if (!hover) { document.getElementById('st-tile').textContent = '-'; document.getElementById('st-h').textContent = '-'; document.getElementById('st-zone').textContent = '-'; return; }
+  if (!hover) return;
   const [wx, wy] = t2w(hover.vx, hover.vy), t = wy * N + wx, c = cornersW(wx, wy), avg = (c[0] + c[1] + c[2] + c[3]) / 4;
   document.getElementById('st-tile').textContent = wx + ', ' + wy;
-  const m = metresAt(avg);
+  const m = dem ? tileM(wx, wy) : null;
   document.getElementById('st-h').textContent = avg.toFixed(1) + (m != null ? ` (~${Math.round(m)} m)` : '');
   const [mn, mx] = tMinMax(wx, wy);
   const zn = ['-', 'Residential', 'Commercial', 'Industrial'][zone[t]];
@@ -1937,6 +2017,7 @@ function updateStatus() {
       zt = `${zn} ${dens[t].toFixed(1)}` + (tier >= cap && cap < 3 ? ` (${why})` : ''); }
   }
   if (civ[t]) zt = `${CIVIC[civ[t]].icon} ${CIVIC[civ[t]].name} (reaches ${CIVIC[civ[t]].r} tiles)`;
+  if (flood[t] === 1) zt = (zt === '-' ? '' : zt + ' · ') + `🌊 underwater at +${slr.toFixed(1)} m`;
   else if (zone[t] && civBoost[zone[t]][t] > 1.01) zt += ` · growth x${civBoost[zone[t]][t].toFixed(1)}`;
   document.getElementById('st-zone').textContent = zt;
 }
@@ -1982,7 +2063,7 @@ function endDrag() {
 }
 canvas.addEventListener('pointerup', endDrag);
 canvas.addEventListener('pointercancel', endDrag);
-canvas.addEventListener('pointerleave', () => { if (!drag) { hover = null; compDirty = true; updateStatus(); } });
+canvas.addEventListener('pointerleave', () => { if (!drag) { hover = null; compDirty = true; } }); // status keeps the last tile you pointed at
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
   const p = evPos(e);
