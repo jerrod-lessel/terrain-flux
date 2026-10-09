@@ -217,6 +217,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       <button class="tb" id="zm-in" title="Zoom in (+)">＋</button>
       <button class="tb on" id="tg-grid" title="Grid (G)">▦</button>
       <button class="tb on" id="tg-tint" title="Color: classic green or elevation tint (T)">🎨</button>
+      <button class="tb" id="tg-layer" title="Map layers: pollution, coverage, gaps (L)">🗺️</button>
       <button class="tb" id="tg-day" title="Always day (N to switch)">☀️</button>
       <button class="tb" id="tg-contour" title="Contour lines (C)">〰</button>
       <button class="tb" id="tg-retro" title="Chunky retro pixels (P)">👾</button>
@@ -287,7 +288,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       GeoTIFF reading: geotiff.js (MIT license).<br>
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
-      <p class="credit">Version 4.9 · MIT license</p>
+      <p class="credit">Version 5.0 · MIT license</p>
       <div class="btns"><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -329,6 +330,16 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
   </div>
 </div>
 
+<div class="modal hidden" id="layerbox">
+  <div class="win bev" style="width:360px">
+    <div class="tbar">MAP LAYERS</div>
+    <div class="body" style="display:block">
+      <div class="small" style="margin-bottom:6px">Pick a layer to see where things reach and where the gaps are.</div>
+      <div style="display:flex;flex-direction:column;gap:4px" id="layer-list"></div>
+    </div>
+  </div>
+</div>
+
 <div class="modal hidden" id="helpbox">
   <div class="win bev">
     <div class="tbar">HOW THIS WORKS</div>
@@ -349,7 +360,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       <p>Water pools on flat ground. Place it on a slope and it runs downhill as a stream, with waterfalls, until it reaches water or a low spot. The sea level buttons flood or drain the whole map.</p>
       <p>Wildfires run downwind and uphill. Forest burns long and hot, grass burns fast and light, and roads, water, beaches, and bare rock stop them. Fire stations slow fires inside their reach. Burned ground stays scarred by severity and heals over about five game years, and forests grow back.</p>
       <p>Load DEM takes a real GeoTIFF, crops the center square, and squeezes it into 128 by 128 tiles. Cliffs get softened into slopes because the engine refuses to do anything else.</p>
-      <p>Keys: Space pause, 1/2/3 slow/normal/fast, N day and night, Q/E rotate, +/- zoom, arrows or WASD pan, G grid, C contours, T tint, P pixels, Esc cancel.</p>
+      <p>Keys: Space pause, 1/2/3 slow/normal/fast, N day and night, L map layers, Q/E rotate, +/- zoom, arrows or WASD pan, G grid, C contours, T tint, P pixels, Esc cancel.</p>
       <div class="btns"><button class="txt" id="help-close" style="text-align:center">Got it</button></div>
     </div>
   </div>
@@ -526,7 +537,7 @@ function drawTile(g, vx, vy, lod) {
       poly(g, [Tx, Ty, Rx, Ry, Bx, By], shadeCol(base, lit(0, 0, ht, 1, 0, hr, 1, 1, hb)));
       poly(g, [Tx, Ty, Bx, By, Lx, Ly], shadeCol(base, lit(0, 0, ht, 1, 1, hb, 0, 1, hl)));
     }
-    if (repView && repMask[t] > 0) { const c = REP_COL[repView]; polyNoStroke(g, [Tx, Ty, Rx, Ry, Bx, By, Lx, Ly], `rgba(${c[0]},${c[1]},${c[2]},${(0.6 * repMask[t]).toFixed(2)})`); }
+    if (layer && layerFill[t]) polyNoStroke(g, [Tx, Ty, Rx, Ry, Bx, By, Lx, Ly], layerFill[t]);
     if (hazCls[t] && hazardView()) polyNoStroke(g, [Tx, Ty, Rx, Ry, Bx, By, Lx, Ly], HAZ_COL[hazCls[t]] + (accA[t] >= CHANNEL_A ? '0.78)' : '0.3)'));
     if (flood[t] === 1) { polyNoStroke(g, [Tx, Ty, Rx, Ry, Bx, By, Lx, Ly], 'rgba(52,128,212,0.8)'); if (!partialMode) waterVis.push(Tx, (Ty + By) / 2, ((wx * 7919) ^ (wy * 104729)) & 1023); }
     if (showGrid && !lod) outlinePts(g, [Tx, Ty, Rx, Ry, Bx, By, Lx, Ly], 'rgba(0,0,0,0.22)', px1);
@@ -961,6 +972,7 @@ const CIVIC = [null,
     effect: 'Within 5 tiles, a fifth of trips go by bike: fewer cars and 20% less traffic pollution.' },
 ];
 const civ = new Uint8Array(N * N);
+const civFireN = new Uint8Array(N * N), civPoliceN = new Uint8Array(N * N), civHospN = new Uint8Array(N * N);
 const civCars = new Float32Array(N * N), civEmit = new Float32Array(N * N); // transit: share of cars left, share of road pollution left
 const civA = new Int32Array(N * N); // anchor tile of each civic footprint (stadiums cover 2 by 2)
 function w2vt(wx, wy) { const v = w2v(wx + 0.5, wy + 0.5); return [Math.floor(v[0]), Math.floor(v[1])]; }
@@ -996,7 +1008,7 @@ const civDense = new Float32Array(N * N), civDemR = new Float32Array(N * N), civ
 const civPolice = new Uint8Array(N * N);
 function recomputeCivic() {
   civBoost[1].fill(1); civBoost[2].fill(1); civBoost[3].fill(1);
-  civDense.fill(0); civDemR.fill(0); civDemC.fill(0); civPolice.fill(0); civFire.fill(0); civHosp.fill(0); civCars.fill(1); civEmit.fill(1);
+  civDense.fill(0); civDemR.fill(0); civDemC.fill(0); civPolice.fill(0); civFire.fill(0); civHosp.fill(0); civCars.fill(1); civEmit.fill(1); civFireN.fill(0); civPoliceN.fill(0); civHospN.fill(0);
   for (let wy = 0; wy < N; wy++) for (let wx = 0; wx < N; wx++) {
     const id = civ[wy * N + wx]; if (!id) continue;
     if (id === 5 && civA[wy * N + wx] !== wy * N + wx) continue; // count each stadium once, from its anchor
@@ -1006,9 +1018,9 @@ function recomputeCivic() {
       const X = wx + dx, Y = wy + dy; if (!inW(X, Y)) continue;
       const t = Y * N + X;
       if (id === 1) { civBoost[1][t] *= 1.4; civDense[t] += 10; }
-      else if (id === 2) { civBoost[1][t] *= 1.2; civDemR[t] += 15; civHosp[t] = 1; }
-      else if (id === 3) { civBoost[3][t] *= 1.3; civFire[t] = 1; }
-      else if (id === 4) { civBoost[1][t] *= 1.2; civBoost[2][t] *= 1.2; civBoost[3][t] *= 1.2; civPolice[t] = 1; }
+      else if (id === 2) { civBoost[1][t] *= 1.2; civDemR[t] += 15; civHosp[t] = 1; civHospN[t]++; }
+      else if (id === 3) { civBoost[3][t] *= 1.3; civFire[t] = 1; civFireN[t]++; }
+      else if (id === 4) { civBoost[1][t] *= 1.2; civBoost[2][t] *= 1.2; civBoost[3][t] *= 1.2; civPolice[t] = 1; civPoliceN[t]++; }
       else if (id === 5) { civBoost[2][t] *= 1.5; civDemC[t] += 20; }
       else if (id === 6) { civCars[t] *= 0.75; civEmit[t] *= 0.67; }
       else if (id === 7) { civEmit[t] *= 0.7; }
@@ -1961,9 +1973,7 @@ function pollFactor(t) { return Math.max(0.3, 1 - poll[t] / 12); } // growth mul
 // ===== Hazard report card =====
 // For each hazard, the share of residents exposed, graded A to F. Clicking a row tints that exposure on the map.
 const civHosp = new Uint8Array(N * N);
-const repMask = new Float32Array(N * N);
-let repView = null;
-const REP_COL = { fire: [235, 110, 30], debris: [214, 52, 40], quake: [150, 90, 200], slr: [40, 120, 230], air: [120, 100, 70], svc: [220, 40, 80] };
+function fireRisk(t) { return Math.pow(0.4, Math.min(4, civFireN[t])); } // 1 station: 40% of the risk, 2: 16%, 3: 6%
 function wuiAt(x, y) { let n = 0; for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const X = x + dx, Y = y + dy; if (inW(X, Y) && tree[Y * N + X]) n++; } return n >= 4; }
 function homesAt(t) { if (zone[t] !== 1) return 0; const d = dens[t]; return POP[d >= 2.5 ? 3 : d >= 1.5 ? 2 : d >= 0.5 ? 1 : 0]; }
 function floodMaskFor(level) {
@@ -1987,9 +1997,9 @@ function buildReport() {
   const sum = f => { let s = 0; for (let t = 0; t < N * N; t++) if (f(t)) s += homesAt(t); return s; };
   // wildfire: homes with real forest within 3 tiles (the wildland-urban interface); fire stations halve the exposure
   let fire = 0;
-  for (let t = 0; t < N * N; t++) { const h = homesAt(t); if (h && wuiAt(t % N, (t / N) | 0)) fire += civFire[t] ? h / 2 : h; }
+  for (let t = 0; t < N * N; t++) { const h = homesAt(t); if (h && wuiAt(t % N, (t / N) | 0)) fire += h * fireRisk(t); }
   fire = Math.round(fire);
-  rows.push({ key: 'fire', icon: '🔥', name: 'Wildfire', note: 'homes with forest within 3 tiles (fire stations cut this in half)', exposed: fire });
+  rows.push({ key: 'fire', icon: '🔥', name: 'Wildfire', note: 'homes with forest within 3 tiles; each fire station that reaches a home cuts its risk', exposed: fire });
   // debris flow: homes in Moderate or High drainages at a typical 24 mm/hr storm
   const keep = i15; i15 = 24; computeHazard(); const debris = sum(t => hazCls[t] >= 2); const debrisMask = hazCls.slice(); i15 = keep; computeHazard();
   rows.push({ key: 'debris', icon: '🌧️', name: 'Debris flow', note: 'homes in Moderate or High drainages at 24 mm/hr', exposed: debris, mask: t => debrisMask[t] >= 2 ? 1 : 0 });
@@ -2026,30 +2036,63 @@ function showReport() {
   else {
     const g = rows.reduce((a, r) => a + GPA[r.grade], 0) / rows.length, overall = 'FDCBA'[Math.round(g)];
     box.innerHTML = `<p style="margin:0 0 8px">${total.toLocaleString()} residents · overall grade <b class="grade g${overall}">${overall}</b></p>` +
-      '<table class="rep">' + rows.map(r => `<tr data-k="${r.key}" class="${repView === r.key ? 'on' : ''}"><td>${r.icon}</td><td><b>${r.name}</b><br><span class="small">${r.key === 'svc' ? Math.round(r.pct) + '% average coverage' : (r.exposed || 0).toLocaleString() + ' (' + r.pct.toFixed(0) + '%) exposed'} · ${r.note}</span></td><td class="grade g${r.grade}">${r.grade}</td></tr>`).join('') + '</table>' +
-      '<p class="small" style="margin:8px 0 0">Click a row to see it on the map. Click it again to hide it.</p>';
-    box.querySelectorAll('tr[data-k]').forEach(tr => tr.addEventListener('click', () => setRepView(repView === tr.dataset.k ? null : tr.dataset.k, rows)));
+      '<table class="rep">' + rows.map(r => `<tr data-k="${r.key}" class="${layer === REPORT_LAYER[r.key] ? 'on' : ''}"><td>${r.icon}</td><td><b>${r.name}</b><br><span class="small">${r.key === 'svc' ? Math.round(r.pct) + '% average coverage' : (r.exposed || 0).toLocaleString() + ' (' + r.pct.toFixed(0) + '%) exposed'} · ${r.note}</span></td><td class="grade g${r.grade}">${r.grade}</td></tr>`).join('') + '</table>' +
+      '<p class="small" style="margin:8px 0 0">Click a row to see it on the map. The 🗺️ button has more layers, like fire, police, and transit coverage.</p>';
+    box.querySelectorAll('tr[data-k]').forEach(tr => tr.addEventListener('click', () => setRepView(layer === REPORT_LAYER[tr.dataset.k] ? null : tr.dataset.k)));
   }
   document.getElementById('reportbox').classList.remove('hidden');
 }
-function setRepView(k, rows) {
-  repView = k; repMask.fill(0);
-  if (k) {
-    const r = rows.find(x => x.key === k);
-    for (let t = 0; t < N * N; t++) {
-      const x = t % N, y = (t / N) | 0;
-      if (k === 'fire') repMask[t] = !isWaterW(x, y) && !tree[t] && wuiAt(x, y) ? (civFire[t] ? 0.25 : 0.55) : 0;
-      else if (k === 'debris' || k === 'slr') repMask[t] = r.mask(t);
-      else if (k === 'quake') repMask[t] = liquefiable(x, y) ? 0.8 : 0;
-      else if (k === 'air') repMask[t] = Math.min(1, poll[t] / POLL_HIGH);
-      else if (k === 'svc') repMask[t] = zone[t] === 1 && !(civFire[t] && civPolice[t] && civHosp[t]) ? 0.7 : 0;
+// ===== Map layers =====
+// Tinted overlays that show where things reach and where the gaps are.
+const LAYERS = {
+  air:    { icon: '🌫️', name: 'Air pollution', legend: 'yellow = moderate, brown to purple = unhealthy' },
+  fire:   { icon: '🚒', name: 'Fire coverage', legend: 'green = covered (darker = more stations), red = homes and businesses with no fire station' },
+  police: { icon: '🚓', name: 'Police coverage', legend: 'blue = covered (darker = more stations), red = homes and businesses with no police' },
+  hosp:   { icon: '🏥', name: 'Hospital coverage', legend: 'pink = covered, red = homes with no hospital nearby' },
+  transit:{ icon: '🚌', name: 'Transit reach', legend: 'teal = cleaner traffic (darker = stronger), orange = busy roads with no transit' },
+  wui:    { icon: '🔥', name: 'Wildfire risk', legend: 'orange to red = homes and land near forest, fading where fire stations reach' },
+  quake:  { icon: '🌎', name: 'Liquefaction', legend: 'purple = low, wet ground that shakes harder in an earthquake' },
+  debris: { icon: '🌧️', name: 'Debris flow', legend: 'orange = Moderate, red = High drainages at 24 mm/hr' },
+  slr:    { icon: '🌊', name: 'Sea level rise', legend: 'blue = underwater at +2 m' },
+  gaps:   { icon: '🧩', name: 'Service gaps', legend: 'red = homes missing fire, police, or hospital coverage' },
+};
+let layer = null, layerFill = new Array(N * N).fill(null);
+function computeLayer() {
+  layerFill.fill(null);
+  if (!layer) return;
+  const rgba = (r, g, b, a) => `rgba(${r},${g},${b},${a.toFixed(2)})`;
+  const occupied = t => zone[t] || bld[t];
+  let m2 = null, dmask = null;
+  if (layer === 'slr') m2 = floodMaskFor(2);
+  if (layer === 'debris') { const keep = i15; i15 = 24; computeHazard(); dmask = hazCls.slice(); i15 = keep; computeHazard(); }
+  for (let t = 0; t < N * N; t++) {
+    const x = t % N, y = (t / N) | 0; let c = null;
+    if (isWaterW(x, y) && layer !== 'slr') { layerFill[t] = null; continue; }
+    switch (layer) {
+      case 'air': { const v = poll[t] / POLL_HIGH; if (v > 0.15) c = v < 0.375 ? rgba(240, 220, 80, 0.25 + v) : v < 1 ? rgba(150, 100, 50, 0.35 + v * 0.3) : rgba(120, 50, 140, Math.min(0.85, 0.55 + (v - 1) * 0.3)); break; }
+      case 'fire': c = civFireN[t] ? rgba(60, 170, 70, Math.min(0.6, 0.18 + civFireN[t] * 0.12)) : occupied(t) ? rgba(220, 40, 40, 0.55) : null; break;
+      case 'police': c = civPoliceN[t] ? rgba(60, 100, 210, Math.min(0.6, 0.18 + civPoliceN[t] * 0.12)) : occupied(t) ? rgba(220, 40, 40, 0.55) : null; break;
+      case 'hosp': c = civHospN[t] ? rgba(230, 110, 170, Math.min(0.6, 0.2 + civHospN[t] * 0.12)) : zone[t] === 1 ? rgba(220, 40, 40, 0.55) : null; break;
+      case 'transit': c = civEmit[t] < 0.99 ? rgba(30, 170, 160, Math.min(0.65, 0.15 + (1 - civEmit[t]) * 0.8)) : (road[t] && traffic[t] > 0.3) ? rgba(240, 140, 30, 0.6) : null; break;
+      case 'wui': if (wuiAt(x, y) && !tree[t]) { const r = fireRisk(t); c = rgba(230, 80 + (1 - r) * 120, 30, 0.15 + 0.5 * r); } break;
+      case 'quake': c = liquefiable(x, y) ? rgba(150, 80, 200, 0.55) : null; break;
+      case 'debris': c = dmask[t] === 3 ? rgba(214, 52, 40, 0.6) : dmask[t] === 2 ? rgba(238, 150, 40, 0.5) : null; break;
+      case 'slr': c = m2[t] === 1 ? rgba(40, 120, 230, 0.65) : null; break;
+      case 'gaps': c = zone[t] === 1 && !(civFireN[t] && civPoliceN[t] && civHospN[t]) ? rgba(220, 40, 40, 0.55) : null; break;
     }
-    document.getElementById('reportbox').classList.add('hidden');
-    document.getElementById('st-hint').textContent = `📊 Showing ${r.icon} ${r.name} on the map. Open 📊 again to switch or hide it.`;
-  } else document.getElementById('st-hint').textContent = '';
-  cacheDirty = true;
-  if (!k) showReport();
+    layerFill[t] = c;
+  }
 }
+function setLayer(k) {
+  layer = k;
+  if (k === 'air') computePollution();
+  computeLayer(); cacheDirty = true;
+  document.getElementById('tg-layer').classList.toggle('on', !!k);
+  document.getElementById('st-hint').textContent = k ? `${LAYERS[k].icon} ${LAYERS[k].name}: ${LAYERS[k].legend}` : '';
+  document.querySelectorAll('#layerbox [data-l]').forEach(b => b.classList.toggle('on', b.dataset.l === (k || '')));
+}
+const REPORT_LAYER = { fire: 'wui', debris: 'debris', quake: 'quake', slr: 'slr', air: 'air', svc: 'gaps' };
+function setRepView(k) { document.getElementById('reportbox').classList.add('hidden'); setLayer(k ? REPORT_LAYER[k] : null); }
 
 // ===== Traffic & cars =====
 const BTIER = { 4: 1, 7: 2, 8: 3, 9: 1, 5: 2, 10: 3, 11: 1, 6: 2, 12: 3 };
@@ -2565,7 +2608,7 @@ function undo() {
   burning.forEach(t => burnT[t] = 0); burning = []; smokeP = []; fireStats = null;
   dirtyAll();
 }
-function dirtyAll() { routeDirty = true; if (showContours) setContourInterval(); cacheDirty = true; mmBaseDirty = true; mmViewDirty = true; recomputeCivic(); computeTraffic();
+function dirtyAll() { routeDirty = true; if (typeof layer !== 'undefined' && layer) computeLayer(); if (showContours) setContourInterval(); cacheDirty = true; mmBaseDirty = true; mmViewDirty = true; recomputeCivic(); computeTraffic();
   document.getElementById('slr').value = slr; document.getElementById('slr-v').textContent = (slr ? '+' : '') + slr.toFixed(1) + ' m'; computeFlood(); }
 
 // ===== Simulation =====
@@ -2615,6 +2658,7 @@ function tierCap(wx, wy, z) {
 function simTick() {
   month++;
   computePollution();
+  if (layer && (layer === 'air' || layer === 'transit')) { computeLayer(); cacheDirty = true; }
   recoverTick();
   buildSATs();
   let changed = false, pop = 0, jobs = 0;
@@ -3093,6 +3137,17 @@ function toggleSim() { setSpeed(speed ? 0 : lastSpeed); }
 document.getElementById('i15').addEventListener('input', e => { i15 = +e.target.value; document.getElementById('i15-v').textContent = i15; refreshHazard(); updateStatus(); });
 document.getElementById('mag').addEventListener('input', e => { mag = +e.target.value; document.getElementById('mag-v').textContent = mag.toFixed(1); compDirty = true; });
 document.getElementById('btn-report').addEventListener('click', showReport);
+(() => {
+  const list = document.getElementById('layer-list'), box = document.getElementById('layerbox');
+  const add = (k, label) => { const b = document.createElement('button'); b.className = 'txt'; b.dataset.l = k; b.textContent = label; b.addEventListener('click', () => { setLayer(k || null); box.classList.add('hidden'); }); list.appendChild(b); };
+  add('', '✖ No layer');
+  for (const [k, L] of Object.entries(LAYERS)) add(k, `${L.icon} ${L.name}`);
+  document.getElementById('tg-layer').addEventListener('click', () => {
+    list.querySelector('[data-l="slr"]').style.display = dem && dem.ocean ? '' : 'none';
+    box.classList.remove('hidden');
+  });
+  box.addEventListener('click', e => { if (e.target === box) box.classList.add('hidden'); });
+})();
 document.getElementById('report-close').addEventListener('click', () => document.getElementById('reportbox').classList.add('hidden'));
 document.getElementById('btn-rain').addEventListener('click', () => { startStorm(); selectTool('pan'); });
 // About panel. Set REPO_URL once the GitHub repo exists and the source link appears.
@@ -3144,7 +3199,9 @@ function updateStatus() {
   }
   if (civ[t]) zt = `${CIVIC[civ[t]].icon} ${CIVIC[civ[t]].name} (reaches ${CIVIC[civ[t]].r} tiles)`;
   if (hazCls[t] && hazardView()) zt = (zt === '-' ? '' : zt + ' · ') + `🌧️ drainage likelihood ${hazP[t].toFixed(2)} (${HAZ_NAME[hazCls[t]]}) at ${i15} mm/hr`;
-  if (poll[t] >= POLL_MOD) zt = (zt === '-' ? '' : zt + ' · ') + (poll[t] >= POLL_HIGH ? '🌫️ unhealthy air' : '🌫️ moderate air');
+  if (layer === 'fire' || layer === 'police' || layer === 'hosp') { const n = (layer === 'fire' ? civFireN : layer === 'police' ? civPoliceN : civHospN)[t]; zt = (zt === '-' ? '' : zt + ' · ') + `${LAYERS[layer].icon} ${n ? n + ' reaching here' : 'not covered'}`; }
+  if (layer === 'air') zt = (zt === '-' ? '' : zt + ' · ') + `🌫️ pollution ${poll[t].toFixed(1)}${poll[t] > 0.1 ? ` (${Math.round(pollRoad[t] / poll[t] * 100)}% from traffic)` : ''}`;
+  if (poll[t] >= POLL_MOD && layer !== 'air') zt = (zt === '-' ? '' : zt + ' · ') + (poll[t] >= POLL_HIGH ? '🌫️ unhealthy air' : '🌫️ moderate air');
   if (rubbleK(t) > 0) zt = (zt === '-' ? '' : zt + ' · ') + ['', '🏚️ earthquake rubble', '⛰️ landslide scar', '💧 liquefaction (sand boils)'][rubble[t]];
   if (mudK(t) > 0) zt = (zt === '-' ? '' : zt + ' · ') + '🟫 debris flow deposit';
   if (burnT[t] > 0) zt = (zt === '-' ? '' : zt + ' · ') + '🔥 burning';
@@ -3232,12 +3289,13 @@ window.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
   const k = e.key.toLowerCase();
   if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); undo(); return; }
-  if (k === 'escape') { roadGhost = []; if (drag && drag.mode === 'road') drag = null; genModal.classList.add('hidden'); helpBox.classList.add('hidden'); aboutBox.classList.add('hidden'); document.getElementById('sharebox').classList.add('hidden'); document.getElementById('filebox').classList.add('hidden'); document.getElementById('reportbox').classList.add('hidden'); compDirty = true; return; }
+  if (k === 'escape') { roadGhost = []; if (drag && drag.mode === 'road') drag = null; genModal.classList.add('hidden'); helpBox.classList.add('hidden'); aboutBox.classList.add('hidden'); document.getElementById('sharebox').classList.add('hidden'); document.getElementById('filebox').classList.add('hidden'); document.getElementById('reportbox').classList.add('hidden'); document.getElementById('layerbox').classList.add('hidden'); compDirty = true; return; }
   if (!genModal.classList.contains('hidden')) return;
   const PAN = 48;
   if (k === 'q') rotate(-1); else if (k === 'e') rotate(1);
   else if (k === '+' || k === '=') setZoom(zi + 1); else if (k === '-' || k === '_') setZoom(zi - 1);
   else if (k === 'c') toggleContours();
+  else if (k === 'l') document.getElementById('tg-layer').click();
   else if (k === 'n') setDayMode((dayMode + 1) % 3);
   else if (k === 'g') toggleGrid(); else if (k === 't') toggleTint(); else if (k === 'p') toggleRetro();
   else if (k === ' ') { e.preventDefault(); toggleSim(); }
