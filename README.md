@@ -51,9 +51,9 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 
 **Growth.** Any zone next to a road can become a small building. Bigger buildings need a real neighborhood around them and demand nearby: homes need jobs, while shops and factories need residents. Lone zones stay rural forever. Buildings shrink if their demand disappears. Hover a zone to see what it is waiting for.
 
-**Civic buildings.** Each one reaches a radius of tiles. Parks speed up nearby homes and count as a nicer neighborhood. Hospitals count as jobs for homes. Fire stations speed up factories. Police stations speed up everything, and towers need police coverage. Stadiums boost shops and pull crowds onto the roads.
+**Civic buildings.** Each one reaches a radius of tiles. Parks speed up nearby homes and count as a nicer neighborhood. Hospitals count as jobs for homes. Fire stations speed up factories. Police stations speed up everything, and towers need police coverage. Stadiums take a 2 by 2 lot, boost shops, and pull crowds onto the roads.
 
-**Wind.** A slowly shifting wind spawns gusts upwind that drift across the map. Only the screen area under each gust gets redrawn, so a calm forest costs nothing.
+**Wind.** A slowly shifting wind spawns gusts just upwind of wherever you are looking, and they drift through. Only the screen area under each gust gets redrawn, so a calm forest costs nothing.
 
 **Traffic.** Each road tile scores the development within 3 tiles, then spreads that score along the road network with a 28% falloff per tile. Cars hide behind buildings using a small depth buffer of building silhouettes.
 
