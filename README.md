@@ -25,7 +25,7 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 - 🌧️ **Bring a storm** after a fire and watch debris flows run down the burned drainages, using a simplified USGS M1 likelihood model borrowed from [Scar Threshold](https://scar-threshold.pages.dev).
 - ⏱️ **Pick a game speed:** pause, slow, normal, or fast.
 - 📊 **Get a hazard report card:** A to F grades for wildfire, debris flow, earthquake, sea level rise, air quality, and services, by the share of residents exposed, with each one viewable on the map.
-- 🗺️ **Map layers** for air pollution, fire, police, hospital, and transit coverage, wildfire risk, liquefaction, debris flow, sea level rise, and service gaps, so you can see where to build next.
+- 🗺️ **Map layers** for air pollution, fire, police, hospital, and transit coverage, wildfire risk, liquefaction, debris flow, sea level rise, and service gaps, so you can see where to build next. Coverage layers spotlight the gaps: the rest of the map dims and uncovered spots stay bright.
 - 🌫️ **Watch the air:** factories, busy roads, and smoke pollute, the wind carries it downwind, and homes struggle to grow in dirty air.
 - 🌎 **Trigger an earthquake:** pick a magnitude and an epicenter, then watch buildings collapse, slopes slide, waterfront ground liquefy, bridges drop, and fires break out.
 - 🔥 **Start a wildfire** and watch it run downwind and uphill, leave a burn scar graded by severity, and heal over a few game years.
