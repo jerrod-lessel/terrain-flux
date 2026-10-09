@@ -201,6 +201,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       <button class="tb" id="zm-in" title="Zoom in (+)">＋</button>
       <button class="tb on" id="tg-grid" title="Grid (G)">▦</button>
       <button class="tb on" id="tg-tint" title="Color: classic green or elevation tint (T)">🎨</button>
+      <button class="tb" id="tg-day" title="Always day (N to switch)">☀️</button>
       <button class="tb" id="tg-contour" title="Contour lines (C)">〰</button>
       <button class="tb" id="tg-retro" title="Chunky retro pixels (P)">👾</button>
     </div>
@@ -218,6 +219,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
   <span>Height <span class="v" id="st-h">-</span></span>
   <span>Sea <span class="v" id="st-sea">-</span></span>
   <span>Wind <span class="v" id="st-wind">-</span></span>
+  <span id="st-time-wrap" style="display:none">🕒 <span class="v" id="st-time"></span></span>
   <span id="st-contour-wrap" style="display:none">Contours <span class="v" id="st-contour"></span></span>
   <span class="help">Q/E rotate · wheel zoom · right-drag pan · Ctrl+Z undo · <a href="#" id="help-link" style="color:inherit">help</a> · <a href="#" id="about-link" style="color:inherit">about</a></span>
   </div>
@@ -269,7 +271,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       GeoTIFF reading: geotiff.js (MIT license).<br>
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
-      <p class="credit">Version 4.4 · MIT license</p>
+      <p class="credit">Version 4.5 · MIT license</p>
       <div class="btns"><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -286,11 +288,12 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       <p>Wind gusts roll across the map and set the trees they pass swaying. Watch the wind readout in the status bar.</p>
       <p>Sea level rise works on coastal real places. It floods using the real elevation, and only land connected to the ocean, so low spots behind high ground stay dry. Hover a flooded tile to see it, and the panel totals the land, buildings, and people affected.</p>
       <p>Storms (🌧️) turn burn scars into debris flow danger. Each drainage gets a likelihood from a simplified version of the USGS M1 model used in Scar Threshold: steep burned ground, burn severity, and rain rate. Make it rain and High drainages usually let go, sending mud down the channel and spreading a fan where the ground flattens.</p>
+      <p>The ☀️ button switches between always day, a slow day and night cycle (one day is five real minutes, so nothing flashes), and always night. At night windows, streetlights, and headlights come on one by one.</p>
       <p>Drag a road across water to build a bridge. Bridges need land on both ends and can span up to 16 tiles.</p>
       <p>Water pools on flat ground. Place it on a slope and it runs downhill as a stream, with waterfalls, until it reaches water or a low spot. The sea level buttons flood or drain the whole map.</p>
       <p>Wildfires run downwind and uphill. Forest burns long and hot, grass burns fast and light, and roads, water, beaches, and bare rock stop them. Fire stations slow fires inside their reach. Burned ground stays scarred by severity and heals over about five game years, and forests grow back.</p>
       <p>Load DEM takes a real GeoTIFF, crops the center square, and squeezes it into 128 by 128 tiles. Cliffs get softened into slopes because the engine refuses to do anything else.</p>
-      <p>Keys: Space pause, 1/2/3 slow/normal/fast, Q/E rotate, +/- zoom, arrows or WASD pan, G grid, C contours, T tint, P pixels, Esc cancel.</p>
+      <p>Keys: Space pause, 1/2/3 slow/normal/fast, N day and night, Q/E rotate, +/- zoom, arrows or WASD pan, G grid, C contours, T tint, P pixels, Esc cancel.</p>
       <div class="btns"><button class="txt" id="help-close" style="text-align:center">Got it</button></div>
     </div>
   </div>
@@ -476,7 +479,7 @@ function drawTile(g, vx, vy, lod) {
   if (s >= 0) { if (road[t]) { drawBridge(g, vx, vy, s, lod); if (!partialMode) roadVis.push(wx, wy); } return; }
 
   if (road[t]) { drawRoad(g, vx, vy, ht, hr, hb, hl, lod); if (!partialMode) roadVis.push(wx, wy); return; }
-  if (bld[t]) { drawBuilding(g, bld[t], Tx, Ty + TH / 2, lod, hash2(wx, wy)); if (!partialMode) silhouette(Tx, Ty + TH / 2, bld[t], vx + vy); return; }
+  if (bld[t]) { drawBuilding(g, bld[t], Tx, Ty + TH / 2, lod, hash2(wx, wy)); if (!partialMode) { silhouette(Tx, Ty + TH / 2, bld[t], vx + vy); bldVis.push(t, Tx, Ty + TH / 2, bld[t], vx + vy); } return; }
   if (civ[t] === 5 && isBigStadium(t)) { drawStadiumPart(g, vx, vy, t, Tx, Ty, lod); return; }
   if (civ[t]) { drawCivic(g, civ[t], Tx, Ty + TH / 2, lod, hash2(wx, wy)); if (!partialMode && civ[t] !== 1) silhouette(Tx, Ty + TH / 2, 0, vx + vy, CIVIC[civ[t]].sil); return; }
   if (zone[t]) {
@@ -1515,6 +1518,88 @@ function drawStormFX(dt) {
   return true;
 }
 
+// ===== Day and night =====
+// Time of day runs on its own slow clock (one day = 5 real minutes), separate from the game calendar,
+// so nothing ever flashes. Modes: 0 always day, 1 cycle, 2 always night. Every change is a slow fade,
+// night never gets darker than about half brightness, and lights switch on one by one at dusk.
+const DAY_LEN = 300, DAY_MODES = ['☀️', '🌗', '🌙'], DAY_NAMES = ['Always day', 'Day and night cycle', 'Always night'];
+let dayMode = 0, dayClock = DAY_LEN * 0.4, nightK = 0, warmK = 0, dayLast = 0;
+const bldVis = [], headlights = [];
+// rough window area for each building type: [half width, height]
+const WIN_BOX = { 4: [8, 6], 7: [11, 20], 8: [9, 40], 9: [10, 8], 5: [11, 24], 10: [10, 40], 11: [9, 7], 6: [12, 11], 12: [13, 14] };
+const WIN_N = { 4: 2, 7: 5, 8: 9, 9: 2, 5: 6, 10: 10, 11: 1, 6: 3, 12: 4 };
+function dayStep(ts) {
+  const dt = Math.min(0.25, (ts - (dayLast || ts)) / 1000); dayLast = ts;
+  dayClock += dt;
+  const phase = (dayClock % DAY_LEN) / DAY_LEN;            // 0 midnight, 0.5 noon
+  const sun = -Math.cos(phase * Math.PI * 2);               // -1 midnight, +1 noon
+  const target = dayMode === 0 ? 0 : dayMode === 2 ? 1 : 1 - smoothstep(-0.3, 0.3, sun);
+  const warmT = dayMode === 1 ? Math.exp(-Math.pow(sun / 0.22, 2)) : 0;
+  const k = 1 - Math.exp(-dt / 2.5);                        // every change eases in over a few seconds
+  const before = nightK + warmK;
+  nightK += (target - nightK) * k; warmK += (warmT - warmK) * k;
+  if (Math.abs(nightK + warmK - before) > 1e-4) compDirty = true;
+  if (dayMode === 1 && ts - (dayStep.lbl || 0) > 1000) {
+    dayStep.lbl = ts;
+    const mins = Math.floor(phase * 24 * 60), h = Math.floor(mins / 60), m = mins % 60;
+    document.getElementById('st-time').textContent = `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`;
+  }
+}
+function setDayMode(m) {
+  dayMode = m;
+  const b = document.getElementById('tg-day');
+  b.textContent = DAY_MODES[m]; b.title = DAY_NAMES[m] + ' (N to switch)'; b.classList.toggle('on', m !== 0);
+  document.getElementById('st-time-wrap').style.display = m === 1 ? '' : 'none';
+  if (m === 1) dayClock = DAY_LEN * 0.7; // start the cycle in late afternoon so dusk arrives soon
+  toast(DAY_MODES[m] + ' ' + DAY_NAMES[m]);
+  compDirty = true;
+}
+function lightOn(h, k) { return nightK > 0.25 + ((h >>> (k * 3 + 5)) & 63) / 63 * 0.55; } // staggered switch-on per light
+function drawNight() {
+  if (nightK < 0.01 && warmK < 0.01) return;
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const W = canvas.width, Hh = canvas.height;
+  if (warmK > 0.01) { ctx.fillStyle = `rgba(255,128,50,${(0.16 * warmK).toFixed(3)})`; ctx.fillRect(0, 0, W, Hh); }
+  if (nightK > 0.01) { ctx.fillStyle = `rgba(8,16,46,${(0.52 * nightK).toFixed(3)})`; ctx.fillRect(0, 0, W, Hh); }
+  if (nightK > 0.25) {
+    const z = zoom, px = Math.max(1, Math.round(1.6 * z)), py = Math.max(1, Math.round(1.6 * z));
+    const occluded = (X, Y, d) => depthData && X >= 0 && Y >= 0 && X < depthW && Y < depthH && depthData[(Y * depthW + X) * 4] - 1 > d;
+    // windows
+    for (let i = 0; i < bldVis.length; i += 5) {
+      const t = bldVis[i], id = bldVis[i + 3], d = bldVis[i + 4];
+      if (bld[t] !== id) continue;
+      const box = WIN_BOX[id]; if (!box) continue;
+      const h = hash2(t % N, (t / N) | 0), ht = box[1], cxw = bldVis[i + 1], cyw = bldVis[i + 2];
+      const ind = id === 6 || id === 11 || id === 12;
+      ctx.fillStyle = ind ? `rgba(255,170,80,${(0.9 * nightK).toFixed(3)})` : `rgba(255,226,140,${(0.95 * nightK).toFixed(3)})`;
+      for (let k = 0; k < WIN_N[id]; k++) {
+        if (!lightOn(h, k % 8)) continue;
+        const r1 = ((h >>> (k * 2)) & 255) / 255, r2 = ((h >>> (k * 2 + 9)) & 255) / 255, left = (k & 1) === 0;
+        const bw = box[0], u = (0.2 + 0.6 * r1) * bw, v = (0.15 + 0.65 * r2) * ht;
+        const xw = left ? cxw - bw + u : cxw + u, yw = left ? cyw - ht + 0.5 * u + v : cyw + bw / 2 - ht - 0.5 * u + v;
+        const X = Math.round(xw * z + camX), Y = Math.round(yw * z + camY);
+        if (occluded(Math.round(xw * z + cacheCX), Math.round(yw * z + cacheCY), d)) continue;
+        ctx.fillRect(X, Y, px, py);
+      }
+    }
+    // streetlights on every other road tile
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < roadVis.length; i += 2) {
+      const x = roadVis[i], y = roadVis[i + 1], h = hash2(x, y);
+      if ((h & 1) || !lightOn(h, 2)) continue;
+      const v = w2v(x + 0.5, y + 0.5), hh = isWaterW(x, y) ? bridgeLevel(x, y, x + 0.5, y + 0.5) : hAtW(x + 0.5, y + 0.5);
+      const X = ((v[0] - v[1]) * TW / 2) * z + camX, Y = ((v[0] + v[1]) * TH / 2 - hh * HS) * z + camY;
+      ctx.fillStyle = `rgba(255,190,110,${(0.16 * nightK).toFixed(3)})`;
+      ctx.beginPath(); ctx.ellipse(X, Y, 9 * z, 4.5 * z, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    // headlights recorded by the cars this frame
+    ctx.fillStyle = `rgba(255,244,200,${(0.9 * nightK).toFixed(3)})`;
+    for (let i = 0; i < headlights.length; i += 2) ctx.fillRect(headlights[i], headlights[i + 1], px, py);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  ctx.restore();
+}
+
 // ===== Traffic & cars =====
 const BTIER = { 4: 1, 7: 2, 8: 3, 9: 1, 5: 2, 10: 3, 11: 1, 6: 2, 12: 3 };
 const TWT = [0, 1, 2.5, 5];
@@ -1579,6 +1664,7 @@ function drawCar(px, py, hsh, alpha, cw, ch) {
   ctx.globalAlpha = alpha;
   ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(X + 1, Y + 1, cw, ch);
   ctx.fillStyle = CAR_COLS[hsh % CAR_COLS.length]; ctx.fillRect(X, Y, cw, ch);
+  if (nightK > 0.3) headlights.push(X + cw - 1, Y);
   return 1;
 }
 function lane(lo, hi, fixed, alongX, dir, T, cw, ch) {
@@ -1636,7 +1722,7 @@ function buildCache() {
   dctx.setTransform(zoom, 0, 0, zoom, camX, camY);
   cx.setTransform(zoom, 0, 0, zoom, camX, camY);
   px1 = 1 / zoom; cx.lineWidth = px1; cx.lineJoin = 'round';
-  waterVis.length = 0; roadVis.length = 0;
+  waterVis.length = 0; roadVis.length = 0; bldVis.length = 0;
   const lod = zoom < 0.3;
   const topPad = (MAXH * HS + 70) * zoom, botPad = (TH + (-BASE + 1) * HS) * zoom, side = TW * zoom;
   for (let d = 0; d <= 2 * N - 2; d++) {
@@ -1687,7 +1773,9 @@ function composite() {
     if (ph < 2) { ctx.fillRect(waterVis[i] - 4 + ph * 3, waterVis[i + 1] - 1, 3, 1); }
     else if (ph === 12) { ctx.fillRect(waterVis[i] + 2, waterVis[i + 1] + 1, 2, 1); }
   }
+  headlights.length = 0;
   carsLive = drawCars() > 0;
+  drawNight();
   { const now = performance.now(); drawStormFX(Math.min(0.1, (now - (composite.last || now)) / 1000)); drawFire(Math.min(0.1, (now - (composite.last || now)) / 1000)); composite.last = now; }
   // road ghost
   if (roadGhost.length) {
@@ -2505,6 +2593,7 @@ function toggleContours() {
   cacheDirty = true;
 }
 document.getElementById('tg-contour').addEventListener('click', toggleContours);
+document.getElementById('tg-day').addEventListener('click', () => setDayMode((dayMode + 1) % 3));
 function toggleGrid() { showGrid = !showGrid; document.getElementById('tg-grid').classList.toggle('on', showGrid); cacheDirty = true; }
 function toggleTint() { tint = tint === 'classic' ? 'hypso' : 'classic'; document.getElementById('tg-tint').classList.toggle('on', tint === 'hypso'); dirtyAll(); }
 function toggleRetro() {
@@ -2644,6 +2733,7 @@ window.addEventListener('keydown', e => {
   if (k === 'q') rotate(-1); else if (k === 'e') rotate(1);
   else if (k === '+' || k === '=') setZoom(zi + 1); else if (k === '-' || k === '_') setZoom(zi - 1);
   else if (k === 'c') toggleContours();
+  else if (k === 'n') setDayMode((dayMode + 1) % 3);
   else if (k === 'g') toggleGrid(); else if (k === 't') toggleTint(); else if (k === 'p') toggleRetro();
   else if (k === ' ') { e.preventDefault(); toggleSim(); }
   else if (k === '1' || k === '2' || k === '3') setSpeed(+k);
@@ -2658,7 +2748,7 @@ let lastAnim = 0, lastMM = 0;
 function loop(ts) {
   requestAnimationFrame(loop);
   if (cacheDirty) { buildCache(); cacheDirty = false; compDirty = true; }
-  windStep(ts);
+  windStep(ts); dayStep(ts);
   if (simOn && ts - lastSim > MONTH_MS[speed]) { lastSim = ts; simTick(); }
   if (ts - lastAnim > 110) { lastAnim = ts; frame++; compDirty = true; }
   fireStep(ts); stormStep(ts);
