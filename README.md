@@ -63,7 +63,7 @@ The notebook reproduces the shipped presets byte for byte, so you can rebuild th
 
 - [x] Real place presets
 - [x] About panel
-- [ ] Smoother traffic at medium zoom
+- [x] Smoother traffic
 - [ ] Special buildings: parks, hospitals, fire and police stations, stadiums, each with real effects
 - [ ] Sea level rise scenarios in meters on real terrain
 - [ ] Contour line overlay
