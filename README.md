@@ -18,6 +18,7 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 
 - 🏔️ **Sculpt terrain** with raise, lower, level, and smooth tools. Hillsides follow the cursor the way they did in 1993.
 - 📍 **Start from a real place:** Morro Bay, Big Sur, Yosemite Valley, or San Francisco, built from 30 m SRTM elevation.
+- 🌊 **Model sea level rise** on coastal real places, in meters, with NOAA 2022 scenario shortcuts and a tally of land, buildings, and people affected.
 - 🗺️ **Load your own DEM:** drop in any single-band GeoTIFF.
 - 🌍 **Generate a map** with sliders for hills, water, and trees, plus optional coastline and river.
 - 🌊 **Raise or lower the sea**, place lakes, and make waterfalls on slopes.
@@ -49,6 +50,8 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 
 **Real places.** Elevation is exported from Google Earth Engine in California Albers (EPSG:3310), cropped to the center square, box-averaged to 129 by 129, and stored in the HTML as 16-bit meters. Anything at or below 0 m becomes sea. Peaks steeper than the one-step rule allows are softened into slopes, which is why Yosemite's granite walls come out as stairs.
 
+**Sea level rise.** Flooding uses the real SRTM meters stored with each place, not the game's blocky steps, and only spreads to land connected to the ocean (a breadth-first search from the sea), so low ground behind a ridge stays dry. It is a preview and destroys nothing. SRTM's vertical accuracy is a few meters, so small rises often fall below what the data can resolve.
+
 **Growth.** Any zone next to a road can become a small building. Bigger buildings need a real neighborhood around them and demand nearby: homes need jobs, while shops and factories need residents. Lone zones stay rural forever. Buildings shrink if their demand disappears. Hover a zone to see what it is waiting for.
 
 **Civic buildings.** Each one reaches a radius of tiles. Parks speed up nearby homes and count as a nicer neighborhood. Hospitals count as jobs for homes. Fire stations speed up factories. Police stations speed up everything, and towers need police coverage. Stadiums take a 2 by 2 lot, boost shops, and pull crowds onto the roads.
@@ -72,7 +75,7 @@ The notebook reproduces the shipped presets byte for byte, so you can rebuild th
 - [x] Smoother traffic
 - [x] Civic buildings: parks, hospitals, fire and police stations, stadiums, each with real effects
 - [x] Wind gusts and swaying trees
-- [ ] Sea level rise scenarios in meters on real terrain
+- [x] Sea level rise scenarios in meters on real terrain
 - [ ] Contour line overlay
 - [ ] Wildfire, then post-fire debris flows
 - [ ] Bridges
