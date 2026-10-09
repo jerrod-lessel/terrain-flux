@@ -288,7 +288,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       GeoTIFF reading: geotiff.js (MIT license).<br>
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
-      <p class="credit">Version 5.1 · MIT license</p>
+      <p class="credit">Version 5.2 · MIT license</p>
       <div class="btns"><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -2045,20 +2045,25 @@ function showReport() {
 // ===== Map layers =====
 // Tinted overlays that show where things reach and where the gaps are.
 const LAYERS = {
-  air:    { icon: '🌫️', name: 'Air pollution', legend: 'yellow = moderate, brown to purple = unhealthy' },
-  fire:   { icon: '🚒', name: 'Fire coverage', legend: 'green = covered (darker = more stations), red = homes and businesses with no fire station. Everything else dims so the gaps stand out.' },
-  police: { icon: '🚓', name: 'Police coverage', legend: 'blue = covered (darker = more stations), red = homes and businesses with no police. Everything else dims so the gaps stand out.' },
-  hosp:   { icon: '🏥', name: 'Hospital coverage', legend: 'pink = covered, red = homes with no hospital nearby. Everything else dims so the gaps stand out.' },
-  transit:{ icon: '🚌', name: 'Transit reach', legend: 'teal = cleaner traffic (darker = stronger), orange = busy roads with no transit. Everything else dims so the gaps stand out.' },
-  wui:    { icon: '🔥', name: 'Wildfire risk', legend: 'orange to red = homes and land near forest, fading where fire stations reach' },
-  quake:  { icon: '🌎', name: 'Liquefaction', legend: 'purple = low, wet ground that shakes harder in an earthquake' },
-  debris: { icon: '🌧️', name: 'Debris flow', legend: 'orange = Moderate, red = High drainages at 24 mm/hr' },
-  slr:    { icon: '🌊', name: 'Sea level rise', legend: 'blue = underwater at +2 m' },
-  gaps:   { icon: '🧩', name: 'Service gaps', legend: 'red = homes missing fire, police, or hospital coverage. Everything else dims so the gaps stand out.' },
+  air:    { icon: '🌫️', name: 'Air pollution', legend: 'yellow = moderate, brown to purple = unhealthy. The rest of the map dims.' },
+  fire:   { icon: '🚒', name: 'Fire coverage', legend: 'green = covered (darker = more stations), red = homes and businesses with no fire station. Rings show how far each station reaches, and bright tiles outside them are the gaps.' },
+  police: { icon: '🚓', name: 'Police coverage', legend: 'blue = covered (darker = more stations), red = homes and businesses with no police. Rings show how far each station reaches, and bright tiles outside them are the gaps.' },
+  hosp:   { icon: '🏥', name: 'Hospital coverage', legend: 'pink = covered, red = homes with no hospital nearby. Rings show how far each station reaches, and bright tiles outside them are the gaps.' },
+  transit:{ icon: '🚌', name: 'Transit reach', legend: 'teal = cleaner traffic (darker = stronger), orange = busy roads with no transit. Rings show how far each station reaches, and bright tiles outside them are the gaps.' },
+  wui:    { icon: '🔥', name: 'Wildfire risk', legend: 'orange to red = homes and land near forest, fading where fire stations reach. The rest of the map dims.' },
+  quake:  { icon: '🌎', name: 'Liquefaction', legend: 'purple = low, wet ground that shakes harder in an earthquake. The rest of the map dims.' },
+  debris: { icon: '🌧️', name: 'Debris flow', legend: 'orange = Moderate, red = High drainages at 24 mm/hr. The rest of the map dims.' },
+  slr:    { icon: '🌊', name: 'Sea level rise', legend: 'blue = underwater at +2 m. The rest of the map dims.' },
+  gaps:   { icon: '🧩', name: 'Service gaps', legend: 'red = homes missing fire, police, or hospital coverage. Rings show how far each station reaches, and bright tiles outside them are the gaps.' },
 };
 let layer = null, layerFill = new Array(N * N).fill(null), spotList = [];
 // Gap layers spotlight the gaps: the rest of the map dims, gaps stay bright with a red outline.
-const SPOT_LAYERS = new Set(['fire', 'police', 'hosp', 'transit', 'gaps']);
+// Every layer spotlights what it is about: the rest of the map dims.
+// Coverage layers light up the GAPS (red outlines) and draw each station's reach as a ring;
+// hazard layers light up the tiles at risk.
+const SPOT_LAYERS = new Set(['fire', 'police', 'hosp', 'transit', 'gaps']); // coverage-style layers
+// which civic ids draw reach rings on each coverage layer, and in what color
+const RING_IDS = { fire: { 3: '#4cd060' }, police: { 4: '#5a8cff' }, hosp: { 2: '#ff7ab8' }, transit: { 6: '#f2c230', 7: '#3cc060', 8: '#3a9aff' }, gaps: { 3: '#4cd060', 4: '#5a8cff', 2: '#ff7ab8' } };
 function computeLayer() {
   layerFill.fill(null); spotList = [];
   if (!layer) return;
@@ -2088,31 +2093,55 @@ function computeLayer() {
         : layer === 'hosp' ? !civHospN[t] && zone[t] === 1 : layer === 'transit' ? road[t] && traffic[t] > 0.3 && civEmit[t] >= 0.99
         : zone[t] === 1 && !(civFireN[t] && civPoliceN[t] && civHospN[t]);
       if (gap) spotList.push(t);
-    }
+    } else if (c) spotList.push(t); // hazard layers: light up the tiles at risk
   }
 }
 // Spotlight canvas, built with the map cache: a dark veil with the gap tiles (and whatever stands on them) cut out
 const spotCan = document.createElement('canvas'), spx = spotCan.getContext('2d');
 let spotOn = false;
 function buildSpot() {
-  spotOn = !!(layer && SPOT_LAYERS.has(layer));
+  spotOn = !!layer;
   if (!spotOn) return;
-  const W = cache.width, Hh = cache.height;
+  const W = cache.width, Hh = cache.height, z = cacheZoom, gapMode = SPOT_LAYERS.has(layer);
   if (spotCan.width !== W || spotCan.height !== Hh) { spotCan.width = W; spotCan.height = Hh; }
   spx.setTransform(1, 0, 0, 1, 0, 0); spx.globalCompositeOperation = 'source-over';
-  spx.clearRect(0, 0, W, Hh); spx.fillStyle = 'rgba(6,10,20,0.7)'; spx.fillRect(0, 0, W, Hh);
-  spx.setTransform(cacheZoom, 0, 0, cacheZoom, cacheCX, cacheCY);
+  spx.clearRect(0, 0, W, Hh); spx.fillStyle = 'rgba(6,10,20,0.68)'; spx.fillRect(0, 0, W, Hh);
+  spx.setTransform(z, 0, 0, z, cacheCX, cacheCY);
   const shapes = [];
   for (const t of spotList) {
     const x = t % N, y = (t / N) | 0, v = w2vt(x, y), q = surfQuad(v[0], v[1]);
     const up = (bld[t] || civ[t]) ? 62 : tree[t] ? 18 : 4;
     // tile top plus the column above it: L, B, R on the ground, then R, T, L lifted
-    shapes.push([q[6], q[7], q[4], q[5], q[2], q[3], q[2], q[3] - up, q[0], q[1] - up, q[6], q[7] - up], q);
+    shapes.push([[q[6], q[7], q[4], q[5], q[2], q[3], q[2], q[3] - up, q[0], q[1] - up, q[6], q[7] - up], q]);
   }
   spx.globalCompositeOperation = 'destination-out'; spx.fillStyle = '#000';
   for (const [p] of shapes) { spx.beginPath(); spx.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) spx.lineTo(p[i], p[i + 1]); spx.closePath(); spx.fill(); }
-  spx.globalCompositeOperation = 'source-over'; spx.strokeStyle = '#ff4a4a'; spx.lineWidth = 2 / cacheZoom; spx.lineJoin = 'round';
-  for (const [, q] of shapes) { spx.beginPath(); spx.moveTo(q[0], q[1]); for (let i = 2; i < 8; i += 2) spx.lineTo(q[i], q[i + 1]); spx.closePath(); spx.stroke(); }
+  spx.globalCompositeOperation = 'source-over'; spx.lineJoin = 'round';
+  if (gapMode) {
+    // gaps: red outline on each bright tile
+    spx.strokeStyle = '#ff4a4a'; spx.lineWidth = 2 / z;
+    for (const [, q] of shapes) { spx.beginPath(); spx.moveTo(q[0], q[1]); for (let i = 2; i < 8; i += 2) spx.lineTo(q[i], q[i + 1]); spx.closePath(); spx.stroke(); }
+    // each station's reach: a soft fill and a solid ring, so you can see where coverage ends
+    const ids = RING_IDS[layer] || {};
+    for (let t = 0; t < N * N; t++) {
+      const id = civ[t]; if (!ids[id] || (id === 5 && civA[t] !== t)) continue;
+      const cxw = t % N + 0.5, cyw = ((t / N) | 0) + 0.5, r = CIVIC[id].r;
+      spx.beginPath();
+      for (let k = 0; k <= 96; k++) {
+        const a = k / 96 * Math.PI * 2, px = cxw + Math.cos(a) * r, py = cyw + Math.sin(a) * r;
+        const v = w2v(px, py), h = hAtW(Math.max(0, Math.min(N - 0.01, px)), Math.max(0, Math.min(N - 0.01, py)));
+        const X = (v[0] - v[1]) * TW / 2, Y = (v[0] + v[1]) * TH / 2 - h * HS;
+        k ? spx.lineTo(X, Y) : spx.moveTo(X, Y);
+      }
+      spx.closePath();
+      spx.fillStyle = ids[id] + '22'; spx.fill();
+      spx.strokeStyle = ids[id]; spx.lineWidth = 2.5 / z; spx.setLineDash([]); spx.stroke();
+      // mark the station itself
+      const v = w2v(cxw, cyw), h = hAtW(cxw, cyw), X = (v[0] - v[1]) * TW / 2, Y = (v[0] + v[1]) * TH / 2 - h * HS;
+      spx.fillStyle = ids[id]; spx.beginPath(); spx.arc(X, Y, 4 / Math.max(0.5, z), 0, Math.PI * 2); spx.fill();
+      spx.strokeStyle = '#fff'; spx.lineWidth = 1.2 / z; spx.stroke();
+    }
+  }
 }
 function setLayer(k) {
   layer = k;
