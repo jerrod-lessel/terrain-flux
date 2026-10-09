@@ -118,7 +118,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
   <aside id="toolbar" class="bev">
     <div class="sect">Terrain</div>
     <div class="grid2">
-      <button class="tb on" data-tool="raise" title="Raise terrain">▲</button>
+      <button class="tb" data-tool="raise" title="Raise terrain">▲</button>
       <button class="tb" data-tool="lower" title="Lower terrain">▼</button>
       <button class="tb" data-tool="level" title="Level terrain to the first tile you click">═</button>
       <button class="tb" data-tool="smooth" title="Smooth terrain">〰</button>
@@ -134,7 +134,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       <button class="tb" data-tool="zone1" title="Residential zone"><span class="z" style="color:#3f9b3f">R</span></button>
       <button class="tb" data-tool="zone2" title="Commercial zone"><span class="z" style="color:#3a62d0">C</span></button>
       <button class="tb" data-tool="zone3" title="Industrial zone"><span class="z" style="color:#d07a2a">I</span></button>
-      <button class="tb" data-tool="pan" title="Pan (or right-drag anywhere)">✋</button>
+      <button class="tb on" data-tool="pan" title="Pan (or right-drag anywhere)">✋</button>
     </div>
     <div class="sect">Civic</div>
     <div class="grid2">
@@ -144,7 +144,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       <button class="tb" data-tool="civ4" title="Police station: towers need police coverage">🚓</button>
       <button class="tb" data-tool="civ5" title="Stadium: shops nearby boom">🏟️</button>
     </div>
-    <div id="toolname" class="sunk">Raise</div>
+    <div id="toolname" class="sunk">Pan</div>
     <div class="row" title="Brush size in tiles">⬚<input type="range" id="brush" min="1" max="6" value="1"><span id="brushv">1</span></div>
 
     <div class="sect">Map</div>
@@ -158,12 +158,14 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
 
     <div class="sect">Real places</div>
     <div id="preset-list" style="display:flex;flex-direction:column;gap:6px"></div>
+    <div id="slr-section" style="display:none;flex-direction:column;gap:6px">
     <div class="sect">Sea level rise</div>
     <div class="row" title="Sea level rise in meters"><input type="range" id="slr" min="0" max="10" step="0.1" value="0" disabled><span id="slr-v" style="min-width:42px;text-align:right">0 m</span></div>
     <button class="txt slr-q" data-m="0.3" disabled>2050: +0.3 m</button>
     <button class="txt slr-q" data-m="1" disabled>2100 mid: +1 m</button>
     <button class="txt slr-q" data-m="2" disabled>2100 high: +2 m</button>
-    <div class="small" id="slr-stats">Load a coastal real place to try this.</div>
+    <div class="small" id="slr-stats"></div>
+    </div>
     <div class="sect">Your own DEM</div>
     <button class="txt" id="btn-dem" title="Load a GeoTIFF DEM">🗺️ Load DEM</button>
     <input type="file" id="file-dem" accept=".tif,.tiff" hidden>
@@ -181,6 +183,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       <button class="tb" id="zm-in" title="Zoom in (+)">＋</button>
       <button class="tb on" id="tg-grid" title="Grid (G)">▦</button>
       <button class="tb on" id="tg-tint" title="Color: classic green or elevation tint (T)">🎨</button>
+      <button class="tb" id="tg-contour" title="Contour lines (C)">〰</button>
       <button class="tb" id="tg-retro" title="Chunky retro pixels (P)">👾</button>
     </div>
     <div id="mmwin" class="bev">
@@ -197,6 +200,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
   <span>Height <span class="v" id="st-h">-</span></span>
   <span>Sea <span class="v" id="st-sea">-</span></span>
   <span>Wind <span class="v" id="st-wind">-</span></span>
+  <span id="st-contour-wrap" style="display:none">Contours <span class="v" id="st-contour"></span></span>
   <span class="help">Q/E rotate · wheel zoom · right-drag pan · Ctrl+Z undo · <a href="#" id="help-link" style="color:inherit">help</a> · <a href="#" id="about-link" style="color:inherit">about</a></span>
   </div>
   <div class="srow">
@@ -246,7 +250,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       GeoTIFF reading: geotiff.js (MIT license).<br>
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
-      <p class="credit">Version 4.0 · MIT license</p>
+      <p class="credit">Version 4.1 · MIT license</p>
       <div class="btns"><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -264,7 +268,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       <p>Sea level rise works on coastal real places. It floods using the real elevation, and only land connected to the ocean, so low spots behind high ground stay dry. Hover a flooded tile to see it, and the panel totals the land, buildings, and people affected.</p>
       <p>Water placed on a slope makes a waterfall. The sea level buttons flood or drain the whole map.</p>
       <p>Load DEM takes a real GeoTIFF, crops the center square, and squeezes it into 128 by 128 tiles. Cliffs get softened into slopes because the engine refuses to do anything else.</p>
-      <p>Keys: Q/E rotate, +/- zoom, arrows or WASD pan, G grid, T tint, P pixels, Space pause, Esc cancel.</p>
+      <p>Keys: Q/E rotate, +/- zoom, arrows or WASD pan, G grid, C contours, T tint, P pixels, Space pause, Esc cancel.</p>
       <div class="btns"><button class="txt" id="help-close" style="text-align:center">Got it</button></div>
     </div>
   </div>
@@ -286,7 +290,7 @@ const zone = new Uint8Array(N * N);    // 1 R, 2 C, 3 I
 const bld  = new Uint8Array(N * N);    // building sprite id
 const dens = new Float32Array(N * N);
 let sea = 4, rot = 0, zi = 3, zoom = ZOOMS[3], camX = 0, camY = 0, pixelScale = 1;
-let showGrid = true, tint = 'hypso', tool = 'raise', brush = 1, levelTarget = 0;
+let showGrid = true, tint = 'hypso', tool = 'pan', brush = 1, levelTarget = 0;
 let dem = null, month = 0, simOn = true;
 let hover = null, drag = null, roadGhost = [], holdTimer = null, panTimer = null;
 const undoStack = [];
@@ -431,6 +435,7 @@ function drawTile(g, vx, vy, lod) {
     }
     if (flood[t] === 1) { polyNoStroke(g, [Tx, Ty, Rx, Ry, Bx, By, Lx, Ly], 'rgba(52,128,212,0.8)'); if (!partialMode) waterVis.push(Tx, (Ty + By) / 2, ((wx * 7919) ^ (wy * 104729)) & 1023); }
     if (showGrid && !lod) outlinePts(g, [Tx, Ty, Rx, Ry, Bx, By, Lx, Ly], 'rgba(0,0,0,0.22)', px1);
+    if (showContours && flood[t] !== 1) drawContours(g, vx, vy, ht, hr, hb, hl, lod);
   } else {
     const sY = F - s * HS, depth = s - (ht + hr + hb + hl) / 4;
     if (s > hl || s > hb) poly(g, [Lx, sY + TH / 2, Bx, sY + TH, Bx, By, Lx, Ly], '#2a6fb4');
@@ -1540,7 +1545,7 @@ function undo() {
   HM.set(s.HM); lake.set(s.lake); tree.set(s.tree); road.set(s.road); zone.set(s.zone); bld.set(s.bld); dens.set(s.dens); civ.set(s.civ); civA.set(s.civA); sea = s.sea;
   dirtyAll();
 }
-function dirtyAll() { cacheDirty = true; mmBaseDirty = true; mmViewDirty = true; recomputeCivic(); computeTraffic();
+function dirtyAll() { if (showContours) setContourInterval(); cacheDirty = true; mmBaseDirty = true; mmViewDirty = true; recomputeCivic(); computeTraffic();
   document.getElementById('slr').value = slr; document.getElementById('slr-v').textContent = (slr ? '+' : '') + slr.toFixed(1) + ' m'; computeFlood(); }
 
 // ===== Simulation =====
@@ -1850,6 +1855,7 @@ function computeFlood() {
   flood.fill(0);
   const st = document.getElementById('slr-stats');
   const usable = !!(dem && dem.ocean);
+  document.getElementById('slr-section').style.display = usable ? 'flex' : 'none';
   document.getElementById('slr').disabled = !usable;
   document.querySelectorAll('.slr-q').forEach(b => b.disabled = !usable);
   if (!usable) { st.textContent = 'Load a coastal real place to try this.'; return; }
@@ -1954,6 +1960,63 @@ document.getElementById('rot-l').addEventListener('click', () => rotate(-1));
 document.getElementById('rot-r').addEventListener('click', () => rotate(1));
 document.getElementById('zm-in').addEventListener('click', () => setZoom(zi + 1));
 document.getElementById('zm-out').addEventListener('click', () => setZoom(zi - 1));
+// ===== Contour lines =====
+// Real places use the true SRTM meters with a "nice" interval picked from the relief.
+// Made-up maps draw one line per height step. Every fifth line is an index contour.
+let showContours = false, cInt = 1, cBase = 0.5, cByM = false;
+function setContourInterval() {
+  cByM = !!(dem && hasDemM);
+  let label;
+  if (cByM) {
+    const range = dem.max - (dem.ocean ? Math.min(0, dem.min) : dem.min), target = range / 20;
+    cInt = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500].find(v => v >= target) || 500;
+    cBase = 0; label = `${cInt} m (bold every ${cInt * 5} m)`;
+  } else { cInt = 1; cBase = 0.5; label = 'every height step (bold every 5)'; }
+  document.getElementById('st-contour').textContent = label;
+  return label;
+}
+function cornerVal(vx, vy) { const c = c2w(vx, vy), i = c[1] * NC + c[0]; return cByM ? cornerM(i) : HM[i]; }
+function drawContours(g, vx, vy, ht, hr, hb, hl, lod) {
+  const a = cornerVal(vx, vy), b = cornerVal(vx + 1, vy), c = cornerVal(vx + 1, vy + 1), d = cornerVal(vx, vy + 1);
+  const lo = Math.min(a, b, c, d), hi = Math.max(a, b, c, d);
+  let k = Math.ceil((lo - cBase) / cInt);
+  for (let z = cBase + k * cInt; z <= hi; z += cInt, k++) {
+    const idx = ((k % 5) + 5) % 5 === 0;
+    if (lod && !idx) continue;
+    const A = a >= z, B = b >= z, C = c >= z, D = d >= z;
+    if (A === B && B === C && C === D) continue;
+    const pts = [];
+    const cut = (v1, v2) => (z - v1) / (v2 - v1);
+    if (A !== B) pts.push([cut(a, b), 0]);       // top to right
+    if (B !== C) pts.push([1, cut(b, c)]);       // right to bottom
+    if (C !== D) pts.push([1 - cut(c, d), 1]);   // bottom to left
+    if (D !== A) pts.push([0, 1 - cut(d, a)]);   // left to top
+    let segs;
+    if (pts.length === 2) segs = [[pts[0], pts[1]]];
+    else if (pts.length === 4) { // saddle: split around the corners that disagree with the middle
+      const mid = (a + b + c + d) / 4 >= z;
+      segs = (A === mid) ? [[pts[0], pts[1]], [pts[2], pts[3]]] : [[pts[3], pts[0]], [pts[1], pts[2]]];
+    } else continue;
+    g.strokeStyle = idx ? 'rgba(48,26,8,0.95)' : 'rgba(56,34,12,0.7)';
+    g.lineWidth = (idx ? 2 : 1.1) / zoom;
+    g.beginPath();
+    for (const [p, q] of segs) {
+      const P = sp(vx, vy, ht, hr, hb, hl, p[0], p[1]), Q = sp(vx, vy, ht, hr, hb, hl, q[0], q[1]);
+      g.moveTo(P[0], P[1]); g.lineTo(Q[0], Q[1]);
+    }
+    g.stroke();
+  }
+  g.lineWidth = px1;
+}
+function toggleContours() {
+  showContours = !showContours;
+  document.getElementById('tg-contour').classList.toggle('on', showContours);
+  document.getElementById('st-contour-wrap').style.display = showContours ? '' : 'none';
+  const label = setContourInterval();
+  if (showContours) toast('Contours: ' + label);
+  cacheDirty = true;
+}
+document.getElementById('tg-contour').addEventListener('click', toggleContours);
 function toggleGrid() { showGrid = !showGrid; document.getElementById('tg-grid').classList.toggle('on', showGrid); cacheDirty = true; }
 function toggleTint() { tint = tint === 'classic' ? 'hypso' : 'classic'; document.getElementById('tg-tint').classList.toggle('on', tint === 'hypso'); dirtyAll(); }
 function toggleRetro() {
@@ -2079,6 +2142,7 @@ window.addEventListener('keydown', e => {
   const PAN = 48;
   if (k === 'q') rotate(-1); else if (k === 'e') rotate(1);
   else if (k === '+' || k === '=') setZoom(zi + 1); else if (k === '-' || k === '_') setZoom(zi - 1);
+  else if (k === 'c') toggleContours();
   else if (k === 'g') toggleGrid(); else if (k === 't') toggleTint(); else if (k === 'p') toggleRetro();
   else if (k === ' ') { e.preventDefault(); toggleSim(); }
   else if (k === 'arrowleft' || k === 'a') { camX += PAN; schedulePanRebuild(); compDirty = mmViewDirty = true; }
@@ -2105,6 +2169,7 @@ function loop(ts) {
 
 // ===== Boot =====
 resize();
+canvas.style.cursor = 'grab';
 previewGen();
 applyGen(lastGen, false);
 updateStatus();
