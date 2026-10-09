@@ -233,7 +233,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       GeoTIFF reading: geotiff.js (MIT license).<br>
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
-      <p class="credit">Version 3.9 · MIT license</p>
+      <p class="credit">Version 3.9.1 · MIT license</p>
       <div class="btns"><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -941,28 +941,33 @@ function drawCivic(g, id, x, y, lod, h) {
       }
       break;
     }
-    case 5: { // stadiums
-      if (v === 0 || v === 3) { // bowl (3 adds light towers)
-        if (v === 3) { g.fillStyle = '#888'; g.fillRect(x - 12, y - 24, 0.8, 22); g.fillRect(x + 11, y - 24, 0.8, 22); }
-        g.fillStyle = '#6e6e6e'; g.beginPath(); g.ellipse(x, y, 15, 7.5, 0, 0, Math.PI * 2); g.fill();
-        g.fillRect(x - 15, y - 7, 30, 7);
-        g.fillStyle = '#b4b4b4'; g.beginPath(); g.ellipse(x, y - 7, 15, 7.5, 0, 0, Math.PI * 2); g.fill();
-        g.fillStyle = '#8a8a8a'; g.beginPath(); g.ellipse(x, y - 7, 12, 6, 0, 0, Math.PI * 2); g.fill();
-        g.fillStyle = '#3e9a3a'; g.beginPath(); g.ellipse(x, y - 6, 9, 4.5, 0, 0, Math.PI * 2); g.fill();
-        if (D) { g.fillStyle = 'rgba(255,255,255,0.85)'; g.fillRect(x - 0.4, y - 10, 0.8, 8);
-          if (v === 3) { g.fillStyle = '#fff6b0'; g.fillRect(x - 13, y - 26, 3, 2); g.fillRect(x + 10, y - 26, 3, 2); } }
+    case 5: { // stadiums: drawn inside the footprint diamond so neighbors never overlap them
+      if (v === 0 || v === 3) { // open bowl (3 adds light towers)
+        box(g, x, y, 14, 6, '#8e8e8e', '#6c6c6c', null);
+        ground(g, x, y - 6, 14, '#b8b8b4');
+        polyNoStroke(g, [x, y - 6 - 5, x + 10, y - 6, x, y - 6 + 5, x - 10, y - 6], '#8c8c88');
+        ground(g, x, y - 4.5, 8, '#3e9a3a');
+        if (D) {
+          g.strokeStyle = 'rgba(255,255,255,0.85)'; g.lineWidth = 0.4; g.beginPath();
+          g.moveTo(x - 4, y - 6.5); g.lineTo(x + 4, y - 2.5); g.stroke(); g.lineWidth = px1;
+          g.fillStyle = 'rgba(200,60,60,0.55)'; for (let i = -9; i <= 9; i += 3) g.fillRect(x + i, y - 6 - (7 - Math.abs(i) / 2) + 0.6, 1.2, 0.8);
+        }
+        if (v === 3) {
+          g.fillStyle = '#8a8a8a'; g.fillRect(x - 13.5, y - 24, 0.7, 24); g.fillRect(x + 12.8, y - 24, 0.7, 24);
+          if (D) { g.fillStyle = '#fff6b0'; g.fillRect(x - 15, y - 26, 3.5, 2); g.fillRect(x + 11.5, y - 26, 3.5, 2); }
+        }
       } else if (v === 1) { // ballpark
-        polyNoStroke(g, [x, y - 8, x + 14, y - 1, x + 13, y - 7, x, y - 13], '#9a9a9a');
-        polyNoStroke(g, [x, y - 8, x - 14, y - 1, x - 13, y - 7, x, y - 13], '#b8b8b8');
+        polyNoStroke(g, [x, y - 7, x + 14, y, x + 14, y - 6, x, y - 13], '#9a9a9a');
+        polyNoStroke(g, [x, y - 7, x - 14, y, x - 14, y - 6, x, y - 13], '#b8b8b8');
         ground(g, x, y, 14, '#4ca040');
         ground(g, x, y + 2, 5, '#c89a60');
         if (D) { g.fillStyle = '#fff'; g.fillRect(x - 0.6, y + 4, 1.2, 1); g.fillRect(x - 0.6, y - 0.5, 1.2, 1); g.fillRect(x - 5.5, y + 2, 1.2, 1); g.fillRect(x + 4.5, y + 2, 1.2, 1); }
-      } else { // dome
-        g.fillStyle = '#7a7a7a'; g.beginPath(); g.ellipse(x, y, 14, 7, 0, 0, Math.PI * 2); g.fill();
-        const gr = g.createLinearGradient(x - 14, 0, x + 14, 0); gr.addColorStop(0, '#fbfbf8'); gr.addColorStop(1, '#b8b8b2');
-        g.fillStyle = gr; g.beginPath(); g.ellipse(x, y - 2, 14, 12, 0, Math.PI, Math.PI * 2); g.ellipse(x, y - 2, 14, 7, 0, 0, Math.PI); g.fill();
+      } else { // dome on a low base
+        box(g, x, y, 14, 4, '#9a9a96', '#7a7a76', '#8a8a86');
+        const gr = g.createLinearGradient(x - 11, 0, x + 11, 0); gr.addColorStop(0, '#fbfbf8'); gr.addColorStop(1, '#b8b8b2');
+        g.fillStyle = gr; g.beginPath(); g.ellipse(x, y - 4, 11.5, 11, 0, Math.PI, Math.PI * 2); g.ellipse(x, y - 4, 11.5, 5.75, 0, 0, Math.PI); g.fill();
         if (D) { g.strokeStyle = 'rgba(120,120,120,0.6)'; g.lineWidth = 0.5; g.beginPath();
-          for (const k of [-0.5, 0, 0.5]) { g.moveTo(x + k * 14, y + 3); g.quadraticCurveTo(x + k * 9, y - 14, x, y - 14); } g.stroke(); g.lineWidth = px1; }
+          for (const k of [-0.5, 0, 0.5]) { g.moveTo(x + k * 11.5, y - 4 + Math.abs(k) * 3); g.quadraticCurveTo(x + k * 7, y - 15, x, y - 15); } g.stroke(); g.lineWidth = px1; }
       }
       break;
     }
@@ -1050,11 +1055,11 @@ function windStep(ts) {
   // Gusts are born just upwind of the view, so whatever you're looking at gets weather.
   const vcw = viewCenterWorld();
   const viewR = Math.max(6, Math.min(70, Math.hypot(canvas.width, canvas.height) / 2 / (zoom * TW / 2) / 1.3));
-  if (ts > nextGust && gusts.length < 3) {
+  if (ts > nextGust && gusts.length < 4) {
     const side = (Math.random() - 0.5) * viewR * 1.2, r = 4 + Math.random() * 3.5, back = viewR * 0.8 + r;
     gusts.push({ x: vcw[0] - ux * back - uy * side, y: vcw[1] - uy * back + ux * side, cx: vcw[0], cy: vcw[1], lim: back,
       r, str: 0.7 + Math.random() * 0.4, v: 3 + Math.random() * 3, prev: null });
-    nextGust = ts + 1200 + Math.random() * 3000;
+    nextGust = ts + 700 + Math.random() * 1600;
   }
   const animate = zoom >= 0.3 && !cacheDirty;
   for (let i = gusts.length - 1; i >= 0; i--) {
