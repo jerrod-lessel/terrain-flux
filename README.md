@@ -24,6 +24,8 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 - 🌊 **Raise or lower the sea** and place water. It pools on flat ground and runs downhill as a stream, with waterfalls, on slopes.
 - 🌧️ **Bring a storm** after a fire and watch debris flows run down the burned drainages, using a simplified USGS M1 likelihood model borrowed from [Scar Threshold](https://scar-threshold.pages.dev).
 - ⏱️ **Pick a game speed:** pause, slow, normal, or fast.
+- 📊 **Get a hazard report card:** A to F grades for wildfire, debris flow, earthquake, sea level rise, air quality, and services, by the share of residents exposed, with each one viewable on the map.
+- 🌫️ **Watch the air:** factories, busy roads, and smoke pollute, the wind carries it downwind, and homes struggle to grow in dirty air.
 - 🌎 **Trigger an earthquake:** pick a magnitude and an epicenter, then watch buildings collapse, slopes slide, waterfront ground liquefy, bridges drop, and fires break out.
 - 🔥 **Start a wildfire** and watch it run downwind and uphill, leave a burn scar graded by severity, and heal over a few game years.
 - 🏙️ **Zone and grow a city.** 9 building types with 4 styles each, 36 designs, all drawn in code.
@@ -73,6 +75,10 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 
 X1 is the share of the drainage that is steep (23 degrees or more) and burned at moderate or high severity, X2 is the average burn severity standing in for dNBR, X3 is soil erodibility held at 0.25, and R is the peak 15-minute rainfall in mm. Classes match Scar Threshold: Low under 0.2, Moderate, High at 0.6 or above. Only drainages with at least 10% recently burned ground are assessed. When it rains, each drainage rolls against its likelihood, and a flow starts at the highest badly burned slope upstream, runs down the channel until the ground flattens, and drops a fan. Hazard fades as burn scars heal. It is a toy built on a real model's shape, not a forecast.
 
+**Air pollution.** Heavy industry, factories, sheds, busy roads, and burning tiles emit pollution that spreads as a simple wind-driven plume: it widens as it travels downwind, fades with distance, and barely reaches upwind. Homes in moderate air grow slower and cannot become towers; homes in unhealthy air stay small. In a test town, factories upwind of the homes held population to about 1,800, while the same factories downwind allowed about 12,100.
+
+**Hazard report card.** Each category counts residents exposed: homes within 3 tiles of forest (wildfire), homes in Moderate or High debris flow drainages at 24 mm/hr, homes on liquefiable ground, homes underwater at +2 m (coastal real places), homes in moderate or worse air, and average coverage by fire, police, and hospitals. Exposure under 5% earns an A, then B under 15%, C under 30%, D under 50%, and F above. A small nod to tools like CalEnviroScreen that map burden against where people live.
+
 **Earthquakes.** Shaking uses a Modified Mercalli style intensity that falls off with distance, `MMI = 1.68 + 1.2 M - 2.6 log10(R + 5)` with R in km, and low flat ground next to water shakes one step harder (liquefaction). Each tile then rolls for damage: buildings collapse above a type-specific intensity (towers and heavy industry first, houses last), roads crack, bridges drop a whole span, steep slopes away from the shore slide, and collapsed buildings can start fires that join the wildfire model. Rubble, landslide scars, and sand boils fade over a year and a half. It is a toy attenuation curve, not a ShakeMap.
 
 **Share links.** A link stores the recipe for the starting map (a seed or a real place) plus only what changed since, packed into a byte array, compressed with deflate, and base64url encoded after the `#`. Opening it regenerates the base map and replays the changes, which reproduces the city exactly. Tree planting on real places is seeded so the base is identical every time.
@@ -112,6 +118,8 @@ The notebook reproduces the shipped presets byte for byte, so you can rebuild th
 - [x] Pinch to zoom on phones
 - [x] Earthquakes
 - [x] One link that shares the whole city
+- [x] Air pollution
+- [x] Hazard report card
 
 ## Credits
 
