@@ -1881,6 +1881,7 @@ function cornerSet(tiles) {
   }
   return s;
 }
+function dryTiles(tiles) { for (const [vx, vy] of tiles) { const [wx, wy] = t2w(vx, vy); lake[wy * N + wx] = 0; } }
 function demolishSloped() {
   for (let wy = 0; wy < N; wy++) for (let wx = 0; wx < N; wx++) {
     const t = wy * N + wx;
@@ -1917,10 +1918,12 @@ function applyTool(h) {
     case 'raise': case 'lower': {
       const d = tool === 'raise' ? 1 : -1;
       for (const c of cornerSet(tiles)) { const nh = Math.max(0, Math.min(MAXH, HM[c] + d)); if (nh !== HM[c]) { HM[c] = nh; q.push(c); } }
+      if (d > 0) dryTiles(tiles); // raising ground pushes placed water (lakes, streams) out
       propagate(q); demolishSloped(); break;
     }
     case 'level':
       for (const c of cornerSet(tiles)) if (HM[c] !== levelTarget) { HM[c] = levelTarget; q.push(c); }
+      dryTiles(tiles); // leveling fills in placed water (lakes, streams)
       propagate(q); demolishSloped(); break;
     case 'smooth': {
       const cs = [...cornerSet(tiles)], nv = [];
