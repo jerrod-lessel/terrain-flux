@@ -155,6 +155,11 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
     <div class="grid2">
       <button class="tb" data-tool="fire" title="Start a wildfire">🔥</button>
       <button class="tb" data-tool="storm" title="Storms and debris flows">🌧️</button>
+      <button class="tb" data-tool="quake" title="Earthquake">🌎</button>
+    </div>
+    <div id="quake-panel" style="display:none;flex-direction:column;gap:6px">
+      <div class="row" title="Magnitude">M<input type="range" id="mag" min="5" max="8" step="0.1" value="6.5"><span id="mag-v" style="min-width:26px;text-align:right">6.5</span></div>
+      <div class="small">Click the map to set the epicenter. Rings show violent, severe, and very strong shaking.</div>
     </div>
     <div id="storm-panel" style="display:none;flex-direction:column;gap:6px">
       <div class="row" title="Peak 15-minute rainfall intensity">💧<input type="range" id="i15" min="5" max="60" step="1" value="24"><span id="i15-v" style="min-width:22px;text-align:right">24</span></div>
@@ -170,9 +175,8 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
     <button class="txt" id="btn-undo">↶ Undo</button>
     <button class="txt" id="btn-save" title="Save to this browser">💾 Save</button>
     <button class="txt" id="btn-load" title="Load from this browser">📂 Load</button>
-    <button class="txt" id="btn-export" title="Download as .json">⤓ Export</button>
-    <button class="txt" id="btn-import" title="Open a .json map">⤒ Import</button>
-    <button class="txt" id="btn-share" title="Copy a link that opens this map">🔗 Share link</button>
+    <button class="txt" id="btn-share" title="Copy a link to exactly what you see">🔗 Share</button>
+    <button class="txt" id="btn-file" title="Download or open a backup file">📁 File…</button>
     <input type="file" id="file-json" accept=".json,application/json" hidden>
 
     <div class="sect">Real places</div>
@@ -272,7 +276,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       GeoTIFF reading: geotiff.js (MIT license).<br>
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
-      <p class="credit">Version 4.6 · MIT license</p>
+      <p class="credit">Version 4.7 · MIT license</p>
       <div class="btns"><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -282,10 +286,24 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
   <div class="win bev">
     <div class="tbar">SHARE THIS MAP</div>
     <div class="body" style="display:block">
-      <p id="share-msg" style="margin:0 0 8px">Copied! Anyone who opens this link gets the same map and view.</p>
+      <p id="share-msg" style="margin:0 0 8px">Copied!</p>
       <input id="share-url" readonly style="width:100%;font-family:inherit;font-size:16px;padding:4px 6px;background:var(--well);color:var(--ink);border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo);">
-      <p class="small" style="margin:8px 0">The link rebuilds the starting map and your view. Buildings, roads, and edits are not in it; use Export for that.</p>
+      <p class="small" id="share-note" style="margin:8px 0">The link holds everything you see: terrain, water, roads, buildings, scars, and your view.</p>
       <div class="btns"><button class="txt" id="share-close" style="text-align:center">Done</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal hidden" id="filebox">
+  <div class="win bev">
+    <div class="tbar">BACKUP FILE</div>
+    <div class="body" style="display:block">
+      <p style="margin:0 0 8px">A .json file holds a full copy of your map. Handy for keeping versions, or for maps built from your own DEM, which can't fit in a link.</p>
+      <div class="btns" style="flex-direction:column">
+        <button class="txt" id="btn-export">⤓ Download this map</button>
+        <button class="txt" id="btn-import">⤒ Open a map file</button>
+        <button class="txt" id="file-close" style="text-align:center">Close</button>
+      </div>
     </div>
   </div>
 </div>
@@ -302,6 +320,8 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       <p>Sea level rise works on coastal real places. It floods using the real elevation, and only land connected to the ocean, so low spots behind high ground stay dry. Hover a flooded tile to see it, and the panel totals the land, buildings, and people affected.</p>
       <p>Storms (🌧️) turn burn scars into debris flow danger. Each drainage gets a likelihood from a simplified version of the USGS M1 model used in Scar Threshold: steep burned ground, burn severity, and rain rate. Make it rain and High drainages usually let go, sending mud down the channel and spreading a fan where the ground flattens.</p>
       <p>The ☀️ button switches between always day, a slow day and night cycle (one day is five real minutes, so nothing flashes), and always night. At night windows, streetlights, and headlights come on one by one.</p>
+      <p>Earthquakes (🌎): pick a magnitude and click an epicenter. Shaking fades with distance. Tall towers and heavy industry are the most fragile, steep slopes slide, low ground next to water can liquefy, bridges can drop, and collapsed buildings can start fires.</p>
+      <p>🔗 Share copies a link to exactly what you see, city and all. 📁 File saves or opens a full backup copy.</p>
       <p>Drag a road across water to build a bridge. Bridges need land on both ends and can span up to 16 tiles.</p>
       <p>Water pools on flat ground. Place it on a slope and it runs downhill as a stream, with waterfalls, until it reaches water or a low spot. The sea level buttons flood or drain the whole map.</p>
       <p>Wildfires run downwind and uphill. Forest burns long and hot, grass burns fast and light, and roads, water, beaches, and bare rock stop them. Fire stations slow fires inside their reach. Burned ground stays scarred by severity and heals over about five game years, and forests grow back.</p>
@@ -475,7 +495,7 @@ function drawTile(g, vx, vy, lod) {
   if (mn < sea) s = Math.max(s, sea);
 
   if (s < 0) {
-    const base = mudTint(scarTint(landColor(wx, wy, mn, (ht + hr + hb + hl) / 4), t), t);
+    const base = rubbleTint(mudTint(scarTint(landColor(wx, wy, mn, (ht + hr + hb + hl) / 4), t), t), t);
     if (Math.abs(ht - hb) > Math.abs(hr - hl)) {
       poly(g, [Tx, Ty, Rx, Ry, Lx, Ly], shadeCol(base, lit(0, 0, ht, 1, 0, hr, 0, 1, hl)));
       poly(g, [Rx, Ry, Bx, By, Lx, Ly], shadeCol(base, lit(1, 0, hr, 1, 1, hb, 0, 1, hl)));
@@ -517,6 +537,7 @@ function drawTile(g, vx, vy, lod) {
     }
   }
   if (tree[t]) drawTrees(g, vx, vy, ht, hr, hb, hl, tree[t], (wx * 31 + wy * 17) & 255, lod, (lod || !gusts.length) ? 0 : swayAt(wx, wy));
+  if (rubble[t] === 1 && !lod && rubbleK(t) > 0.4) { const c = sp(vx, vy, ht, hr, hb, hl, 0.5, 0.5); drawRubblePile(g, c[0], c[1], (wx * 13 + wy * 7) & 255); }
 }
 
 function cliff(g, ax, ay, ha, bx, by, hb, ay0, by0, left) {
@@ -1302,6 +1323,7 @@ function recoverTick() {
     }
   }
   if (mudRecover()) changed = true;
+  if (rubbleRecover()) changed = true;
   if (changed) { cacheDirty = true; mmBaseDirty = true; routeDirty = true; if (tool === 'storm' && !storm) computeHazard(); }
 }
 
@@ -1629,6 +1651,203 @@ function drawNight() {
   ctx.restore();
 }
 
+// ===== Earthquakes =====
+// Click an epicenter. Shaking intensity (a Modified Mercalli style number) falls off with distance:
+//   MMI = 1.68 + 1.2 M - 2.6 log10(R + 5), R in km
+// Liquefaction-prone ground (low, flat, next to water) shakes one step harder. Damage is rolled per tile:
+// buildings crack or collapse (towers and heavy industry are the most fragile, houses the least),
+// roads crack, bridges can drop, steep slopes slide, and collapsed buildings can start fires.
+const rubble = new Uint8Array(N * N), rubbleMonth = new Int32Array(N * N); // 1 rubble, 2 landslide scar, 3 sand boils
+let mag = 6.5, quake = null;
+const RUBBLE_COL = [null, [150, 142, 130], [146, 104, 66], [198, 178, 132]];
+const FRAGILE = { 4: 8.2, 7: 7.6, 8: 7.2, 9: 8.0, 5: 7.5, 10: 7.2, 11: 7.8, 6: 7.4, 12: 7.0 }; // MMI where collapse gets likely
+function tileKm() { return dem && dem.km ? dem.km / N : 0.1; }
+function mmiAt(M, km) { return 1.68 + 1.2 * M - 2.6 * Math.log10(km + 5); }
+function radiusFor(M, level) { return Math.max(0, Math.pow(10, (1.68 + 1.2 * M - level) / 2.6) - 5) / tileKm(); } // in tiles
+function liquefiable(x, y) {
+  const [mn, mx] = tMinMax(x, y);
+  if (mn !== mx || mn < sea || mn > sea + 1) return false;
+  if (dem && tileM(x, y) > 12) return false;
+  return near(x, y, 2, isWaterW);
+}
+function rubbleK(t) { if (!rubble[t]) return 0; const age = month - rubbleMonth[t]; return age >= 18 ? 0 : age <= 4 ? 1 : 1 - (age - 4) / 14; }
+function rubbleTint(c, t) { const k = rubbleK(t); if (!k) return c; const r = RUBBLE_COL[rubble[t]]; return [c[0] + (r[0] - c[0]) * k, c[1] + (r[1] - c[1]) * k, c[2] + (r[2] - c[2]) * k]; }
+function rubbleRecover() { let ch = false; for (let t = 0; t < N * N; t++) if (rubble[t] && month - rubbleMonth[t] >= 18) { rubble[t] = 0; ch = true; } return ch; }
+function drawRubblePile(g, x, y, h) {
+  g.fillStyle = '#8a8478'; g.fillRect(x - 6, y - 3, 12, 3); g.fillRect(x - 4, y - 5, 8, 2);
+  g.fillStyle = '#6c665c'; g.fillRect(x - 2 + (h & 3), y - 6, 3, 2); g.fillRect(x + 3 - (h & 1), y - 2, 3, 2);
+  g.fillStyle = '#a8a294'; g.fillRect(x - 5, y - 4, 3, 1);
+}
+function startQuake(cx, cy) {
+  const M = mag, km = tileKm(), rep = { bldDamaged: 0, bldCollapsed: 0, slides: 0, roads: 0, bridges: 0, fires: 0, liquefied: 0 };
+  const changed = [], ignitions = [], q = [];
+  const brokenBridge = new Set();
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const t = y * N + x, R = Math.hypot(x - cx, y - cy) * km;
+    let I = mmiAt(M, R);
+    if (I < 6) continue;
+    const liq = liquefiable(x, y);
+    if (liq) { I += 1; if (I >= 7 && Math.random() < 0.6) { rubble[t] = 3; rubbleMonth[t] = month; rep.liquefied++; changed.push(t); } }
+    // buildings and civic
+    if (bld[t] || civ[t]) {
+      const base = bld[t] ? FRAGILE[bld[t]] : 7.8;
+      const pCollapse = Math.max(0, Math.min(0.95, (I - base) * 0.45 + 0.1));
+      if (I >= base - 0.5 && Math.random() < pCollapse) {
+        rep.bldCollapsed++;
+        if (bld[t]) { bld[t] = 0; dens[t] = 0; } else removeCivAt(t);
+        rubble[t] = 1; rubbleMonth[t] = month; changed.push(t);
+        if (Math.random() < (civFire[t] ? 0.04 : 0.09)) ignitions.push([x, y]);
+      } else if (bld[t] && I >= 6.5 && Math.random() < (I - 6) * 0.25) { dens[t] = Math.max(0, dens[t] - 1); rep.bldDamaged++; }
+    }
+    // roads and bridges
+    if (road[t]) {
+      const wet = isWaterW(x, y);
+      if (wet && I >= 7.5 && Math.random() < (I - 7) * 0.5) brokenBridge.add(t);
+      else if (!wet && I >= 7 && Math.random() < (I - 6.5) * 0.12) { road[t] = 0; rubble[t] = 1; rubbleMonth[t] = month; rep.roads++; changed.push(t); }
+    }
+    // landslides on steep ground (burned slopes are looser)
+    if (I >= 7.3 && !isWaterW(x, y) && tMinMax(x, y)[0] > sea + 1 && isSteep(x, y) && Math.random() < (I - 7) * 0.035 * (burnSev[t] ? 1.6 : 1)) {
+      const i = y * NC + x;
+      for (const c of [i, i + 1, i + NC, i + NC + 1]) if (HM[c] > 0) { HM[c] -= 1; q.push(c); }
+      tree[t] = 0; bld[t] = 0; dens[t] = 0; road[t] = 0; removeCivAt(t);
+      rubble[t] = 2; rubbleMonth[t] = month; rep.slides++; changed.push(t);
+    }
+  }
+  // a broken bridge drops its whole span
+  for (const t0 of brokenBridge) {
+    if (!road[t0]) continue;
+    rep.bridges++;
+    const stack = [t0];
+    while (stack.length) {
+      const t = stack.pop(); if (!road[t] || !isWaterW(t % N, (t / N) | 0)) continue;
+      road[t] = 0; changed.push(t);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = t % N + dx, Y = ((t / N) | 0) + dy; if (inW(X, Y)) stack.push(Y * N + X); }
+    }
+  }
+  if (q.length) propagate(q);
+  for (const [x, y] of ignitions) if (ignite(x, y, true)) rep.fires++;
+  quake = { t0: performance.now(), dur: 2600, rep, M, cx, cy, reported: false };
+  for (const [x, y] of [[cx, cy]]) for (let k = 0; k < 30; k++) smokeP.push({ x: x + 0.5 + (Math.random() - 0.5) * 6, y: y + 0.5 + (Math.random() - 0.5) * 6, lift: 2, life: 0.8, r: 3 });
+  for (const t of changed) if (rubble[t] === 1 && smokeP.length < 500) smokeP.push({ x: t % N + 0.5, y: ((t / N) | 0) + 0.5, lift: 4, life: 1, r: 3 });
+  dirtyAll(); routeDirty = true;
+}
+function quakeShake() {
+  if (!quake) return [0, 0];
+  const t = (performance.now() - quake.t0) / quake.dur;
+  if (t >= 1) {
+    if (!quake.reported) {
+      const r = quake.rep, parts = [];
+      if (r.bldCollapsed) parts.push(`${r.bldCollapsed} collapsed`);
+      if (r.bldDamaged) parts.push(`${r.bldDamaged} damaged`);
+      if (r.slides) parts.push(`${r.slides} landslide${r.slides > 1 ? 's' : ''}`);
+      if (r.liquefied) parts.push(`${r.liquefied} tiles liquefied`);
+      if (r.roads) parts.push(`${r.roads} road tile${r.roads > 1 ? 's' : ''} cracked`);
+      if (r.bridges) parts.push(`${r.bridges} bridge${r.bridges > 1 ? 's' : ''} down`);
+      if (r.fires) parts.push(`${r.fires} fire${r.fires > 1 ? 's' : ''}`);
+      toast(`🌎 M${quake.M.toFixed(1)}: ` + (parts.length ? parts.join(', ') + '.' : 'felt, but no real damage.'));
+      quake.reported = true;
+    }
+    quake = null; return [0, 0];
+  }
+  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return [0, 0];
+  const amp = Math.min(4, (quake.M - 4.5)) * (1 - t) * (1 - t);
+  const s = performance.now() / 1000;
+  return [Math.round(Math.sin(s * 37) * amp), Math.round(Math.sin(s * 29 + 1) * amp * 0.6)];
+}
+// shaking rings under the cursor: MMI 9 (violent), 8 (severe), 7 (very strong)
+function drawQuakeRings() {
+  if (tool !== 'quake' || !hover) return;
+  const [wx, wy] = t2w(hover.vx, hover.vy);
+  ctx.save(); ctx.setTransform(zoom, 0, 0, zoom, camX, camY);
+  [[9, 'rgba(214,40,40,0.9)'], [8, 'rgba(240,120,30,0.9)'], [7, 'rgba(250,210,60,0.9)']].forEach(([lvl, col]) => {
+    const r = radiusFor(mag, lvl); if (r < 0.5) return;
+    ctx.strokeStyle = col; ctx.lineWidth = 2 / zoom; ctx.setLineDash([6 / zoom, 4 / zoom]); ctx.beginPath();
+    for (let k = 0; k <= 72; k++) {
+      const a = k / 72 * Math.PI * 2, px = wx + 0.5 + Math.cos(a) * r, py = wy + 0.5 + Math.sin(a) * r;
+      const cxp = Math.max(0, Math.min(N - 0.01, px)), cyp = Math.max(0, Math.min(N - 0.01, py));
+      const v = w2v(px, py), h = hAtW(cxp, cyp), X = (v[0] - v[1]) * TW / 2, Y = (v[0] + v[1]) * TH / 2 - h * HS;
+      k ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y);
+    }
+    ctx.stroke();
+  });
+  ctx.setLineDash([]); ctx.restore();
+}
+
+// ===== Share links (all in one) =====
+// A link rebuilds the starting map from its recipe (a seed or a real place), then applies everything
+// you changed on top: terrain edits, water, roads, zones, buildings, civic, burn scars, mud, rubble,
+// and your view. Only the differences are stored, compressed with deflate, in the part after the #,
+// which never leaves the visitor's browser.
+const baseHM = new Int8Array(NC * NC), baseTree = new Uint8Array(N * N);
+let hasBase = false, quietLoad = false;
+function snapBase() { baseHM.set(HM); baseTree.set(tree); hasBase = true; }
+const b64u = {
+  enc(u8) { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); },
+  dec(str) { const s = atob(str.replace(/-/g, '+').replace(/_/g, '/')); const u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
+};
+async function squeeze(u8, inflate) {
+  if (typeof CompressionStream === 'undefined') return u8;
+  const cs = inflate ? new DecompressionStream('deflate-raw') : new CompressionStream('deflate-raw');
+  return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(cs)).arrayBuffer());
+}
+const age8 = m => Math.max(0, Math.min(255, month - m));
+function civCode(t) { const a = civA[t]; return !civ[t] || a === t ? 0 : a === t - 1 ? 1 : a === t - N ? 2 : a === t - N - 1 ? 3 : 0; }
+// section list: [name, length, read value at i, write value at i]
+const SECTIONS = [
+  ['hm', NC * NC, i => (HM[i] - baseHM[i]) & 255, (i, v) => { HM[i] = baseHM[i] + ((v << 24) >> 24); }],
+  ['tree', N * N, i => (tree[i] - baseTree[i]) & 255, (i, v) => { tree[i] = (baseTree[i] + v) & 255; }],
+  ['lake', N * N, i => lake[i], (i, v) => { lake[i] = v; }],
+  ['road', N * N, i => road[i], (i, v) => { road[i] = v; }],
+  ['zone', N * N, i => zone[i], (i, v) => { zone[i] = v; }],
+  ['bld', N * N, i => bld[i], (i, v) => { bld[i] = v; }],
+  ['dens', N * N, i => Math.round(dens[i] * 80), (i, v) => { dens[i] = v / 80; }],
+  ['civ', N * N, i => civ[i], (i, v) => { civ[i] = v; }],
+  ['civA', N * N, i => civCode(i), (i, v) => { civA[i] = i - [0, 1, N, N + 1][v]; }],
+  ['burn', N * N, i => burnSev[i], (i, v) => { burnSev[i] = v; }],
+  ['burnAge', N * N, i => burnSev[i] ? age8(scarMonth[i]) : 0, (i, v) => { scarMonth[i] = month - v; }],
+  ['treeWas', N * N, i => treeWas[i], (i, v) => { treeWas[i] = v; }],
+  ['mud', N * N, i => mud[i], (i, v) => { mud[i] = v; }],
+  ['mudAge', N * N, i => mud[i] ? age8(mudMonth[i]) : 0, (i, v) => { mudMonth[i] = month - v; }],
+  ['rubble', N * N, i => rubble[i], (i, v) => { rubble[i] = v; }],
+  ['rubbleAge', N * N, i => rubble[i] ? age8(rubbleMonth[i]) : 0, (i, v) => { rubbleMonth[i] = month - v; }],
+];
+async function encodeShare() {
+  if (!recipe || !hasBase) return null;
+  const c = viewCenterWorld();
+  const head = new TextEncoder().encode(JSON.stringify({ f: 1, r: recipe, sea, month, slr, v: [rot, zi, Math.round(c[0]), Math.round(c[1])], day: dayMode }));
+  let total = 2 + head.length; for (const s of SECTIONS) total += s[1];
+  const buf = new Uint8Array(total); buf[0] = head.length & 255; buf[1] = head.length >> 8; buf.set(head, 2);
+  let o = 2 + head.length;
+  for (const [, len, get] of SECTIONS) { for (let i = 0; i < len; i++) buf[o + i] = get(i); o += len; }
+  const packed = await squeeze(buf, false);
+  return (typeof CompressionStream === 'undefined' ? 'u' : 'z') + b64u.enc(packed);
+}
+async function decodeShare(code) {
+  const raw = b64u.dec(code.slice(1)), buf = code[0] === 'z' ? await squeeze(raw, true) : raw;
+  const hl = buf[0] | (buf[1] << 8), h = JSON.parse(new TextDecoder().decode(buf.subarray(2, 2 + hl)));
+  quietLoad = true;
+  try {
+    if (h.r.kind === 'place') loadPreset(h.r.id);
+    else { setGenControls(h.r.p); previewGen(); applyGen(lastGen, false); }
+  } finally { quietLoad = false; }
+  month = h.month; sea = h.sea;
+  let o = 2 + hl;
+  for (const [, len, , set] of SECTIONS) { for (let i = 0; i < len; i++) set(i, buf[o + i]); o += len; }
+  return h;
+}
+function setGenControls(p) {
+  document.getElementById('seed').value = p.seed; document.getElementById('g-hills').value = p.hills;
+  document.getElementById('g-water').value = p.water; document.getElementById('g-trees').value = p.trees;
+  document.getElementById('g-coast').checked = !!p.coast; document.getElementById('g-river').checked = !!p.river;
+}
+function applyView(v, day) {
+  if (!v || v.length < 4) return;
+  while (rot !== ((v[0] % 4) + 4) % 4) rotate(1);
+  setZoom(Math.max(0, Math.min(ZOOMS.length - 1, v[1])));
+  recenterWorld([v[2], v[3]]);
+  if (day) setDayMode(day % 3);
+}
+
 // ===== Traffic & cars =====
 const BTIER = { 4: 1, 7: 2, 8: 3, 9: 1, 5: 2, 10: 3, 11: 1, 6: 2, 12: 3 };
 const TWT = [0, 1, 2.5, 5];
@@ -1795,6 +2014,7 @@ function brushTiles(vx, vy) {
 function composite() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = '#0b1018'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const shake = quakeShake(); camX += shake[0]; camY += shake[1];
   ctx.drawImage(cache, Math.round(camX - cacheCX), Math.round(camY - cacheCY));
   ctx.setTransform(zoom, 0, 0, zoom, camX, camY);
   const lw = 1 / zoom;
@@ -1814,6 +2034,7 @@ function composite() {
     const a = 0.45 + 0.25 * Math.sin(frame * 0.6);
     for (const [vx, vy] of roadGhost) polyNoStroke(ctx, surfQuad(vx, vy), `rgba(255,220,60,${a.toFixed(2)})`);
   }
+  drawQuakeRings();
   // civic coverage preview
   if (hover && tool.startsWith('civ') && !(drag && drag.mode === 'pan')) {
     const r = CIVIC[+tool[3]].r;
@@ -1835,6 +2056,7 @@ function composite() {
       outlinePts(ctx, q, '#fff6b0', lw * 1.2);
     }
   }
+  camX -= shake[0]; camY -= shake[1];
 }
 
 // ===== Minimap =====
@@ -1851,6 +2073,7 @@ function drawMMBase() {
     else if (flood[t] === 1) col = [70, 140, 220];
     else if (burnT[t] > 0) col = [240, 90, 30];
     else if (mudK(t) > 0.05) col = [162, 112, 62];
+    else if (rubbleK(t) > 0.05) col = RUBBLE_COL[rubble[t]];
     else if (road[t]) col = [96, 96, 104];
     else if (civ[t]) col = CIVIC[civ[t]].color;
     else if (bld[t]) col = [226, 218, 196];
@@ -2012,6 +2235,7 @@ function demolishSloped() {
 }
 function applyTool(h) {
   if (tool === 'fire') { const [wx, wy] = t2w(h.vx, h.vy); if (ignite(wx, wy, false)) pendingPan = true; return; }
+  if (tool === 'quake') { if (drag && drag.quaked) return; const [wx, wy] = t2w(h.vx, h.vy); startQuake(wx, wy); if (drag) drag.quaked = true; pendingPan = true; return; }
   if (tool === 'water') { const [wx, wy] = t2w(h.vx, h.vy), [mn, mx] = tMinMax(wx, wy); if (mn !== mx && !isWaterW(wx, wy)) { traceStream(wx, wy); dirtyAll(); return; } }
   if (tool.startsWith('civ')) {
     const id = +tool[3], [wx, wy] = t2w(h.vx, h.vy);
@@ -2127,13 +2351,13 @@ function traceStream(wx, wy) {
 
 // ===== Undo =====
 function snapshot() {
-  undoStack.push({ HM: HM.slice(), lake: lake.slice(), tree: tree.slice(), road: road.slice(), zone: zone.slice(), bld: bld.slice(), dens: dens.slice(), civ: civ.slice(), civA: civA.slice(), burnSev: burnSev.slice(), scarMonth: scarMonth.slice(), treeWas: treeWas.slice(), mud: mud.slice(), mudMonth: mudMonth.slice(), month, sea });
+  undoStack.push({ HM: HM.slice(), lake: lake.slice(), tree: tree.slice(), road: road.slice(), zone: zone.slice(), bld: bld.slice(), dens: dens.slice(), civ: civ.slice(), civA: civA.slice(), burnSev: burnSev.slice(), scarMonth: scarMonth.slice(), treeWas: treeWas.slice(), mud: mud.slice(), mudMonth: mudMonth.slice(), rubble: rubble.slice(), rubbleMonth: rubbleMonth.slice(), month, sea });
   if (undoStack.length > 30) undoStack.shift();
 }
 function undo() {
   const s = undoStack.pop();
   if (!s) { toast('Nothing to undo'); return; }
-  HM.set(s.HM); lake.set(s.lake); tree.set(s.tree); road.set(s.road); zone.set(s.zone); bld.set(s.bld); dens.set(s.dens); civ.set(s.civ); civA.set(s.civA); burnSev.set(s.burnSev); scarMonth.set(s.scarMonth); treeWas.set(s.treeWas); mud.set(s.mud); mudMonth.set(s.mudMonth); month = s.month; sea = s.sea;
+  HM.set(s.HM); lake.set(s.lake); tree.set(s.tree); road.set(s.road); zone.set(s.zone); bld.set(s.bld); dens.set(s.dens); civ.set(s.civ); civA.set(s.civA); burnSev.set(s.burnSev); scarMonth.set(s.scarMonth); treeWas.set(s.treeWas); mud.set(s.mud); mudMonth.set(s.mudMonth); rubble.set(s.rubble); rubbleMonth.set(s.rubbleMonth); month = s.month; sea = s.sea;
   storm = null; flows = []; rainDrops = [];
   burning.forEach(t => burnT[t] = 0); burning = []; smokeP = []; fireStats = null;
   dirtyAll();
@@ -2300,10 +2524,10 @@ let recipe = null; // what a share link can rebuild: a generated map or a real p
 function applyGen(g, keepUndo) {
   recipe = { kind: 'gen', p: g.params };
   if (keepUndo) snapshot();
-  HM.set(g.A); sea = g.sea; tree.set(g.tr); makePatches(g.seed);
+  HM.set(g.A); sea = g.sea; tree.set(g.tr); makePatches(g.seed); snapBase();
   lake.fill(0); road.fill(0); zone.fill(0); bld.fill(0); dens.fill(0); civ.fill(0);
   burnSev.fill(0); treeWas.fill(0); burning.forEach(t => burnT[t] = 0); burning = []; smokeP = []; fireStats = null;
-  mud.fill(0); storm = null; flows = []; rainDrops = [];
+  mud.fill(0); rubble.fill(0); storm = null; flows = []; rainDrops = [];
   dem = null; month = 0; hasDemM = false; slr = 0;
   document.getElementById('dem-status').innerHTML = 'Any GeoTIFF works. <a href="https://apps.nationalmap.gov/downloader/" target="_blank" rel="noopener" style="color:inherit">USGS downloader</a>';
   centerOn(N / 2, N / 2, sea + 2);
@@ -2379,7 +2603,7 @@ function applyElevation(a, nd, opts) {
   sea = s0; dem = { min: mn, max: mx, ocean, sea: s0, maxL, name: opts.name || null, km: opts.km || null };
   lake.fill(0); tree.fill(0); road.fill(0); zone.fill(0); bld.fill(0); dens.fill(0); civ.fill(0); month = 0;
   burnSev.fill(0); treeWas.fill(0); burning.forEach(t => burnT[t] = 0); burning = []; smokeP = []; fireStats = null;
-  mud.fill(0); storm = null; flows = []; rainDrops = [];
+  mud.fill(0); rubble.fill(0); storm = null; flows = []; rainDrops = [];
   plantRealTrees(opts.seed || 7);
   if (tint !== 'hypso') toggleTint();
   centerOn(N / 2, N / 2, sea + 4);
@@ -2388,7 +2612,7 @@ function applyElevation(a, nd, opts) {
 }
 // Forest patches where trees plausibly grow: not on the beach, not above treeline, thinner on steep ground.
 function plantRealTrees(seed) {
-  const f = makeNoise(mulberry32(seed));
+  const f = makeNoise(mulberry32(seed)), rnd = mulberry32(seed * 31 + 7); // seeded, so share links rebuild the same forest
   for (let wy = 0; wy < N; wy++) for (let wx = 0; wx < N; wx++) {
     const [mn, mx] = tMinMax(wx, wy);
     if (mn < sea) continue;
@@ -2397,7 +2621,7 @@ function plantRealTrees(seed) {
     const n = f(wx / 12 + 40, wy / 12 + 40, 3, 0.55);
     const steep = mx - mn > 0 ? 0.55 : 1;
     const high = m > 2400 ? 0.5 : 1;
-    if (n > 0.5 && Math.random() < (n - 0.5) * 3 * steep * high) tree[wy * N + wx] = 1 + Math.floor(Math.random() * 3);
+    if (n > 0.5 && rnd() < (n - 0.5) * 3 * steep * high) tree[wy * N + wx] = 1 + Math.floor(rnd() * 3);
   }
 }
 function decodePreset(b64) {
@@ -2412,7 +2636,8 @@ function loadPreset(id) {
   recipe = { kind: 'place', id };
   const { mn, mx } = applyElevation(a, null, { relief: p.relief, name: p.name, km: p.km, seed: p.id.length * 97 + 13 });
   document.getElementById('dem-status').textContent = `${p.icon} ${p.name}: ${Math.max(0, mn)} to ${mx} m across ${p.km} km (each tile is about ${Math.round(p.km * 1000 / N)} m). SRTM 30 m, NASA/USGS.`;
-  toast(`${p.name}. ${p.blurb}`);
+  snapBase();
+  if (!quietLoad) toast(`${p.name}. ${p.blurb}`);
 }
 async function loadDEM(file) {
   const st = document.getElementById('dem-status');
@@ -2423,7 +2648,7 @@ async function loadDEM(file) {
     const w = img.getWidth(), h = img.getHeight(), s = Math.min(w, h);
     const x0 = Math.floor((w - s) / 2), y0 = Math.floor((h - s) / 2);
     const r = await img.readRasters({ window: [x0, y0, x0 + s, y0 + s], width: NC, height: NC, samples: [0], resampleMethod: 'nearest' });
-    recipe = null;
+    recipe = null; hasBase = false;
     const { mn, mx } = applyElevation(r[0], img.getGDALNoData(), { relief: +document.getElementById('relief').value, name: file.name });
     st.textContent = `✓ ${file.name}: ${Math.round(mn)} to ${Math.round(mx)} m, ${w}×${h} px cropped to the middle square`;
     toast('Real terrain loaded. Now ruin it.');
@@ -2499,18 +2724,21 @@ function serialize() {
     HM: Array.from(HM), lake: Array.from(lake), tree: Array.from(tree), road: Array.from(road), zone: Array.from(zone), bld: Array.from(bld), civ: Array.from(civ), civA: Array.from(civA),
     dens: Array.from(dens, x => Math.round(x * 100) / 100),
     demM: hasDemM ? Array.from(demM, x => Math.round(x * 10) / 10) : null, HMload: hasDemM ? Array.from(HMload) : null, slr,
-    burnSev: Array.from(burnSev), scarMonth: Array.from(scarMonth), treeWas: Array.from(treeWas), mud: Array.from(mud), mudMonth: Array.from(mudMonth) });
+    burnSev: Array.from(burnSev), scarMonth: Array.from(scarMonth), treeWas: Array.from(treeWas), mud: Array.from(mud), mudMonth: Array.from(mudMonth), rubble: Array.from(rubble), rubbleMonth: Array.from(rubbleMonth), recipe });
 }
 function deserialize(txt) {
   const o = JSON.parse(txt);
   if (o.format !== 'terrain-sandbox' || o.v !== 3 || o.N !== N) throw new Error('This is not a v3 terrain map');
   snapshot();
+  hasBase = false; recipe = null;
+  if (o.recipe) { quietLoad = true; try { if (o.recipe.kind === 'place') loadPreset(o.recipe.id); else { setGenControls(o.recipe.p); previewGen(); applyGen(lastGen, false); } } finally { quietLoad = false; } }
   HM.set(o.HM); lake.set(o.lake); tree.set(o.tree); road.set(o.road); zone.set(o.zone); bld.set(o.bld); dens.set(o.dens); civ.fill(0); if (o.civ) civ.set(o.civ);
   if (o.civA) civA.set(o.civA); else for (let i = 0; i < civ.length; i++) civA[i] = i;
   sea = o.sea; month = o.month || 0; dem = o.dem || null;
   hasDemM = !!(o.demM && o.HMload); if (hasDemM) { demM.set(o.demM); HMload.set(o.HMload); } slr = hasDemM ? (o.slr || 0) : 0;
   burnSev.fill(0); scarMonth.fill(0); treeWas.fill(0); if (o.burnSev) { burnSev.set(o.burnSev); scarMonth.set(o.scarMonth); treeWas.set(o.treeWas); }
-  mud.fill(0); mudMonth.fill(0); if (o.mud) { mud.set(o.mud); mudMonth.set(o.mudMonth); } storm = null; flows = []; rainDrops = [];
+  mud.fill(0); mudMonth.fill(0); if (o.mud) { mud.set(o.mud); mudMonth.set(o.mudMonth); }
+  rubble.fill(0); rubbleMonth.fill(0); if (o.rubble) { rubble.set(o.rubble); rubbleMonth.set(o.rubbleMonth); } storm = null; flows = []; rainDrops = [];
   burning.forEach(t => burnT[t] = 0); burning = []; smokeP = []; fireStats = null;
   if (o.rot !== rot) { rot = o.rot || 0; document.getElementById('viewlbl').textContent = 'View ' + ['N', 'E', 'S', 'W'][rot]; }
   centerOn(N / 2, N / 2, sea + 2);
@@ -2531,8 +2759,11 @@ document.getElementById('btn-export').addEventListener('click', () => {
   const a = document.createElement('a'); a.href = url; a.download = 'terrain-flux-map.json';
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
+  document.getElementById('filebox').classList.add('hidden');
 });
-document.getElementById('btn-import').addEventListener('click', () => document.getElementById('file-json').click());
+document.getElementById('btn-import').addEventListener('click', () => { document.getElementById('filebox').classList.add('hidden'); document.getElementById('file-json').click(); });
+document.getElementById('btn-file').addEventListener('click', () => document.getElementById('filebox').classList.remove('hidden'));
+document.getElementById('file-close').addEventListener('click', () => document.getElementById('filebox').classList.add('hidden'));
 document.getElementById('file-json').addEventListener('change', e => {
   const f = e.target.files[0]; if (!f) return;
   f.text().then(t => { try { deserialize(t); toast('Imported ' + f.name); } catch (err) { toast('Could not import: ' + err.message); } });
@@ -2545,17 +2776,19 @@ function toast(msg) {
   const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2200);
 }
-const TOOL_NAMES = { raise: 'Raise', lower: 'Lower', level: 'Level', smooth: 'Smooth', water: 'Water', trees: 'Trees', road: 'Road', doze: 'Bulldoze', zone1: 'Residential', zone2: 'Commercial', zone3: 'Industrial', pan: 'Pan', civ1: 'Park', civ2: 'Hospital', civ3: 'Fire station', civ4: 'Police', civ5: 'Stadium', fire: 'Ignite', storm: 'Storm' };
+const TOOL_NAMES = { raise: 'Raise', lower: 'Lower', level: 'Level', smooth: 'Smooth', water: 'Water', trees: 'Trees', road: 'Road', doze: 'Bulldoze', zone1: 'Residential', zone2: 'Commercial', zone3: 'Industrial', pan: 'Pan', civ1: 'Park', civ2: 'Hospital', civ3: 'Fire station', civ4: 'Police', civ5: 'Stadium', fire: 'Ignite', storm: 'Storm', quake: 'Earthquake' };
 document.querySelectorAll('.tb[data-tool]').forEach(b => b.addEventListener('click', () => {
   document.querySelectorAll('.tb[data-tool]').forEach(x => x.classList.remove('on'));
   const wasStorm = tool === 'storm';
   b.classList.add('on'); tool = b.dataset.tool; roadGhost = [];
   document.getElementById('storm-panel').style.display = tool === 'storm' ? 'flex' : 'none';
+  document.getElementById('quake-panel').style.display = tool === 'quake' ? 'flex' : 'none';
   if (tool === 'storm') refreshHazard(); else if (wasStorm) cacheDirty = true;
   document.getElementById('toolname').textContent = TOOL_NAMES[tool];
   canvas.style.cursor = tool === 'pan' ? 'grab' : 'crosshair';
   document.getElementById('st-hint').textContent = tool.startsWith('civ') ? CIVIC[+tool[3]].icon + ' ' + CIVIC[+tool[3]].effect
     : tool === 'fire' ? '🔥 Click to start a fire. It runs downwind and uphill, and roads, water, and fire stations slow it down.'
+    : tool === 'quake' ? '🌎 Click to set the epicenter. Towers and heavy industry are most fragile, steep slopes slide, and low ground by water can liquefy.'
     : tool === 'storm' ? '🌧️ Colors show how likely each drainage is to send a debris flow at this rain rate: green Low, orange Moderate, red High. Burn scars drive it.'
     : tool === 'water' ? '💧 On flat ground water pools. On a slope it runs downhill as a stream, with waterfalls.' : '';
   compDirty = true;
@@ -2651,6 +2884,7 @@ function setSpeed(sp) {
 document.querySelectorAll('.spd').forEach(b => b.addEventListener('click', () => setSpeed(+b.dataset.s)));
 function toggleSim() { setSpeed(speed ? 0 : lastSpeed); }
 document.getElementById('i15').addEventListener('input', e => { i15 = +e.target.value; document.getElementById('i15-v').textContent = i15; refreshHazard(); updateStatus(); });
+document.getElementById('mag').addEventListener('input', e => { mag = +e.target.value; document.getElementById('mag-v').textContent = mag.toFixed(1); compDirty = true; });
 document.getElementById('btn-rain').addEventListener('click', () => { startStorm(); selectTool('pan'); });
 // About panel. Set REPO_URL once the GitHub repo exists and the source link appears.
 const REPO_URL = '';
@@ -2701,6 +2935,7 @@ function updateStatus() {
   }
   if (civ[t]) zt = `${CIVIC[civ[t]].icon} ${CIVIC[civ[t]].name} (reaches ${CIVIC[civ[t]].r} tiles)`;
   if (hazCls[t] && hazardView()) zt = (zt === '-' ? '' : zt + ' · ') + `🌧️ drainage likelihood ${hazP[t].toFixed(2)} (${HAZ_NAME[hazCls[t]]}) at ${i15} mm/hr`;
+  if (rubbleK(t) > 0) zt = (zt === '-' ? '' : zt + ' · ') + ['', '🏚️ earthquake rubble', '⛰️ landslide scar', '💧 liquefaction (sand boils)'][rubble[t]];
   if (mudK(t) > 0) zt = (zt === '-' ? '' : zt + ' · ') + '🟫 debris flow deposit';
   if (burnT[t] > 0) zt = (zt === '-' ? '' : zt + ' · ') + '🔥 burning';
   else if (burnSev[t]) { const age = month - scarMonth[t]; zt = (zt === '-' ? '' : zt + ' · ') + `⬛ burned, ${['', 'low', 'moderate', 'high'][burnSev[t]]} severity, ${age} month${age === 1 ? '' : 's'} ago`; }
@@ -2787,7 +3022,7 @@ window.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
   const k = e.key.toLowerCase();
   if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); undo(); return; }
-  if (k === 'escape') { roadGhost = []; if (drag && drag.mode === 'road') drag = null; genModal.classList.add('hidden'); helpBox.classList.add('hidden'); aboutBox.classList.add('hidden'); document.getElementById('sharebox').classList.add('hidden'); compDirty = true; return; }
+  if (k === 'escape') { roadGhost = []; if (drag && drag.mode === 'road') drag = null; genModal.classList.add('hidden'); helpBox.classList.add('hidden'); aboutBox.classList.add('hidden'); document.getElementById('sharebox').classList.add('hidden'); document.getElementById('filebox').classList.add('hidden'); compDirty = true; return; }
   if (!genModal.classList.contains('hidden')) return;
   const PAN = 48;
   if (k === 'q') rotate(-1); else if (k === 'e') rotate(1);
@@ -2812,7 +3047,7 @@ function loop(ts) {
   if (simOn && ts - lastSim > MONTH_MS[speed]) { lastSim = ts; simTick(); }
   if (ts - lastAnim > 110) { lastAnim = ts; frame++; compDirty = true; }
   fireStep(ts); stormStep(ts);
-  if (carsLive || burning.length || smokeP.length || storm) compDirty = true;
+  if (carsLive || burning.length || smokeP.length || storm || quake) compDirty = true;
   if (compDirty) { composite(); compDirty = false; }
   if ((mmBaseDirty || mmViewDirty) && ts - lastMM > 150) {
     lastMM = ts;
@@ -2821,46 +3056,38 @@ function loop(ts) {
   }
 }
 
-// ===== Share links =====
-// #place=morro_bay or #seed=2000&hills=50&water=22&trees=45&coast=1&river=1, plus the view: &v=rot,zoom,x,y,day
-function shareURL() {
-  if (!recipe) return null;
-  const q = new URLSearchParams();
-  if (recipe.kind === 'place') q.set('place', recipe.id);
-  else { const p = recipe.p; q.set('seed', p.seed); q.set('hills', p.hills); q.set('water', p.water); q.set('trees', p.trees); q.set('coast', +p.coast); q.set('river', +p.river); }
-  const c = viewCenterWorld();
-  q.set('v', [rot, zi, Math.round(c[0]), Math.round(c[1]), dayMode].join(','));
-  return location.href.split('#')[0] + '#' + q.toString();
-}
+// ===== Share button + opening links =====
 document.getElementById('btn-share').addEventListener('click', async () => {
-  const url = shareURL();
-  if (!url) { toast('Maps from your own DEM file cannot be shared as a link. Use Export instead.'); return; }
   const box = document.getElementById('sharebox'), inp = document.getElementById('share-url');
+  let code = null;
+  try { code = await encodeShare(); } catch (e) { console.error(e); }
+  if (!code) { toast('Maps from your own DEM file are too big for a link. Use 📁 File to save a copy.'); return; }
+  const url = location.href.split('#')[0] + '#tf=' + code;
   inp.value = url;
   let ok = false; try { await navigator.clipboard.writeText(url); ok = true; } catch (e) { }
-  document.getElementById('share-msg').textContent = ok ? 'Copied! Anyone who opens this link gets the same map and view.' : 'Copy this link. Anyone who opens it gets the same map and view.';
+  document.getElementById('share-msg').textContent = ok ? 'Copied! This link opens exactly what you see.' : 'Copy this link. It opens exactly what you see.';
+  document.getElementById('share-note').textContent = `The link holds everything: terrain, water, roads, buildings, scars, and your view (${(url.length / 1024).toFixed(1)} KB).`;
   box.classList.remove('hidden'); inp.focus(); inp.select();
 });
 document.getElementById('share-close').addEventListener('click', () => document.getElementById('sharebox').classList.add('hidden'));
 function openFromHash() {
   const h = location.hash.slice(1); if (!h) return false;
   const q = new URLSearchParams(h);
-  try {
+  if (q.get('tf')) { // full map link
+    decodeShare(q.get('tf')).then(hd => {
+      genModal.classList.add('hidden');
+      dirtyAll(); setSLR(hd.slr || 0); applyView(hd.v, hd.day);
+      toast('🔗 Opened a shared map');
+    }).catch(e => { console.error(e); toast('That link looks broken or incomplete.'); });
+    return true;
+  }
+  try { // older recipe-only links still work
     if (q.get('place') && PRESETS.some(p => p.id === q.get('place'))) loadPreset(q.get('place'));
     else if (q.get('seed')) {
-      const set = (id, v) => { if (v != null) document.getElementById(id).value = v; };
-      set('seed', q.get('seed')); set('g-hills', q.get('hills')); set('g-water', q.get('water')); set('g-trees', q.get('trees'));
-      if (q.get('coast') != null) document.getElementById('g-coast').checked = q.get('coast') === '1';
-      if (q.get('river') != null) document.getElementById('g-river').checked = q.get('river') === '1';
+      setGenControls({ seed: q.get('seed'), hills: q.get('hills') ?? 50, water: q.get('water') ?? 22, trees: q.get('trees') ?? 45, coast: q.get('coast') !== '0', river: q.get('river') !== '0' });
       previewGen(); applyGen(lastGen, false);
     } else return false;
-    const v = (q.get('v') || '').split(',').map(Number);
-    if (v.length >= 4 && v.every(Number.isFinite)) {
-      while (rot !== ((v[0] % 4) + 4) % 4) rotate(1);
-      setZoom(Math.max(0, Math.min(ZOOMS.length - 1, v[1])));
-      recenterWorld([v[2], v[3]]);
-      if (v[4]) setDayMode(v[4] % 3);
-    }
+    applyView((q.get('v') || '').split(',').map(Number), +(q.get('v') || '').split(',')[4] || 0);
     genModal.classList.add('hidden');
     return true;
   } catch (e) { console.error(e); return false; }
