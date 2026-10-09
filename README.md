@@ -29,7 +29,7 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 - 🌎 **Trigger an earthquake:** pick a magnitude and an epicenter, then watch buildings collapse, slopes slide, waterfront ground liquefy, bridges drop, and fires break out.
 - 🔥 **Start a wildfire** and watch it run downwind and uphill, leave a burn scar graded by severity, and heal over a few game years.
 - 🏙️ **Zone and grow a city.** 9 building types with 4 styles each, 36 designs, all drawn in code.
-- 🏥 **Build civic buildings:** parks, hospitals, fire stations, police stations, and stadiums, 21 designs in all. Each one changes how the city around it grows.
+- 🏥 **Build civic buildings:** parks, hospitals, fire stations, police stations, stadiums, bus depots, EV charging, and bike share, 30 designs in all. Each one changes how the city around it grows.
 - 🌬️ **Feel the wind:** gusts roll across the map and set the forests they pass swaying.
 - 🌉 **Bridge the water:** drag a road across a river or bay and it becomes a bridge on pillars, up to 16 tiles long.
 - 🚗 **Watch traffic** fill the roads near homes and jobs, while the road to nowhere stays empty.
@@ -75,9 +75,9 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 
 X1 is the share of the drainage that is steep (23 degrees or more) and burned at moderate or high severity, X2 is the average burn severity standing in for dNBR, X3 is soil erodibility held at 0.25, and R is the peak 15-minute rainfall in mm. Classes match Scar Threshold: Low under 0.2, Moderate, High at 0.6 or above. Only drainages with at least 10% recently burned ground are assessed. When it rains, each drainage rolls against its likelihood, and a flow starts at the highest badly burned slope upstream, runs down the channel until the ground flattens, and drops a fan. Hazard fades as burn scars heal. It is a toy built on a real model's shape, not a forecast.
 
-**Air pollution.** Heavy industry, factories, sheds, busy roads, and burning tiles emit pollution that spreads as a simple wind-driven plume: it widens as it travels downwind, fades with distance, and barely reaches upwind. Homes in moderate air grow slower and cannot become towers; homes in unhealthy air stay small. In a test town, factories upwind of the homes held population to about 1,800, while the same factories downwind allowed about 12,100.
+**Air pollution.** Heavy industry, factories, sheds, busy roads, and burning tiles emit pollution that spreads as a simple wind-driven plume: it widens as it travels downwind, fades with distance, and barely reaches upwind. Traffic is a short-range source; heavy industry plumes reach about 10 tiles. Bus depots take a quarter of the cars off nearby roads and cut traffic pollution by a third, EV charging cuts tailpipe pollution by 30%, bike share removes a fifth of trips, and park trees soak up a little. Homes in moderate air grow slower and cannot become towers; homes in unhealthy air stay small. A dense test downtown with no transit graded D on air (32% of homes exposed); adding one bus depot, two EV chargers, and two bike shares brought it to A with a larger population. In a test town, factories upwind of the homes held population to about 1,800, while the same factories downwind allowed about 12,100.
 
-**Hazard report card.** Each category counts residents exposed: homes within 3 tiles of forest (wildfire), homes in Moderate or High debris flow drainages at 24 mm/hr, homes on liquefiable ground, homes underwater at +2 m (coastal real places), homes in moderate or worse air, and average coverage by fire, police, and hospitals. Exposure under 5% earns an A, then B under 15%, C under 30%, D under 50%, and F above. A small nod to tools like CalEnviroScreen that map burden against where people live.
+**Hazard report card.** Each category counts residents exposed: homes with at least 4 forest tiles within 3 tiles, halved inside fire station coverage (wildfire), homes in Moderate or High debris flow drainages at 24 mm/hr, homes on liquefiable ground, homes underwater at +2 m (coastal real places), homes in moderate or worse air, and average coverage by fire, police, and hospitals. Exposure under 5% earns an A, then B under 15%, C under 30%, D under 50%, and F above. A small nod to tools like CalEnviroScreen that map burden against where people live.
 
 **Earthquakes.** Shaking uses a Modified Mercalli style intensity that falls off with distance, `MMI = 1.68 + 1.2 M - 2.6 log10(R + 5)` with R in km, and low flat ground next to water shakes one step harder (liquefaction). Each tile then rolls for damage: buildings collapse above a type-specific intensity (towers and heavy industry first, houses last), roads crack, bridges drop a whole span, steep slopes away from the shore slide, and collapsed buildings can start fires that join the wildfire model. Rubble, landslide scars, and sand boils fade over a year and a half. It is a toy attenuation curve, not a ShakeMap.
 
@@ -120,6 +120,7 @@ The notebook reproduces the shipped presets byte for byte, so you can rebuild th
 - [x] One link that shares the whole city
 - [x] Air pollution
 - [x] Hazard report card
+- [x] Transit that cleans the air
 
 ## Credits
 
