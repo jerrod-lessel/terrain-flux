@@ -22,6 +22,8 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 - 🌍 **Generate a map** with sliders for hills, water, and trees, plus optional coastline and river.
 - 🌊 **Raise or lower the sea**, place lakes, and make waterfalls on slopes.
 - 🏙️ **Zone and grow a city.** 9 building types with 4 styles each, 36 designs, all drawn in code.
+- 🏥 **Build civic buildings:** parks, hospitals, fire stations, police stations, and stadiums, 21 designs in all. Each one changes how the city around it grows.
+- 🌬️ **Feel the wind:** gusts roll across the map and set the forests they pass swaying.
 - 🚗 **Watch traffic** fill the roads near homes and jobs, while the road to nowhere stays empty.
 - 🔄 **Rotate**, zoom, toggle a grid, switch between classic green and an elevation color ramp, or turn on chunky retro pixels.
 - 💾 **Save** to your browser or **export** a map as JSON.
@@ -49,6 +51,10 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 
 **Growth.** Any zone next to a road can become a small building. Bigger buildings need a real neighborhood around them and demand nearby: homes need jobs, while shops and factories need residents. Lone zones stay rural forever. Buildings shrink if their demand disappears. Hover a zone to see what it is waiting for.
 
+**Civic buildings.** Each one reaches a radius of tiles. Parks speed up nearby homes and count as a nicer neighborhood. Hospitals count as jobs for homes. Fire stations speed up factories. Police stations speed up everything, and towers need police coverage. Stadiums boost shops and pull crowds onto the roads.
+
+**Wind.** A slowly shifting wind spawns gusts upwind that drift across the map. Only the screen area under each gust gets redrawn, so a calm forest costs nothing.
+
 **Traffic.** Each road tile scores the development within 3 tiles, then spreads that score along the road network with a 28% falloff per tile. Cars hide behind buildings using a small depth buffer of building silhouettes.
 
 ## Add your own place
@@ -64,7 +70,8 @@ The notebook reproduces the shipped presets byte for byte, so you can rebuild th
 - [x] Real place presets
 - [x] About panel
 - [x] Smoother traffic
-- [ ] Special buildings: parks, hospitals, fire and police stations, stadiums, each with real effects
+- [x] Civic buildings: parks, hospitals, fire and police stations, stadiums, each with real effects
+- [x] Wind gusts and swaying trees
 - [ ] Sea level rise scenarios in meters on real terrain
 - [ ] Contour line overlay
 - [ ] Wildfire, then post-fire debris flows
