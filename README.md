@@ -25,6 +25,7 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 - 🌧️ **Bring a storm** after a fire and watch debris flows run down the burned drainages, using a simplified USGS M1 likelihood model borrowed from [Scar Threshold](https://scar-threshold.pages.dev).
 - ⏱️ **Pick a game speed:** pause, slow, normal, or fast.
 - 📊 **Get a hazard report card:** A to F grades for wildfire, debris flow, earthquake, sea level rise, air quality, and services, by the share of residents exposed, with each one viewable on the map.
+- 🗺️ **Map layers** for air pollution, fire, police, hospital, and transit coverage, wildfire risk, liquefaction, debris flow, sea level rise, and service gaps, so you can see where to build next.
 - 🌫️ **Watch the air:** factories, busy roads, and smoke pollute, the wind carries it downwind, and homes struggle to grow in dirty air.
 - 🌎 **Trigger an earthquake:** pick a magnitude and an epicenter, then watch buildings collapse, slopes slide, waterfront ground liquefy, bridges drop, and fires break out.
 - 🔥 **Start a wildfire** and watch it run downwind and uphill, leave a burn scar graded by severity, and heal over a few game years.
@@ -54,6 +55,7 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 | Undo | `Ctrl` + `Z` |
 | Grid / contours / tint / retro pixels | `G` / `C` / `T` / `P` |
 | Day, cycle, night | `N` |
+| Map layers | `L` |
 | Pause / slow / normal / fast | `Space` / `1` / `2` / `3` |
 | Cancel a road | `Esc` |
 
@@ -77,7 +79,7 @@ X1 is the share of the drainage that is steep (23 degrees or more) and burned at
 
 **Air pollution.** Heavy industry, factories, sheds, busy roads, and burning tiles emit pollution that spreads as a simple wind-driven plume: it widens as it travels downwind, fades with distance, and barely reaches upwind. Traffic is a short-range source; heavy industry plumes reach about 10 tiles. Bus depots take a quarter of the cars off nearby roads and cut traffic pollution by a third, EV charging cuts tailpipe pollution by 30%, bike share removes a fifth of trips, and park trees soak up a little. Homes in moderate air grow slower and cannot become towers; homes in unhealthy air stay small. A dense test downtown with no transit graded D on air (32% of homes exposed); adding one bus depot, two EV chargers, and two bike shares brought it to A with a larger population. In a test town, factories upwind of the homes held population to about 1,800, while the same factories downwind allowed about 12,100.
 
-**Hazard report card.** Each category counts residents exposed: homes with at least 4 forest tiles within 3 tiles, halved inside fire station coverage (wildfire), homes in Moderate or High debris flow drainages at 24 mm/hr, homes on liquefiable ground, homes underwater at +2 m (coastal real places), homes in moderate or worse air, and average coverage by fire, police, and hospitals. Exposure under 5% earns an A, then B under 15%, C under 30%, D under 50%, and F above. A small nod to tools like CalEnviroScreen that map burden against where people live.
+**Hazard report card.** Each category counts residents exposed: homes with at least 4 forest tiles within 3 tiles, with each fire station that reaches a home cutting its risk to 40% (wildfire), homes in Moderate or High debris flow drainages at 24 mm/hr, homes on liquefiable ground, homes underwater at +2 m (coastal real places), homes in moderate or worse air, and average coverage by fire, police, and hospitals. Exposure under 5% earns an A, then B under 15%, C under 30%, D under 50%, and F above. A small nod to tools like CalEnviroScreen that map burden against where people live.
 
 **Earthquakes.** Shaking uses a Modified Mercalli style intensity that falls off with distance, `MMI = 1.68 + 1.2 M - 2.6 log10(R + 5)` with R in km, and low flat ground next to water shakes one step harder (liquefaction). Each tile then rolls for damage: buildings collapse above a type-specific intensity (towers and heavy industry first, houses last), roads crack, bridges drop a whole span, steep slopes away from the shore slide, and collapsed buildings can start fires that join the wildfire model. Rubble, landslide scars, and sand boils fade over a year and a half. It is a toy attenuation curve, not a ShakeMap.
 
@@ -121,6 +123,7 @@ The notebook reproduces the shipped presets byte for byte, so you can rebuild th
 - [x] Air pollution
 - [x] Hazard report card
 - [x] Transit that cleans the air
+- [x] Map layers for coverage and gaps
 
 ## Credits
 
