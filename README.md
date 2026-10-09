@@ -26,6 +26,7 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 - 🏥 **Build civic buildings:** parks, hospitals, fire stations, police stations, and stadiums, 21 designs in all. Each one changes how the city around it grows.
 - 🌬️ **Feel the wind:** gusts roll across the map and set the forests they pass swaying.
 - 🚗 **Watch traffic** fill the roads near homes and jobs, while the road to nowhere stays empty.
+- 〰️ **Contour lines** from the real elevation, with a sensible interval picked for each place and bold index contours.
 - 🔄 **Rotate**, zoom, toggle a grid, switch between classic green and an elevation color ramp, or turn on chunky retro pixels.
 - 💾 **Save** to your browser or **export** a map as JSON.
 
@@ -35,12 +36,12 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 
 | Action | Input |
 |---|---|
-| Use the selected tool | Left click or drag |
+| Use the selected tool (starts on Pan) | Left click or drag |
 | Pan | Right drag, middle drag, Alt + drag, arrows, or WASD |
 | Zoom | Mouse wheel, `+` / `-` |
 | Rotate view | `Q` / `E` |
 | Undo | `Ctrl` + `Z` |
-| Grid / tint / retro pixels | `G` / `T` / `P` |
+| Grid / contours / tint / retro pixels | `G` / `C` / `T` / `P` |
 | Pause growth | `Space` |
 | Cancel a road | `Esc` |
 
@@ -51,6 +52,8 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 **Real places.** Elevation is exported from Google Earth Engine in California Albers (EPSG:3310), cropped to the center square, box-averaged to 129 by 129, and stored in the HTML as 16-bit meters. Anything at or below 0 m becomes sea. Peaks steeper than the one-step rule allows are softened into slopes, which is why Yosemite's granite walls come out as stairs.
 
 **Sea level rise.** Flooding uses the real SRTM meters stored with each place, not the game's blocky steps, and only spreads to land connected to the ocean (a breadth-first search from the sea), so low ground behind a ridge stays dry. It is a preview and destroys nothing. SRTM's vertical accuracy is a few meters, so small rises often fall below what the data can resolve.
+
+**Contours.** Each tile runs marching squares on its four corners and draws the segments onto the tilted tile surface. Real places contour the true SRTM meters at an interval of about one twentieth of the relief (20 m for San Francisco, 50 m for Morro Bay, 100 m for Yosemite), with every fifth line bold.
 
 **Growth.** Any zone next to a road can become a small building. Bigger buildings need a real neighborhood around them and demand nearby: homes need jobs, while shops and factories need residents. Lone zones stay rural forever. Buildings shrink if their demand disappears. Hover a zone to see what it is waiting for.
 
@@ -76,7 +79,7 @@ The notebook reproduces the shipped presets byte for byte, so you can rebuild th
 - [x] Civic buildings: parks, hospitals, fire and police stations, stadiums, each with real effects
 - [x] Wind gusts and swaying trees
 - [x] Sea level rise scenarios in meters on real terrain
-- [ ] Contour line overlay
+- [x] Contour line overlay
 - [ ] Wildfire, then post-fire debris flows
 - [ ] Bridges
 - [ ] Day and night cycle
