@@ -288,7 +288,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       GeoTIFF reading: geotiff.js (MIT license).<br>
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
-      <p class="credit">Version 5.0 · MIT license</p>
+      <p class="credit">Version 5.1 · MIT license</p>
       <div class="btns"><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -2046,19 +2046,21 @@ function showReport() {
 // Tinted overlays that show where things reach and where the gaps are.
 const LAYERS = {
   air:    { icon: '🌫️', name: 'Air pollution', legend: 'yellow = moderate, brown to purple = unhealthy' },
-  fire:   { icon: '🚒', name: 'Fire coverage', legend: 'green = covered (darker = more stations), red = homes and businesses with no fire station' },
-  police: { icon: '🚓', name: 'Police coverage', legend: 'blue = covered (darker = more stations), red = homes and businesses with no police' },
-  hosp:   { icon: '🏥', name: 'Hospital coverage', legend: 'pink = covered, red = homes with no hospital nearby' },
-  transit:{ icon: '🚌', name: 'Transit reach', legend: 'teal = cleaner traffic (darker = stronger), orange = busy roads with no transit' },
+  fire:   { icon: '🚒', name: 'Fire coverage', legend: 'green = covered (darker = more stations), red = homes and businesses with no fire station. Everything else dims so the gaps stand out.' },
+  police: { icon: '🚓', name: 'Police coverage', legend: 'blue = covered (darker = more stations), red = homes and businesses with no police. Everything else dims so the gaps stand out.' },
+  hosp:   { icon: '🏥', name: 'Hospital coverage', legend: 'pink = covered, red = homes with no hospital nearby. Everything else dims so the gaps stand out.' },
+  transit:{ icon: '🚌', name: 'Transit reach', legend: 'teal = cleaner traffic (darker = stronger), orange = busy roads with no transit. Everything else dims so the gaps stand out.' },
   wui:    { icon: '🔥', name: 'Wildfire risk', legend: 'orange to red = homes and land near forest, fading where fire stations reach' },
   quake:  { icon: '🌎', name: 'Liquefaction', legend: 'purple = low, wet ground that shakes harder in an earthquake' },
   debris: { icon: '🌧️', name: 'Debris flow', legend: 'orange = Moderate, red = High drainages at 24 mm/hr' },
   slr:    { icon: '🌊', name: 'Sea level rise', legend: 'blue = underwater at +2 m' },
-  gaps:   { icon: '🧩', name: 'Service gaps', legend: 'red = homes missing fire, police, or hospital coverage' },
+  gaps:   { icon: '🧩', name: 'Service gaps', legend: 'red = homes missing fire, police, or hospital coverage. Everything else dims so the gaps stand out.' },
 };
-let layer = null, layerFill = new Array(N * N).fill(null);
+let layer = null, layerFill = new Array(N * N).fill(null), spotList = [];
+// Gap layers spotlight the gaps: the rest of the map dims, gaps stay bright with a red outline.
+const SPOT_LAYERS = new Set(['fire', 'police', 'hosp', 'transit', 'gaps']);
 function computeLayer() {
-  layerFill.fill(null);
+  layerFill.fill(null); spotList = [];
   if (!layer) return;
   const rgba = (r, g, b, a) => `rgba(${r},${g},${b},${a.toFixed(2)})`;
   const occupied = t => zone[t] || bld[t];
@@ -2081,7 +2083,36 @@ function computeLayer() {
       case 'gaps': c = zone[t] === 1 && !(civFireN[t] && civPoliceN[t] && civHospN[t]) ? rgba(220, 40, 40, 0.55) : null; break;
     }
     layerFill[t] = c;
+    if (SPOT_LAYERS.has(layer)) {
+      const gap = layer === 'fire' ? !civFireN[t] && occupied(t) : layer === 'police' ? !civPoliceN[t] && occupied(t)
+        : layer === 'hosp' ? !civHospN[t] && zone[t] === 1 : layer === 'transit' ? road[t] && traffic[t] > 0.3 && civEmit[t] >= 0.99
+        : zone[t] === 1 && !(civFireN[t] && civPoliceN[t] && civHospN[t]);
+      if (gap) spotList.push(t);
+    }
   }
+}
+// Spotlight canvas, built with the map cache: a dark veil with the gap tiles (and whatever stands on them) cut out
+const spotCan = document.createElement('canvas'), spx = spotCan.getContext('2d');
+let spotOn = false;
+function buildSpot() {
+  spotOn = !!(layer && SPOT_LAYERS.has(layer));
+  if (!spotOn) return;
+  const W = cache.width, Hh = cache.height;
+  if (spotCan.width !== W || spotCan.height !== Hh) { spotCan.width = W; spotCan.height = Hh; }
+  spx.setTransform(1, 0, 0, 1, 0, 0); spx.globalCompositeOperation = 'source-over';
+  spx.clearRect(0, 0, W, Hh); spx.fillStyle = 'rgba(6,10,20,0.7)'; spx.fillRect(0, 0, W, Hh);
+  spx.setTransform(cacheZoom, 0, 0, cacheZoom, cacheCX, cacheCY);
+  const shapes = [];
+  for (const t of spotList) {
+    const x = t % N, y = (t / N) | 0, v = w2vt(x, y), q = surfQuad(v[0], v[1]);
+    const up = (bld[t] || civ[t]) ? 62 : tree[t] ? 18 : 4;
+    // tile top plus the column above it: L, B, R on the ground, then R, T, L lifted
+    shapes.push([q[6], q[7], q[4], q[5], q[2], q[3], q[2], q[3] - up, q[0], q[1] - up, q[6], q[7] - up], q);
+  }
+  spx.globalCompositeOperation = 'destination-out'; spx.fillStyle = '#000';
+  for (const [p] of shapes) { spx.beginPath(); spx.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) spx.lineTo(p[i], p[i + 1]); spx.closePath(); spx.fill(); }
+  spx.globalCompositeOperation = 'source-over'; spx.strokeStyle = '#ff4a4a'; spx.lineWidth = 2 / cacheZoom; spx.lineJoin = 'round';
+  for (const [, q] of shapes) { spx.beginPath(); spx.moveTo(q[0], q[1]); for (let i = 2; i < 8; i += 2) spx.lineTo(q[i], q[i + 1]); spx.closePath(); spx.stroke(); }
 }
 function setLayer(k) {
   layer = k;
@@ -2236,6 +2267,7 @@ function buildCache() {
   depthData = dctx.getImageData(0, 0, W, Hh).data; depthW = W; depthH = Hh;
   tdepthData = tctx.getImageData(0, 0, W, Hh).data;
   for (const q of gusts) q.prev = zoom >= 0.3 ? gustRect(q) : null;
+  buildSpot();
 }
 
 function surfQuad(vx, vy) {
@@ -2273,6 +2305,7 @@ function composite() {
   }
   headlights.length = 0;
   carsLive = drawCars() > 0;
+  if (spotOn) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(spotCan, Math.round(camX - cacheCX), Math.round(camY - cacheCY)); ctx.restore(); }
   drawNight();
   { const now = performance.now(); drawStormFX(Math.min(0.1, (now - (composite.last || now)) / 1000)); drawFire(Math.min(0.1, (now - (composite.last || now)) / 1000)); composite.last = now; }
   // road ghost
