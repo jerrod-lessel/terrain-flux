@@ -30,6 +30,7 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 - 🌬️ **Feel the wind:** gusts roll across the map and set the forests they pass swaying.
 - 🌉 **Bridge the water:** drag a road across a river or bay and it becomes a bridge on pillars, up to 16 tiles long.
 - 🚗 **Watch traffic** fill the roads near homes and jobs, while the road to nowhere stays empty.
+- 🌙 **Day and night:** always day, always night, or a slow cycle (one day is five real minutes, so nothing flashes). Windows, streetlights, and headlights come on one by one at dusk.
 - 〰️ **Contour lines** from the real elevation, with a sensible interval picked for each place and bold index contours.
 - 🔄 **Rotate**, zoom, toggle a grid, switch between classic green and an elevation color ramp, or turn on chunky retro pixels.
 - 💾 **Save** to your browser or **export** a map as JSON.
@@ -46,6 +47,7 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 | Rotate view | `Q` / `E` |
 | Undo | `Ctrl` + `Z` |
 | Grid / contours / tint / retro pixels | `G` / `C` / `T` / `P` |
+| Day, cycle, night | `N` |
 | Pause / slow / normal / fast | `Space` / `1` / `2` / `3` |
 | Cancel a road | `Esc` |
 
@@ -96,7 +98,7 @@ The notebook reproduces the shipped presets byte for byte, so you can rebuild th
 - [x] Post-fire debris flows (inspired by [Scar Threshold](https://github.com/jerrod-lessel/scar-threshold))
 - [x] Game speeds
 - [x] Bridges
-- [ ] Day and night cycle
+- [x] Day and night cycle
 - [ ] Shareable map links
 - [ ] Hills that hide cars
 - [ ] Pinch to zoom on phones
