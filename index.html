@@ -33,7 +33,10 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
 .hud{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
 .lcd{background:var(--lcd);color:var(--lcd-ink);padding:1px 8px;font-size:19px;min-width:64px;text-align:center;border:2px solid;border-color:#000 #555 #555 #000;}
 .lcd b{font-weight:normal;color:#b9ffb0;opacity:.7;margin-right:4px;}
-#btn-sim,#btn-about{min-width:38px;height:28px;font-size:16px;cursor:pointer;}
+#btn-about,.spd{min-width:34px;height:28px;font-size:16px;cursor:pointer;}
+.speeds{display:flex;gap:2px;padding:1px;}
+.spd{border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);background:var(--panel);padding:0 4px;}
+.spd.on{border-color:var(--lo) var(--hi) var(--hi) var(--lo);background:var(--well);}
 #aboutbox .body{display:block;font-size:17px;line-height:1.3;max-height:70vh;overflow-y:auto;}
 #aboutbox .body p{margin:0 0 9px;}
 #aboutbox h3{font-family:'Press Start 2P',monospace;font-size:9px;margin:12px 0 6px;color:var(--dim);font-weight:normal;}
@@ -109,7 +112,12 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
     <div class="lcd" id="hud-date">JAN 1900</div>
     <div class="lcd"><b>POP</b><span id="hud-pop">0</span></div>
     <div class="lcd"><b>JOBS</b><span id="hud-jobs">0</span></div>
-    <button id="btn-sim" class="bev" title="Pause or resume growth (Space)">⏸</button>
+    <div class="speeds bev" title="Game speed">
+      <button class="spd" data-s="0" title="Pause (Space)">⏸</button>
+      <button class="spd" data-s="1" title="Slow: a month every 4 seconds (1)">🐢</button>
+      <button class="spd on" data-s="2" title="Normal: a month every 1.6 seconds (2)">🦙</button>
+      <button class="spd" data-s="3" title="Fast: a month every 0.6 seconds (3)">🐆</button>
+    </div>
     <button id="btn-about" class="bev" title="About Terrain Flux">ℹ️</button>
   </div>
 </header>
@@ -121,7 +129,6 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       <button class="tb" data-tool="raise" title="Raise terrain">▲</button>
       <button class="tb" data-tool="lower" title="Lower terrain">▼</button>
       <button class="tb" data-tool="level" title="Level terrain to the first tile you click">═</button>
-      <button class="tb" data-tool="smooth" title="Smooth terrain">〰</button>
       <button class="tb" data-tool="water" title="Place water (lakes, waterfalls)">💧</button>
       <button class="tb" data-tool="trees" title="Plant trees">🌲</button>
       <button class="tb" id="sea-up" title="Raise sea level">🌊<small>+</small></button>
@@ -143,6 +150,17 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       <button class="tb" data-tool="civ3" title="Fire station: factories nearby grow faster">🚒</button>
       <button class="tb" data-tool="civ4" title="Police station: towers need police coverage">🚓</button>
       <button class="tb" data-tool="civ5" title="Stadium: shops nearby boom">🏟️</button>
+    </div>
+    <div class="sect">Disasters</div>
+    <div class="grid2">
+      <button class="tb" data-tool="fire" title="Start a wildfire">🔥</button>
+      <button class="tb" data-tool="storm" title="Storms and debris flows">🌧️</button>
+    </div>
+    <div id="storm-panel" style="display:none;flex-direction:column;gap:6px">
+      <div class="row" title="Peak 15-minute rainfall intensity">💧<input type="range" id="i15" min="5" max="60" step="1" value="24"><span id="i15-v" style="min-width:22px;text-align:right">24</span></div>
+      <div class="small">mm/hr of rain at the storm's peak</div>
+      <button class="txt" id="btn-rain">🌧️ Make it rain</button>
+      <div class="small" id="storm-stats"></div>
     </div>
     <div id="toolname" class="sunk">Pan</div>
     <div class="row" title="Brush size in tiles">⬚<input type="range" id="brush" min="1" max="6" value="1"><span id="brushv">1</span></div>
@@ -245,12 +263,13 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       <h3>How it works</h3>
       <p>The map is a grid of 128 by 128 tiles, and each tile can tilt to make a slope. One rule keeps the land believable: the ground can only rise or fall one step from one tile to the next. When you raise or lower a spot, the land around it adjusts to follow that rule, which is what gives the hills their classic SimCity look.</p>
       <p>Real places start as 30 m elevation data exported from Google Earth Engine. The app crops it to a square, shrinks it to fit the grid, and softens any cliffs too steep for the one-step rule. A city then grows on top using simple rules about roads, neighbors, and demand.</p>
+      <p>Debris flows after a fire use a simplified version of the USGS M1 likelihood model, the same one behind <a href="https://scar-threshold.pages.dev" target="_blank" rel="noopener">Scar Threshold</a>, my real post-fire hazard map. Here the burn severity comes from the game's own fires and soil is held constant, so it is a toy, not a forecast.</p>
       <h3>Credits</h3>
       <p class="credit">Elevation: SRTM 30 m, NASA and USGS, via Google Earth Engine.<br>
       GeoTIFF reading: geotiff.js (MIT license).<br>
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
-      <p class="credit">Version 4.1 · MIT license</p>
+      <p class="credit">Version 4.3 · MIT license</p>
       <div class="btns"><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -266,9 +285,11 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       <p>Civic buildings change the city around them. Parks make homes nicer, hospitals act like jobs, fire stations help factories, stadiums pack the shops and the roads, and every tower needs police coverage. Pick one to see its reach.</p>
       <p>Wind gusts roll across the map and set the trees they pass swaying. Watch the wind readout in the status bar.</p>
       <p>Sea level rise works on coastal real places. It floods using the real elevation, and only land connected to the ocean, so low spots behind high ground stay dry. Hover a flooded tile to see it, and the panel totals the land, buildings, and people affected.</p>
-      <p>Water placed on a slope makes a waterfall. The sea level buttons flood or drain the whole map.</p>
+      <p>Storms (🌧️) turn burn scars into debris flow danger. Each drainage gets a likelihood from a simplified version of the USGS M1 model used in Scar Threshold: steep burned ground, burn severity, and rain rate. Make it rain and High drainages usually let go, sending mud down the channel and spreading a fan where the ground flattens.</p>
+      <p>Water pools on flat ground. Place it on a slope and it runs downhill as a stream, with waterfalls, until it reaches water or a low spot. The sea level buttons flood or drain the whole map.</p>
+      <p>Wildfires run downwind and uphill. Forest burns long and hot, grass burns fast and light, and roads, water, beaches, and bare rock stop them. Fire stations slow fires inside their reach. Burned ground stays scarred by severity and heals over about five game years, and forests grow back.</p>
       <p>Load DEM takes a real GeoTIFF, crops the center square, and squeezes it into 128 by 128 tiles. Cliffs get softened into slopes because the engine refuses to do anything else.</p>
-      <p>Keys: Q/E rotate, +/- zoom, arrows or WASD pan, G grid, C contours, T tint, P pixels, Space pause, Esc cancel.</p>
+      <p>Keys: Space pause, 1/2/3 slow/normal/fast, Q/E rotate, +/- zoom, arrows or WASD pan, G grid, C contours, T tint, P pixels, Esc cancel.</p>
       <div class="btns"><button class="txt" id="help-close" style="text-align:center">Got it</button></div>
     </div>
   </div>
@@ -291,7 +312,9 @@ const bld  = new Uint8Array(N * N);    // building sprite id
 const dens = new Float32Array(N * N);
 let sea = 4, rot = 0, zi = 3, zoom = ZOOMS[3], camX = 0, camY = 0, pixelScale = 1;
 let showGrid = true, tint = 'hypso', tool = 'pan', brush = 1, levelTarget = 0;
-let dem = null, month = 0, simOn = true;
+let dem = null, month = 0, simOn = true, speed = 2, lastSpeed = 2, lastSim = 0, carClock = 0, carClockLast = 0;
+// Game speed: one month of growth per tick. Fire, debris flows and traffic scale with it; weather stays real-time.
+const MONTH_MS = [0, 4000, 1600, 600], FIRE_MS = [0, 480, 300, 160], CAR_K = [0.6, 0.6, 0.85, 1.3];
 let hover = null, drag = null, roadGhost = [], holdTimer = null, panTimer = null;
 const undoStack = [];
 let cacheDirty = true, compDirty = true, mmBaseDirty = true, mmViewDirty = true;
@@ -425,7 +448,7 @@ function drawTile(g, vx, vy, lod) {
   if (mn < sea) s = Math.max(s, sea);
 
   if (s < 0) {
-    const base = landColor(wx, wy, mn, (ht + hr + hb + hl) / 4);
+    const base = mudTint(scarTint(landColor(wx, wy, mn, (ht + hr + hb + hl) / 4), t), t);
     if (Math.abs(ht - hb) > Math.abs(hr - hl)) {
       poly(g, [Tx, Ty, Rx, Ry, Lx, Ly], shadeCol(base, lit(0, 0, ht, 1, 0, hr, 0, 1, hl)));
       poly(g, [Rx, Ry, Bx, By, Lx, Ly], shadeCol(base, lit(1, 0, hr, 1, 1, hb, 0, 1, hl)));
@@ -433,6 +456,7 @@ function drawTile(g, vx, vy, lod) {
       poly(g, [Tx, Ty, Rx, Ry, Bx, By], shadeCol(base, lit(0, 0, ht, 1, 0, hr, 1, 1, hb)));
       poly(g, [Tx, Ty, Bx, By, Lx, Ly], shadeCol(base, lit(0, 0, ht, 1, 1, hb, 0, 1, hl)));
     }
+    if (hazCls[t] && hazardView()) polyNoStroke(g, [Tx, Ty, Rx, Ry, Bx, By, Lx, Ly], HAZ_COL[hazCls[t]] + (accA[t] >= CHANNEL_A ? '0.78)' : '0.3)'));
     if (flood[t] === 1) { polyNoStroke(g, [Tx, Ty, Rx, Ry, Bx, By, Lx, Ly], 'rgba(52,128,212,0.8)'); if (!partialMode) waterVis.push(Tx, (Ty + By) / 2, ((wx * 7919) ^ (wy * 104729)) & 1023); }
     if (showGrid && !lod) outlinePts(g, [Tx, Ty, Rx, Ry, Bx, By, Lx, Ly], 'rgba(0,0,0,0.22)', px1);
     if (showContours && flood[t] !== 1) drawContours(g, vx, vy, ht, hr, hb, hl, lod);
@@ -801,7 +825,7 @@ const CIVIC = [null,
   { key: 'hospital', name: 'Hospital',       icon: '🏥', r: 9,  styles: 4, sil: 34, w: 4, color: [240, 240, 236],
     effect: 'Within 9 tiles, counts as jobs for nearby homes, and homes grow 20% faster.' },
   { key: 'fire',     name: 'Fire station',   icon: '🚒', r: 10, styles: 4, sil: 22, w: 3, color: [200, 60, 44],
-    effect: 'Factories within 10 tiles grow 30% faster. Will fight wildfires when those arrive.' },
+    effect: 'Factories within 10 tiles grow 30% faster. Slows wildfires inside its reach and puts them out sooner.' },
   { key: 'police',   name: 'Police station', icon: '🚓', r: 10, styles: 4, sil: 18, w: 3, color: [70, 100, 170],
     effect: 'Everything within 10 tiles grows 20% faster, and towers (tier 3) need police coverage.' },
   { key: 'stadium',  name: 'Stadium',        icon: '🏟️', r: 9,  styles: 4, sil: 16, w: 2, color: [170, 170, 170],
@@ -842,7 +866,7 @@ const civDense = new Float32Array(N * N), civDemR = new Float32Array(N * N), civ
 const civPolice = new Uint8Array(N * N);
 function recomputeCivic() {
   civBoost[1].fill(1); civBoost[2].fill(1); civBoost[3].fill(1);
-  civDense.fill(0); civDemR.fill(0); civDemC.fill(0); civPolice.fill(0);
+  civDense.fill(0); civDemR.fill(0); civDemC.fill(0); civPolice.fill(0); civFire.fill(0);
   for (let wy = 0; wy < N; wy++) for (let wx = 0; wx < N; wx++) {
     const id = civ[wy * N + wx]; if (!id) continue;
     if (id === 5 && civA[wy * N + wx] !== wy * N + wx) continue; // count each stadium once, from its anchor
@@ -853,7 +877,7 @@ function recomputeCivic() {
       const t = Y * N + X;
       if (id === 1) { civBoost[1][t] *= 1.4; civDense[t] += 10; }
       else if (id === 2) { civBoost[1][t] *= 1.2; civDemR[t] += 15; }
-      else if (id === 3) { civBoost[3][t] *= 1.3; }
+      else if (id === 3) { civBoost[3][t] *= 1.3; civFire[t] = 1; }
       else if (id === 4) { civBoost[1][t] *= 1.2; civBoost[2][t] *= 1.2; civBoost[3][t] *= 1.2; civPolice[t] = 1; }
       else if (id === 5) { civBoost[2][t] *= 1.5; civDemC[t] += 20; }
     }
@@ -1045,16 +1069,12 @@ function redrawRect(r) {
   cx.setTransform(z, 0, 0, z, cacheCX, cacheCY); cx.lineWidth = 1 / z; cx.lineJoin = 'round';
   partialMode = true;
   const lod = z < 0.3, topPad = (MAXH * HS + 70) * z, botPad = (TH + (-BASE + 1) * HS) * z, side = TW * z;
-  for (let d = 0; d <= 2 * N - 2; d++) {
-    const sy = d * TH / 2 * z + cacheCY;
-    if (sy - topPad > y1) break;
-    if (sy + botPad < y0) continue;
-    const v0 = Math.max(0, d - N + 1), v1 = Math.min(N - 1, d);
-    for (let vx = v0; vx <= v1; vx++) {
-      const vy = d - vx, sx = (vx - vy) * TW / 2 * z + cacheCX;
-      if (sx < x0 - side || sx > x1 + side) continue;
-      drawTile(cx, vx, vy, lod);
-    }
+  const hz = TH / 2 * z, wz = TW / 2 * z;
+  const dMin = Math.max(0, Math.floor((y0 - botPad - cacheCY) / hz)), dMax = Math.min(2 * N - 2, Math.ceil((y1 + topPad - cacheCY) / hz));
+  for (let d = dMin; d <= dMax; d++) {
+    const v0 = Math.max(0, d - N + 1, Math.ceil(((x0 - side - cacheCX) / wz + d) / 2));
+    const v1 = Math.min(N - 1, d, Math.floor(((x1 + side - cacheCX) / wz + d) / 2));
+    for (let vx = v0; vx <= v1; vx++) drawTile(cx, vx, d - vx, lod);
   }
   partialMode = false;
   cx.restore();
@@ -1094,6 +1114,355 @@ function windStep(ts) {
     if (u) { redrawRect(u); compDirty = true; }
     q.prev = r;
   }
+}
+
+// ===== Wildfire =====
+// Fire spreads tile to tile. Wind pushes it downwind (gusts make it jump), it runs uphill faster,
+// forest burns long and hot, grass burns fast and light, and roads, water, beaches, bare rock and
+// fresh burn scars stop it. Fire stations slow it and help put it out. Each burned tile keeps a
+// severity (1 low, 2 moderate, 3 high) that fades as the land recovers over a few game years.
+const burnT = new Float32Array(N * N);     // ticks of burning left (0 = not burning)
+const burnSev = new Uint8Array(N * N);     // scar severity
+const scarMonth = new Int32Array(N * N);   // month the tile burned
+const treeWas = new Uint8Array(N * N);     // forest before the fire, for regrowth
+const civFire = new Uint8Array(N * N);     // fire station coverage
+let burning = [], fireLast = 0, fireStats = null, smokeP = [];
+const SCAR_COL = [null, [150, 128, 92], [92, 74, 58], [44, 38, 34]];
+const SCAR_FADE = 48, SCAR_GONE = 60;      // months
+
+function scarK(t) { // how visible the scar still is (1 fresh, 0 healed)
+  if (!burnSev[t]) return 0;
+  const age = month - scarMonth[t];
+  return age >= SCAR_GONE ? 0 : age <= 12 ? 1 : 1 - (age - 12) / (SCAR_GONE - 12);
+}
+function scarTint(c, t) {
+  const k = scarK(t); if (!k) return c;
+  const s = SCAR_COL[burnSev[t]];
+  return [c[0] + (s[0] - c[0]) * k, c[1] + (s[1] - c[1]) * k, c[2] + (s[2] - c[2]) * k];
+}
+function gustAt(wx, wy) {
+  let s = 0;
+  for (const q of gusts) { const dx = wx + 0.5 - q.x, dy = wy + 0.5 - q.y, d2 = dx * dx + dy * dy; if (d2 < q.r * q.r) { const f = 1 - Math.sqrt(d2) / q.r; s += q.str * f * f; } }
+  return Math.min(1, s);
+}
+// 0 nothing to burn, 1 grass, 2 forest, 3 building
+function fuelOf(wx, wy) {
+  const t = wy * N + wx;
+  if (road[t] || lake[t] || civ[t] || burnT[t] > 0) return 0;
+  const [mn, mx] = tMinMax(wx, wy);
+  if (mn < sea) return 0;
+  if (burnSev[t] && month - scarMonth[t] < 24) return 0; // already burned, nothing left yet
+  if (bld[t]) return 3;
+  if (tree[t]) return 2;
+  if (dem && tileM(wx, wy) > 2900) return 0; // bare rock above treeline
+  if (sea > 0 && mn === sea && (isWaterW(wx - 1, wy) || isWaterW(wx + 1, wy) || isWaterW(wx, wy - 1) || isWaterW(wx, wy + 1))) return 0; // beach
+  return 1;
+}
+const BURN_TICKS = [0, 2.5, 7, 8];
+const SPREAD = [0, 0.045, 0.075, 0.05];
+function ignite(wx, wy, quiet) {
+  const f = fuelOf(wx, wy);
+  if (!f) { if (!quiet) toast('Nothing here will burn.'); return false; }
+  const t = wy * N + wx;
+  burnT[t] = BURN_TICKS[f] * (0.8 + Math.random() * 0.4);
+  burning.push(t);
+  if (!fireStats) fireStats = { burned: 0, lost: 0, start: month };
+  return true;
+}
+function fireStep(ts) {
+  if (!burning.length || !simOn || ts - fireLast < FIRE_MS[speed]) return;
+  fireLast = ts;
+  const ux = Math.cos(wind.a), uy = Math.sin(wind.a), w = wind.spd / 12;
+  const changed = [], cur = burning;
+  burning = []; // ignite() adds newly lit tiles here; survivors are added below
+  for (const t of cur) {
+    const x = t % N, y = (t / N) | 0, hHere = tMinMax(x, y)[1];
+    const g = gustAt(x, y), cover = civFire[t];
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      const X = x + dx, Y = y + dy; if (!inW(X, Y)) continue;
+      const f = fuelOf(X, Y); if (!f) continue;
+      const len = Math.hypot(dx, dy), along = (dx * ux + dy * uy) / len;
+      let p = (f === 1 && isSteep(X, Y) ? 0.06 : SPREAD[f]) * Math.exp(0.9 * w * along) * (1 + 1.5 * g) / len;
+      p *= Math.max(0.5, Math.min(3, Math.exp(0.35 * (tMinMax(X, Y)[1] - hHere)))); // uphill runs
+      if (civFire[Y * N + X]) p *= 0.35;
+      if (Math.random() < p) ignite(X, Y, true);
+    }
+    burnT[t] -= cover ? 2 : 1;
+    if (burnT[t] <= 0) { burnOut(t, x, y); changed.push(t); } else burning.push(t);
+  }
+  if (changed.length) { redrawTiles(changed); mmBaseDirty = true; }
+  if (!burning.length && fireStats) {
+    const km2 = dem && dem.km ? (fireStats.burned * Math.pow(dem.km / N, 2)).toFixed(1) + ' km²' : fireStats.burned + ' tiles';
+    toast(`Fire out. ${km2} burned` + (fireStats.lost ? `, ${fireStats.lost} building${fireStats.lost > 1 ? 's' : ''} lost.` : '.'));
+    fireStats = null; computeTraffic();
+  }
+}
+function burnOut(t, x, y) {
+  burnT[t] = 0;
+  const [mn, mx] = tMinMax(x, y);
+  // steep grassland stands in for chaparral, which burns hotter than flat grass
+  let sev = bld[t] ? 3 : tree[t] ? (tree[t] >= 3 || mx > mn ? 3 : 2) : (isSteep(x, y) ? 2 : 1);
+  if (civFire[t]) sev = Math.max(1, sev - 1);
+  burnSev[t] = sev; scarMonth[t] = month; routeDirty = true;
+  if (tree[t]) treeWas[t] = tree[t];
+  if (bld[t]) { bld[t] = 0; dens[t] = 0; if (fireStats) fireStats.lost++; }
+  tree[t] = 0;
+  if (fireStats) fireStats.burned++;
+}
+// Burn scars heal; forests slowly grow back once the scar has faded.
+function recoverTick() {
+  let changed = false;
+  for (let t = 0; t < N * N; t++) {
+    if (!burnSev[t]) continue;
+    const age = month - scarMonth[t];
+    if (age === 12 || (age > 12 && age % 6 === 0)) changed = true; // scar color steps
+    if (age >= SCAR_GONE) {
+      burnSev[t] = 0; changed = true;
+      if (treeWas[t] && !road[t] && !bld[t] && !zone[t] && !civ[t] && !lake[t]) tree[t] = treeWas[t];
+      treeWas[t] = 0;
+    }
+  }
+  if (mudRecover()) changed = true;
+  if (changed) { cacheDirty = true; mmBaseDirty = true; routeDirty = true; if (tool === 'storm' && !storm) computeHazard(); }
+}
+
+// Screen-space rectangle (in cache pixels) covering one world tile and anything standing on it
+function tileRect(wx, wy) {
+  const v = w2vt(wx, wy), c = cornersW(wx, wy), z = cacheZoom;
+  const Tx = (v[0] - v[1]) * TW / 2, F = (v[0] + v[1]) * TH / 2;
+  const edge = (v[0] === N - 1 || v[1] === N - 1) ? (-BASE + 1) * HS : 2;
+  return { x0: (Tx - TW / 2 - 2) * z + cacheCX, x1: (Tx + TW / 2 + 2) * z + cacheCX,
+           y0: (F - Math.max(...c) * HS - 64) * z + cacheCY, y1: (F + TH - Math.min(...c) * HS + edge) * z + cacheCY };
+}
+function redrawTiles(list) {
+  if (cacheDirty) return;
+  if (list.length > 160) { cacheDirty = true; return; }
+  let u = null;
+  for (const t of list) u = unionRect(u, tileRect(t % N, (t / N) | 0));
+  if (u) { redrawRect(u); compDirty = true; }
+}
+
+// Flames and smoke, drawn every frame on top of the map
+function drawFire(dt) {
+  if (!burning.length && !smokeP.length) return false;
+  const T = performance.now() / 1000, ux = Math.cos(wind.a), uy = Math.sin(wind.a);
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const scr = (px, py, lift) => { const h = hAtW(px, py), v = w2v(px, py); return [((v[0] - v[1]) * TW / 2) * zoom + camX, ((v[0] + v[1]) * TH / 2 - h * HS - lift) * zoom + camY]; };
+  for (const t of burning) {
+    const x = t % N, y = (t / N) | 0, [sx, sy] = scr(x + 0.5, y + 0.5, 0);
+    if (sx < -40 || sy < -60 || sx > canvas.width + 40 || sy > canvas.height + 40) continue;
+    const ph = ((x * 92821) ^ (y * 68917)) & 255, big = bld[t] ? 1.4 : tree[t] ? 1.1 : 0.7;
+    ctx.fillStyle = 'rgba(255,110,30,0.22)';
+    ctx.beginPath(); ctx.ellipse(sx, sy - 4 * zoom, 18 * zoom, 10 * zoom, 0, 0, Math.PI * 2); ctx.fill();
+    for (let k = 0; k < 3; k++) {
+      const fl = 0.6 + 0.4 * Math.sin(T * 9 + ph + k * 2.1), fx = sx + (k - 1) * 6 * zoom, fh = (10 + 9 * fl) * big * zoom, fw = 4.5 * big * zoom;
+      ctx.fillStyle = '#e8401a'; ctx.fillRect(fx - fw / 2, sy - fh, fw, fh);
+      ctx.fillStyle = '#ffae22'; ctx.fillRect(fx - fw / 3, sy - fh * 0.75, fw * 0.66, fh * 0.75);
+      ctx.fillStyle = '#fff2a0'; ctx.fillRect(fx - fw / 6, sy - fh * 0.4, fw * 0.33, fh * 0.4);
+    }
+    if (smokeP.length < 500 && Math.random() < 0.25 * big) smokeP.push({ x: x + 0.5, y: y + 0.5, lift: 8 + Math.random() * 6, life: 1, r: 2 + Math.random() * 2 });
+  }
+  for (let i = smokeP.length - 1; i >= 0; i--) {
+    const p = smokeP[i];
+    p.x += ux * wind.spd * 0.02 * dt; p.y += uy * wind.spd * 0.02 * dt; p.lift += 14 * dt; p.life -= dt / 4; p.r += 3 * dt;
+    if (p.life <= 0 || !inW(Math.floor(p.x), Math.floor(p.y))) { smokeP.splice(i, 1); continue; }
+    const [sx, sy] = scr(p.x, p.y, p.lift);
+    ctx.fillStyle = `rgba(90,88,84,${(0.32 * p.life).toFixed(3)})`;
+    ctx.beginPath(); ctx.arc(sx, sy, p.r * zoom * 2, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+  return true;
+}
+
+// ===== Storms and post-fire debris flows =====
+// A nod to Scar Threshold. Water is routed downhill tile to tile (D8), the map is split into small
+// drainages, and each drainage gets a debris-flow likelihood from a simplified version of the USGS M1
+// model (Staley et al. 2017):
+//   x = -3.63 + (0.41*X1 + 0.67*X2 + 0.70*X3) * R,   p = 1 / (1 + e^-x)
+//   X1 = share of the drainage that is steep (23 degrees or more) AND burned at moderate or high severity
+//   X2 = average burn severity, as a stand-in for dNBR/1000
+//   X3 = soil erodibility, held at 0.25 because the game has no soil data
+//   R  = peak 15-minute rainfall in mm (the slider's mm/hr divided by 4)
+// Classes follow Scar Threshold: Low under 0.2, Moderate in between, High at 0.6 or above.
+// Only drainages with at least 10% recently burned ground are assessed, like a real post-fire assessment.
+const recv = new Int32Array(N * N), elevT = new Float32Array(N * N), basinOf = new Int32Array(N * N);
+const accA = new Float32Array(N * N), accB = new Float32Array(N * N), accC = new Float32Array(N * N), accD = new Float32Array(N * N);
+const hazCls = new Uint8Array(N * N), hazP = new Float32Array(N * N);
+const mud = new Uint8Array(N * N), mudMonth = new Int32Array(N * N);
+let routeDirty = true, hazDirty = true, i15 = 24, storm = null, flows = [], rainDrops = [];
+const KF = 0.25, STEEP = Math.tan(23 * Math.PI / 180), BASIN_A = 40, CHANNEL_A = 6;
+const DNBR = [0, 0.2, 0.45, 0.75];
+const HAZ_COL = [null, 'rgba(92,176,80,', 'rgba(238,150,40,', 'rgba(214,52,40,'];
+const HAZ_NAME = ['', 'Low', 'Moderate', 'High'];
+function hazardView() { return tool === 'storm' || !!storm; }
+function tileSizeM() { return dem && dem.km ? dem.km * 1000 / N : 100; }
+function tileElev(x, y) { return dem ? tileM(x, y) : tileAvg(x, y) * 45; }
+function isSteep(x, y) {
+  if (!dem) { const [mn, mx] = tMinMax(x, y); return mn !== mx; } // made-up maps: one step is about 24 degrees
+  const i = y * NC + x, s = tileSizeM();
+  const tl = cornerM(i), tr = cornerM(i + 1), br = cornerM(i + NC + 1), bl = cornerM(i + NC);
+  return Math.hypot(((tr + br) - (tl + bl)) / 2 / s, ((bl + br) - (tl + tr)) / 2 / s) >= STEEP;
+}
+function computeRouting() {
+  const order = [];
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const t = y * N + x, wet = isWaterW(x, y);
+    elevT[t] = wet ? -1e9 : tileElev(x, y) + (t % 7) * 1e-4;
+    if (!wet) order.push(t);
+  }
+  for (const t of order) {
+    const x = t % N, y = (t / N) | 0; let best = -1, drop = 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue; const X = x + dx, Y = y + dy; if (!inW(X, Y)) continue;
+      const n = Y * N + X, d = (elevT[t] - elevT[n]) / (dx && dy ? 1.414 : 1);
+      if (d > drop) { drop = d; best = n; }
+    }
+    recv[t] = best;
+  }
+  order.sort((a, b) => elevT[b] - elevT[a]);
+  accA.fill(0); accB.fill(0); accC.fill(0); accD.fill(0);
+  for (const t of order) {
+    const k = scarK(t), sev = burnSev[t];
+    accA[t] += 1; accC[t] += sev ? k : 0; accD[t] += DNBR[sev] * k;
+    if (sev >= 2 && isSteep(t % N, (t / N) | 0)) accB[t] += k;
+  }
+  for (const t of order) {
+    const r = recv[t]; if (r < 0 || elevT[r] < -1e8) continue;
+    accA[r] += accA[t]; accB[r] += accB[t]; accC[r] += accC[t]; accD[r] += accD[t];
+  }
+  basinOf.fill(-1);
+  for (const t of order) { // outlet = first tile downstream that drains BASIN_A tiles, or where flow ends
+    let cur = t;
+    for (let guard = 0; guard < 4000; guard++) {
+      if (accA[cur] >= BASIN_A) break;
+      const r = recv[cur]; if (r < 0 || elevT[r] < -1e8) break; cur = r;
+    }
+    basinOf[t] = cur;
+  }
+  routeDirty = false; hazDirty = true;
+}
+function basinP(o) { const R = i15 / 4, A = accA[o]; const x = -3.63 + (0.41 * accB[o] / A + 0.67 * accD[o] / A + 0.70 * KF) * R; return 1 / (1 + Math.exp(-x)); }
+function computeHazard() {
+  if (routeDirty) computeRouting();
+  hazCls.fill(0);
+  const seen = new Set(), counts = [0, 0, 0, 0];
+  for (let t = 0; t < N * N; t++) {
+    const o = basinOf[t]; if (o < 0) continue;
+    if (accC[o] / accA[o] < 0.1) continue;
+    const p = basinP(o), c = p >= 0.6 ? 3 : p >= 0.2 ? 2 : 1;
+    hazCls[t] = c; hazP[t] = p;
+    if (!seen.has(o)) { seen.add(o); counts[c]++; }
+  }
+  hazDirty = false;
+  const st = document.getElementById('storm-stats');
+  st.textContent = seen.size
+    ? `At ${i15} mm/hr: ${counts[3]} High, ${counts[2]} Moderate, ${counts[1]} Low drainage${seen.size > 1 ? 's' : ''}.`
+    : 'No recent burn scars on this map. Debris flows need a fire first, so try 🔥.';
+  return seen;
+}
+function refreshHazard() { computeHazard(); cacheDirty = true; }
+
+// ---- the storm ----
+const STORM_S = [0, 9, 6, 4], FLOW_MS = [0, 260, 160, 80];
+function startStorm() {
+  if (storm) return;
+  snapshot();
+  const assessed = computeHazard();
+  // rain puts out any fire still burning
+  const out = []; for (const t of burning) { burnOut(t, t % N, (t / N) | 0); out.push(t); } burning = [];
+  if (fireStats) fireStats = null;
+  if (out.length) redrawTiles(out);
+  storm = { el: 0, dur: STORM_S[Math.max(1, speed)], rolled: false, outlets: [...assessed], nFlows: 0, lost: 0, roads: 0, last: performance.now() };
+  cacheDirty = true;
+  toast(`🌧️ Storm: ${i15} mm/hr at its peak.`);
+}
+// For each drainage outlet, the highest steep, badly burned tile anywhere upstream of it: that is where a flow starts.
+function flowStarts() {
+  const best = new Map();
+  for (let t = 0; t < N * N; t++) {
+    if (burnSev[t] < 2 || !(scarK(t) > 0) || elevT[t] < -1e8 || !isSteep(t % N, (t / N) | 0)) continue;
+    let cur = t;
+    for (let g = 0; g < 600 && cur >= 0 && elevT[cur] > -1e8; g++) {
+      if (basinOf[cur] === cur) { const b = best.get(cur); if (b === undefined || elevT[t] > elevT[b]) best.set(cur, t); }
+      cur = recv[cur];
+    }
+  }
+  return best;
+}
+function makeFlow(o, start) {
+  if (start === undefined || start < 0) return null;
+  const path = [start], s = tileSizeM(); let cur = start, gentle = 0;
+  for (let i = 0; i < 90; i++) {
+    const r = recv[cur]; if (r < 0 || elevT[r] < -1e8) break;
+    const slope = (elevT[cur] - elevT[r]) / s;
+    gentle = slope < (dem ? 0.07 : 0.2) ? gentle + 1 : 0;
+    path.push(r); cur = r;
+    if (gentle >= 2) break; // the flow slows and drops its load once the ground flattens out
+  }
+  const fan = [], rr = Math.max(1, Math.min(4, Math.round(1 + Math.sqrt(accA[o]) / 4)));
+  const ex = cur % N, ey = (cur / N) | 0;
+  for (let dy = -rr; dy <= rr; dy++) for (let dx = -rr; dx <= rr; dx++) {
+    const X = ex + dx, Y = ey + dy; if (!inW(X, Y) || dx * dx + dy * dy > rr * rr) continue;
+    const n = Y * N + X; if (elevT[n] < -1e8 || elevT[n] > elevT[cur] + 2) continue;
+    fan.push(n);
+  }
+  return { path, fan, i: 0, last: 0 };
+}
+function mudTile(t) {
+  if (isWaterW(t % N, (t / N) | 0)) return false;
+  mud[t] = 1; mudMonth[t] = month; tree[t] = 0;
+  if (bld[t] || civ[t]) { storm.lost++; bld[t] = 0; dens[t] = 0; removeCivAt(t); }
+  if (road[t]) { road[t] = 0; storm.roads++; }
+  return true;
+}
+function stormStep(ts) {
+  if (!storm) return;
+  const dt = Math.min(0.1, (ts - storm.last) / 1000); storm.last = ts;
+  if (!simOn) return;
+  storm.el += dt;
+  if (!storm.rolled && storm.el > storm.dur * 0.5) {
+    storm.rolled = true;
+    const starts = flowStarts(), used = new Set();
+    for (const o of storm.outlets) {
+      const st = starts.get(o); if (st === undefined || used.has(st)) continue;
+      if (Math.random() < basinP(o)) { used.add(st); const f = makeFlow(o, st); if (f) { flows.push(f); storm.nFlows++; } }
+    }
+  }
+  const changed = [];
+  for (const f of flows) {
+    if (ts - f.last < FLOW_MS[speed]) continue; f.last = ts;
+    if (f.i < f.path.length) { if (mudTile(f.path[f.i])) changed.push(f.path[f.i]); f.i++; }
+    else if (f.fan) { for (const t of f.fan) if (mudTile(t)) changed.push(t); f.fan = null; }
+  }
+  flows = flows.filter(f => f.fan || f.i < f.path.length);
+  if (changed.length) { redrawTiles(changed); mmBaseDirty = true; routeDirty = true; }
+  if (storm.el > storm.dur && !flows.length) {
+    const s = storm; storm = null; rainDrops = [];
+    toast(s.nFlows ? `Storm over. ${s.nFlows} debris flow${s.nFlows > 1 ? 's' : ''}` + (s.lost ? `, ${s.lost} building${s.lost > 1 ? 's' : ''} buried` : '') + (s.roads ? `, ${s.roads} road tile${s.roads > 1 ? 's' : ''} buried.` : '.') : 'Storm over. No debris flows this time.');
+    computeTraffic(); recomputeCivic(); refreshHazard();
+  }
+}
+function mudK(t) { if (!mud[t]) return 0; const age = month - mudMonth[t]; return age >= 24 ? 0 : age <= 6 ? 1 : 1 - (age - 6) / 18; }
+function mudTint(c, t) { const k = mudK(t); if (!k) return c; return [c[0] + (162 - c[0]) * k, c[1] + (112 - c[1]) * k, c[2] + (62 - c[2]) * k]; }
+function mudRecover() { let ch = false; for (let t = 0; t < N * N; t++) if (mud[t] && month - mudMonth[t] >= 24) { mud[t] = 0; ch = true; } return ch; }
+function drawStormFX(dt) {
+  if (!storm) return false;
+  const W = canvas.width, Hh = canvas.height, ux = Math.cos(wind.a), uy = Math.sin(wind.a);
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const ramp = Math.min(1, storm.el / 1.5, Math.max(0, (storm.dur + 1.5 - storm.el) / 1.5) || 0);
+  ctx.fillStyle = `rgba(18,26,44,${(0.34 * ramp).toFixed(3)})`; ctx.fillRect(0, 0, W, Hh);
+  const v = w2v(N / 2 + ux, N / 2 + uy), c0 = w2v(N / 2, N / 2), slant = ((v[0] - c0[0]) - (v[1] - c0[1])) * 4;
+  while (rainDrops.length < 260 * ramp) rainDrops.push({ x: Math.random() * W, y: Math.random() * Hh, s: 0.7 + Math.random() * 0.6 });
+  ctx.strokeStyle = 'rgba(200,218,245,0.6)'; ctx.lineWidth = 1; ctx.beginPath();
+  for (const d of rainDrops) {
+    d.y += 520 * d.s * dt; d.x += slant * 40 * dt;
+    if (d.y > Hh) { d.y -= Hh; d.x = Math.random() * W; } if (d.x > W) d.x -= W; if (d.x < 0) d.x += W;
+    ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - slant, d.y - 9 * d.s);
+  }
+  ctx.stroke();
+  ctx.restore();
+  return true;
 }
 
 // ===== Traffic & cars =====
@@ -1176,7 +1545,9 @@ function lane(lo, hi, fixed, alongX, dir, T, cw, ch) {
 }
 function drawCars() {
   if (zoom < 0.2 || !roadVis.length) return 0;
-  const now = performance.now(), T = now / 1000;
+  const now = performance.now();
+  carClock += Math.min(0.1, (now - (carClockLast || now)) / 1000) * CAR_K[speed]; carClockLast = now;
+  const T = carClock;
   const ease = 1 - Math.exp(-Math.min(0.25, (now - carLastT) / 1000) / 0.8); carLastT = now;
   let count = 0, moving = false;
   for (let i = 0; i < roadVis.length; i += 2) {
@@ -1266,6 +1637,7 @@ function composite() {
     else if (ph === 12) { ctx.fillRect(waterVis[i] + 2, waterVis[i + 1] + 1, 2, 1); }
   }
   carsLive = drawCars() > 0;
+  { const now = performance.now(); drawStormFX(Math.min(0.1, (now - (composite.last || now)) / 1000)); drawFire(Math.min(0.1, (now - (composite.last || now)) / 1000)); composite.last = now; }
   // road ghost
   if (roadGhost.length) {
     const a = 0.45 + 0.25 * Math.sin(frame * 0.6);
@@ -1306,9 +1678,12 @@ function drawMMBase() {
     let col;
     if (lake[t] || mn < sea) { const s = Math.max(lake[t] ? mx : -1, mn < sea ? sea : -1), k = Math.min(1, (s - avg) / 4); col = [78 - 54 * k, 156 - 84 * k, 214 - 70 * k]; }
     else if (flood[t] === 1) col = [70, 140, 220];
+    else if (burnT[t] > 0) col = [240, 90, 30];
+    else if (mudK(t) > 0.05) col = [162, 112, 62];
     else if (road[t]) col = [96, 96, 104];
     else if (civ[t]) col = CIVIC[civ[t]].color;
     else if (bld[t]) col = [226, 218, 196];
+    else if (scarK(t) > 0.05) col = scarTint(landColor(wx, wy, mn, avg), t);
     else {
       col = landColor(wx, wy, mn, avg);
       const b = Math.max(0.6, Math.min(1.3, 1 + (c4[2] - c4[0]) * 0.16));
@@ -1464,6 +1839,8 @@ function demolishSloped() {
   }
 }
 function applyTool(h) {
+  if (tool === 'fire') { const [wx, wy] = t2w(h.vx, h.vy); ignite(wx, wy, false); return; }
+  if (tool === 'water') { const [wx, wy] = t2w(h.vx, h.vy), [mn, mx] = tMinMax(wx, wy); if (mn !== mx && !isWaterW(wx, wy)) { traceStream(wx, wy); dirtyAll(); return; } }
   if (tool.startsWith('civ')) {
     const id = +tool[3], [wx, wy] = t2w(h.vx, h.vy);
     if (id === 5 && drag && drag.placed) return; // one stadium per click
@@ -1534,18 +1911,50 @@ function commitRoad() {
   dirtyAll();
 }
 
+// ===== Streams =====
+// Water placed on a slope runs downhill tile by tile until it reaches water, a road or building, the map edge,
+// or a low spot where it pools. Tiles on slopes show as little waterfalls.
+function tileAvg(x, y) { const c = cornersW(x, y); return (c[0] + c[1] + c[2] + c[3]) / 4; }
+function traceStream(wx, wy) {
+  const seen = new Set(); let x = wx, y = wy, flat = 0, pdx = 0, pdy = 0;
+  for (let step = 0; step < 400; step++) {
+    const t = y * N + x;
+    if (road[t] || bld[t] || civ[t]) break;
+    seen.add(t);
+    removeCivAt(t); lake[t] = 1; tree[t] = zone[t] = 0; dens[t] = 0;
+    const here = tileAvg(x, y);
+    let best = null, bh = here - 1e-6;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const X = x + dx, Y = y + dy; if (!inW(X, Y) || seen.has(Y * N + X)) continue;
+      if (tMinMax(X, Y)[0] < sea) { best = null; bh = -1; x = X; y = Y; break; } // reached the sea
+      const hn = tileAvg(X, Y); if (hn < bh) { bh = hn; best = [X, Y, dx, dy]; }
+    }
+    if (bh === -1) break;
+    if (!best) { // flat or a pit: wander a few tiles across the flat, preferring to keep going straight
+      if (++flat > 6) break;
+      const opts = [[pdx, pdy], [1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => (dx || dy) && inW(x + dx, y + dy) && !seen.has((y + dy) * N + x + dx) && Math.abs(tileAvg(x + dx, y + dy) - here) < 1e-6);
+      if (!opts.length) break;
+      [pdx, pdy] = opts[0]; x += pdx; y += pdy; continue;
+    }
+    flat = 0; [x, y, pdx, pdy] = best;
+    if (isWaterW(x, y)) break;
+  }
+}
+
 // ===== Undo =====
 function snapshot() {
-  undoStack.push({ HM: HM.slice(), lake: lake.slice(), tree: tree.slice(), road: road.slice(), zone: zone.slice(), bld: bld.slice(), dens: dens.slice(), civ: civ.slice(), civA: civA.slice(), sea });
+  undoStack.push({ HM: HM.slice(), lake: lake.slice(), tree: tree.slice(), road: road.slice(), zone: zone.slice(), bld: bld.slice(), dens: dens.slice(), civ: civ.slice(), civA: civA.slice(), burnSev: burnSev.slice(), scarMonth: scarMonth.slice(), treeWas: treeWas.slice(), mud: mud.slice(), mudMonth: mudMonth.slice(), month, sea });
   if (undoStack.length > 30) undoStack.shift();
 }
 function undo() {
   const s = undoStack.pop();
   if (!s) { toast('Nothing to undo'); return; }
-  HM.set(s.HM); lake.set(s.lake); tree.set(s.tree); road.set(s.road); zone.set(s.zone); bld.set(s.bld); dens.set(s.dens); civ.set(s.civ); civA.set(s.civA); sea = s.sea;
+  HM.set(s.HM); lake.set(s.lake); tree.set(s.tree); road.set(s.road); zone.set(s.zone); bld.set(s.bld); dens.set(s.dens); civ.set(s.civ); civA.set(s.civA); burnSev.set(s.burnSev); scarMonth.set(s.scarMonth); treeWas.set(s.treeWas); mud.set(s.mud); mudMonth.set(s.mudMonth); month = s.month; sea = s.sea;
+  storm = null; flows = []; rainDrops = [];
+  burning.forEach(t => burnT[t] = 0); burning = []; smokeP = []; fireStats = null;
   dirtyAll();
 }
-function dirtyAll() { if (showContours) setContourInterval(); cacheDirty = true; mmBaseDirty = true; mmViewDirty = true; recomputeCivic(); computeTraffic();
+function dirtyAll() { routeDirty = true; if (showContours) setContourInterval(); cacheDirty = true; mmBaseDirty = true; mmViewDirty = true; recomputeCivic(); computeTraffic();
   document.getElementById('slr').value = slr; document.getElementById('slr-v').textContent = (slr ? '+' : '') + slr.toFixed(1) + ' m'; computeFlood(); }
 
 // ===== Simulation =====
@@ -1592,6 +2001,7 @@ function tierCap(wx, wy, z) {
 }
 function simTick() {
   month++;
+  recoverTick();
   buildSATs();
   let changed = false, pop = 0, jobs = 0;
   for (let wy = 0; wy < N; wy++) for (let wx = 0; wx < N; wx++) {
@@ -1622,7 +2032,7 @@ function simTick() {
   lastPop = pop; lastJobs = jobs;
   if (changed) dirtyAll(); else computeTraffic();
 }
-setInterval(() => { if (simOn) simTick(); }, 700);
+
 
 // ===== Map generator =====
 function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -1706,6 +2116,8 @@ function applyGen(g, keepUndo) {
   if (keepUndo) snapshot();
   HM.set(g.A); sea = g.sea; tree.set(g.tr); makePatches(g.seed);
   lake.fill(0); road.fill(0); zone.fill(0); bld.fill(0); dens.fill(0); civ.fill(0);
+  burnSev.fill(0); treeWas.fill(0); burning.forEach(t => burnT[t] = 0); burning = []; smokeP = []; fireStats = null;
+  mud.fill(0); storm = null; flows = []; rainDrops = [];
   dem = null; month = 0; hasDemM = false; slr = 0;
   document.getElementById('dem-status').innerHTML = 'Any GeoTIFF works. <a href="https://apps.nationalmap.gov/downloader/" target="_blank" rel="noopener" style="color:inherit">USGS downloader</a>';
   centerOn(N / 2, N / 2, sea + 2);
@@ -1780,6 +2192,8 @@ function applyElevation(a, nd, opts) {
   HMload.set(HM); hasDemM = true; slr = 0;
   sea = s0; dem = { min: mn, max: mx, ocean, sea: s0, maxL, name: opts.name || null, km: opts.km || null };
   lake.fill(0); tree.fill(0); road.fill(0); zone.fill(0); bld.fill(0); dens.fill(0); civ.fill(0); month = 0;
+  burnSev.fill(0); treeWas.fill(0); burning.forEach(t => burnT[t] = 0); burning = []; smokeP = []; fireStats = null;
+  mud.fill(0); storm = null; flows = []; rainDrops = [];
   plantRealTrees(opts.seed || 7);
   if (tint !== 'hypso') toggleTint();
   centerOn(N / 2, N / 2, sea + 4);
@@ -1896,7 +2310,8 @@ function serialize() {
   return JSON.stringify({ format: 'terrain-sandbox', v: 3, N, sea, rot, month, dem,
     HM: Array.from(HM), lake: Array.from(lake), tree: Array.from(tree), road: Array.from(road), zone: Array.from(zone), bld: Array.from(bld), civ: Array.from(civ), civA: Array.from(civA),
     dens: Array.from(dens, x => Math.round(x * 100) / 100),
-    demM: hasDemM ? Array.from(demM, x => Math.round(x * 10) / 10) : null, HMload: hasDemM ? Array.from(HMload) : null, slr });
+    demM: hasDemM ? Array.from(demM, x => Math.round(x * 10) / 10) : null, HMload: hasDemM ? Array.from(HMload) : null, slr,
+    burnSev: Array.from(burnSev), scarMonth: Array.from(scarMonth), treeWas: Array.from(treeWas), mud: Array.from(mud), mudMonth: Array.from(mudMonth) });
 }
 function deserialize(txt) {
   const o = JSON.parse(txt);
@@ -1906,6 +2321,9 @@ function deserialize(txt) {
   if (o.civA) civA.set(o.civA); else for (let i = 0; i < civ.length; i++) civA[i] = i;
   sea = o.sea; month = o.month || 0; dem = o.dem || null;
   hasDemM = !!(o.demM && o.HMload); if (hasDemM) { demM.set(o.demM); HMload.set(o.HMload); } slr = hasDemM ? (o.slr || 0) : 0;
+  burnSev.fill(0); scarMonth.fill(0); treeWas.fill(0); if (o.burnSev) { burnSev.set(o.burnSev); scarMonth.set(o.scarMonth); treeWas.set(o.treeWas); }
+  mud.fill(0); mudMonth.fill(0); if (o.mud) { mud.set(o.mud); mudMonth.set(o.mudMonth); } storm = null; flows = []; rainDrops = [];
+  burning.forEach(t => burnT[t] = 0); burning = []; smokeP = []; fireStats = null;
   if (o.rot !== rot) { rot = o.rot || 0; document.getElementById('viewlbl').textContent = 'View ' + ['N', 'E', 'S', 'W'][rot]; }
   centerOn(N / 2, N / 2, sea + 2);
   dirtyAll();
@@ -1939,13 +2357,19 @@ function toast(msg) {
   const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2200);
 }
-const TOOL_NAMES = { raise: 'Raise', lower: 'Lower', level: 'Level', smooth: 'Smooth', water: 'Water', trees: 'Trees', road: 'Road', doze: 'Bulldoze', zone1: 'Residential', zone2: 'Commercial', zone3: 'Industrial', pan: 'Pan', civ1: 'Park', civ2: 'Hospital', civ3: 'Fire station', civ4: 'Police', civ5: 'Stadium' };
+const TOOL_NAMES = { raise: 'Raise', lower: 'Lower', level: 'Level', smooth: 'Smooth', water: 'Water', trees: 'Trees', road: 'Road', doze: 'Bulldoze', zone1: 'Residential', zone2: 'Commercial', zone3: 'Industrial', pan: 'Pan', civ1: 'Park', civ2: 'Hospital', civ3: 'Fire station', civ4: 'Police', civ5: 'Stadium', fire: 'Ignite', storm: 'Storm' };
 document.querySelectorAll('.tb[data-tool]').forEach(b => b.addEventListener('click', () => {
   document.querySelectorAll('.tb[data-tool]').forEach(x => x.classList.remove('on'));
+  const wasStorm = tool === 'storm';
   b.classList.add('on'); tool = b.dataset.tool; roadGhost = [];
+  document.getElementById('storm-panel').style.display = tool === 'storm' ? 'flex' : 'none';
+  if (tool === 'storm') refreshHazard(); else if (wasStorm) cacheDirty = true;
   document.getElementById('toolname').textContent = TOOL_NAMES[tool];
   canvas.style.cursor = tool === 'pan' ? 'grab' : 'crosshair';
-  document.getElementById('st-hint').textContent = tool.startsWith('civ') ? CIVIC[+tool[3]].icon + ' ' + CIVIC[+tool[3]].effect : '';
+  document.getElementById('st-hint').textContent = tool.startsWith('civ') ? CIVIC[+tool[3]].icon + ' ' + CIVIC[+tool[3]].effect
+    : tool === 'fire' ? '🔥 Click to start a fire. It runs downwind and uphill, and roads, water, and fire stations slow it down.'
+    : tool === 'storm' ? '🌧️ Colors show how likely each drainage is to send a debris flow at this rain rate: green Low, orange Moderate, red High. Burn scars drive it.'
+    : tool === 'water' ? '💧 On flat ground water pools. On a slope it runs downhill as a stream, with waterfalls.' : '';
   compDirty = true;
 }));
 document.getElementById('brush').addEventListener('input', e => { brush = +e.target.value; document.getElementById('brushv').textContent = brush; compDirty = true; });
@@ -2030,8 +2454,15 @@ function toggleRetro() {
 document.getElementById('tg-grid').addEventListener('click', toggleGrid);
 document.getElementById('tg-tint').addEventListener('click', toggleTint);
 document.getElementById('tg-retro').addEventListener('click', toggleRetro);
-document.getElementById('btn-sim').addEventListener('click', toggleSim);
-function toggleSim() { simOn = !simOn; document.getElementById('btn-sim').textContent = simOn ? '⏸' : '▶'; }
+function setSpeed(sp) {
+  if (sp > 0) lastSpeed = sp;
+  speed = sp; simOn = sp > 0;
+  document.querySelectorAll('.spd').forEach(b => b.classList.toggle('on', +b.dataset.s === sp));
+}
+document.querySelectorAll('.spd').forEach(b => b.addEventListener('click', () => setSpeed(+b.dataset.s)));
+function toggleSim() { setSpeed(speed ? 0 : lastSpeed); }
+document.getElementById('i15').addEventListener('input', e => { i15 = +e.target.value; document.getElementById('i15-v').textContent = i15; refreshHazard(); updateStatus(); });
+document.getElementById('btn-rain').addEventListener('click', startStorm);
 // About panel. Set REPO_URL once the GitHub repo exists and the source link appears.
 const REPO_URL = '';
 const aboutBox = document.getElementById('aboutbox');
@@ -2080,6 +2511,10 @@ function updateStatus() {
       zt = `${zn} ${dens[t].toFixed(1)}` + (tier >= cap && cap < 3 ? ` (${why})` : ''); }
   }
   if (civ[t]) zt = `${CIVIC[civ[t]].icon} ${CIVIC[civ[t]].name} (reaches ${CIVIC[civ[t]].r} tiles)`;
+  if (hazCls[t] && hazardView()) zt = (zt === '-' ? '' : zt + ' · ') + `🌧️ drainage likelihood ${hazP[t].toFixed(2)} (${HAZ_NAME[hazCls[t]]}) at ${i15} mm/hr`;
+  if (mudK(t) > 0) zt = (zt === '-' ? '' : zt + ' · ') + '🟫 debris flow deposit';
+  if (burnT[t] > 0) zt = (zt === '-' ? '' : zt + ' · ') + '🔥 burning';
+  else if (burnSev[t]) { const age = month - scarMonth[t]; zt = (zt === '-' ? '' : zt + ' · ') + `⬛ burned, ${['', 'low', 'moderate', 'high'][burnSev[t]]} severity, ${age} month${age === 1 ? '' : 's'} ago`; }
   if (flood[t] === 1) zt = (zt === '-' ? '' : zt + ' · ') + `🌊 underwater at +${slr.toFixed(1)} m`;
   else if (zone[t] && civBoost[zone[t]][t] > 1.01) zt += ` · growth x${civBoost[zone[t]][t].toFixed(1)}`;
   document.getElementById('st-zone').textContent = zt;
@@ -2145,6 +2580,7 @@ window.addEventListener('keydown', e => {
   else if (k === 'c') toggleContours();
   else if (k === 'g') toggleGrid(); else if (k === 't') toggleTint(); else if (k === 'p') toggleRetro();
   else if (k === ' ') { e.preventDefault(); toggleSim(); }
+  else if (k === '1' || k === '2' || k === '3') setSpeed(+k);
   else if (k === 'arrowleft' || k === 'a') { camX += PAN; schedulePanRebuild(); compDirty = mmViewDirty = true; }
   else if (k === 'arrowright' || k === 'd') { camX -= PAN; schedulePanRebuild(); compDirty = mmViewDirty = true; }
   else if (k === 'arrowup' || k === 'w') { camY += PAN; schedulePanRebuild(); compDirty = mmViewDirty = true; }
@@ -2157,8 +2593,10 @@ function loop(ts) {
   requestAnimationFrame(loop);
   if (cacheDirty) { buildCache(); cacheDirty = false; compDirty = true; }
   windStep(ts);
+  if (simOn && ts - lastSim > MONTH_MS[speed]) { lastSim = ts; simTick(); }
   if (ts - lastAnim > 110) { lastAnim = ts; frame++; compDirty = true; }
-  if (carsLive) compDirty = true;
+  fireStep(ts); stormStep(ts);
+  if (carsLive || burning.length || smokeP.length || storm) compDirty = true;
   if (compDirty) { composite(); compDirty = false; }
   if ((mmBaseDirty || mmViewDirty) && ts - lastMM > 150) {
     lastMM = ts;
