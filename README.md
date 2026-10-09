@@ -28,6 +28,7 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 - 🏙️ **Zone and grow a city.** 9 building types with 4 styles each, 36 designs, all drawn in code.
 - 🏥 **Build civic buildings:** parks, hospitals, fire stations, police stations, and stadiums, 21 designs in all. Each one changes how the city around it grows.
 - 🌬️ **Feel the wind:** gusts roll across the map and set the forests they pass swaying.
+- 🌉 **Bridge the water:** drag a road across a river or bay and it becomes a bridge on pillars, up to 16 tiles long.
 - 🚗 **Watch traffic** fill the roads near homes and jobs, while the road to nowhere stays empty.
 - 〰️ **Contour lines** from the real elevation, with a sensible interval picked for each place and bold index contours.
 - 🔄 **Rotate**, zoom, toggle a grid, switch between classic green and an elevation color ramp, or turn on chunky retro pixels.
@@ -94,7 +95,7 @@ The notebook reproduces the shipped presets byte for byte, so you can rebuild th
 - [x] Wildfire
 - [x] Post-fire debris flows (inspired by [Scar Threshold](https://github.com/jerrod-lessel/scar-threshold))
 - [x] Game speeds
-- [ ] Bridges
+- [x] Bridges
 - [ ] Day and night cycle
 - [ ] Shareable map links
 - [ ] Hills that hide cars
