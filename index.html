@@ -224,7 +224,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       GeoTIFF reading: geotiff.js (MIT license).<br>
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
-      <p class="credit">Version 3.6 · MIT license</p>
+      <p class="credit">Version 3.7 · MIT license</p>
       <div class="btns"><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -796,46 +796,71 @@ function hAtW(px, py) {
   return HM[i] * (1 - fx) * (1 - fy) + HM[i + 1] * fx * (1 - fy) + HM[i + NC + 1] * fx * fy + HM[i + NC] * (1 - fx) * fy;
 }
 const CAR_COLS = ['#e84a3a', '#f2d040', '#3a7ae8', '#f4f4f4', '#3cc060', '#262626', '#ee8a2a', '#9a5ad8'];
-function drawCar(px, py, ci) {
+// Smooth traffic: cars ride a fixed set of slots on every lane, so they never jump.
+// Each slot has its own random "patience"; a car shows when local traffic beats it,
+// fading in or out over a short range. Traffic itself eases toward its target over time.
+const trafficShown = new Float32Array(N * N);
+const SLOT = 0.5, CAR_SPEED = 0.8;
+let carLastT = 0;
+function trafAt(x, y) { return isRoadW(x, y) ? trafficShown[y * N + x] : 0; }
+function laneTraffic(alongX, a, fixed) {
+  const q = a - 0.5, k = Math.floor(q), f = q - k, row = Math.floor(fixed);
+  const t0 = alongX ? trafAt(k, row) : trafAt(row, k), t1 = alongX ? trafAt(k + 1, row) : trafAt(row, k + 1);
+  return t0 + (t1 - t0) * f;
+}
+function slotHash(n, line) { let h = Math.imul(n | 0, 0x9E3779B1) ^ Math.imul(line | 0, 0x85EBCA77); h = Math.imul(h ^ (h >>> 15), 0xC2B2AE3D); return (h ^ (h >>> 13)) >>> 0; }
+function drawCar(px, py, hsh, alpha, cw, ch) {
   const h = hAtW(px, py), v = w2v(px, py);
   const sx = (v[0] - v[1]) * TW / 2, sy = (v[0] + v[1]) * TH / 2 - h * HS;
   if (depthData) { // hide the car if a building in front of its tile covers this pixel
     const X = Math.round(sx * zoom + cacheCX), Y = Math.round((sy - 1) * zoom + cacheCY);
-    if (X >= 0 && Y >= 0 && X < depthW && Y < depthH && depthData[(Y * depthW + X) * 4] - 1 > Math.floor(v[0]) + Math.floor(v[1])) return;
+    if (X >= 0 && Y >= 0 && X < depthW && Y < depthH && depthData[(Y * depthW + X) * 4] - 1 > Math.floor(v[0]) + Math.floor(v[1])) return 0;
   }
-  ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(sx - 1.5, sy - 0.5, 3.5, 1.5);
-  ctx.fillStyle = CAR_COLS[ci % CAR_COLS.length]; ctx.fillRect(sx - 1.5, sy - 2, 3, 2);
+  const X = Math.round(sx * zoom + camX - cw / 2), Y = Math.round(sy * zoom + camY - ch);
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(X + 1, Y + 1, cw, ch);
+  ctx.fillStyle = CAR_COLS[hsh % CAR_COLS.length]; ctx.fillRect(X, Y, cw, ch);
+  return 1;
 }
-function lane(lo, hi, fixed, alongX, dir, S, T) {
-  const off = ((fixed * 7.31) % S + S) % S;
-  const base = dir * T * 0.8 + off;
-  let n = Math.ceil((lo - base) / S), count = 0;
-  for (let a = base + n * S; a < hi; a += S, n++) {
-    const ci = (Math.abs(n) * 2654435761 + Math.floor(fixed * 8)) >>> 0;
-    if (alongX) drawCar(a, fixed, ci); else drawCar(fixed, a, ci);
-    count++;
+function lane(lo, hi, fixed, alongX, dir, T, cw, ch) {
+  const line = Math.round(fixed * 100) * 4 + (alongX ? 2 : 0) + (dir > 0 ? 1 : 0);
+  const off = ((fixed * 7.31) % SLOT + SLOT) % SLOT;
+  const base = dir * T * CAR_SPEED + off;
+  let n = Math.ceil((lo - base) / SLOT), count = 0;
+  for (let a = base + n * SLOT; a < hi; a += SLOT, n++) {
+    const hsh = slotHash(n, line), u = (hsh & 0xffff) / 65536;
+    const alpha = Math.max(0, Math.min(1, (laneTraffic(alongX, a, fixed) * 1.05 - u) / 0.07));
+    if (alpha <= 0) continue;
+    count += alongX ? drawCar(a, fixed, hsh >>> 16, alpha, cw, ch) : drawCar(fixed, a, hsh >>> 16, alpha, cw, ch);
   }
   return count;
 }
 function drawCars() {
   if (zoom < 0.2 || !roadVis.length) return 0;
-  const T = performance.now() / 1000;
-  let count = 0;
+  const now = performance.now(), T = now / 1000;
+  const ease = 1 - Math.exp(-Math.min(0.25, (now - carLastT) / 1000) / 0.8); carLastT = now;
+  let count = 0, moving = false;
   for (let i = 0; i < roadVis.length; i += 2) {
-    const wx = roadVis[i], wy = roadVis[i + 1], tr = traffic[wy * N + wx];
-    if (tr < 0.06) continue;
-    const S = tr > 0.75 ? 0.5 : tr > 0.45 ? 1 : tr > 0.2 ? 2 : 4;
+    const t = roadVis[i + 1] * N + roadVis[i], d = traffic[t] - trafficShown[t];
+    if (Math.abs(d) > 0.002) { trafficShown[t] += d * ease; moving = true; } else trafficShown[t] = traffic[t];
+  }
+  const cw = Math.max(2, Math.round(3 * zoom)), ch = Math.max(1, Math.round(2 * zoom));
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  for (let i = 0; i < roadVis.length; i += 2) {
+    const wx = roadVis[i], wy = roadVis[i + 1];
     const E = isRoadW(wx + 1, wy), Wd = isRoadW(wx - 1, wy), So = isRoadW(wx, wy + 1), No = isRoadW(wx, wy - 1);
+    if (Math.max(trafAt(wx, wy), trafAt(wx + 1, wy), trafAt(wx - 1, wy), trafAt(wx, wy + 1), trafAt(wx, wy - 1)) < 0.01) continue;
     if (E || Wd) {
       const lo = Wd ? wx : wx + 0.5, hi = E ? wx + 1 : wx + 0.5;
-      count += lane(lo, hi, wy + 0.63, true, 1, S, T) + lane(lo, hi, wy + 0.37, true, -1, S, T);
+      count += lane(lo, hi, wy + 0.63, true, 1, T, cw, ch) + lane(lo, hi, wy + 0.37, true, -1, T, cw, ch);
     }
     if (So || No) {
       const lo = No ? wy : wy + 0.5, hi = So ? wy + 1 : wy + 0.5;
-      count += lane(lo, hi, wx + 0.37, false, 1, S, T) + lane(lo, hi, wx + 0.63, false, -1, S, T);
+      count += lane(lo, hi, wx + 0.37, false, 1, T, cw, ch) + lane(lo, hi, wx + 0.63, false, -1, T, cw, ch);
     }
   }
-  return count;
+  ctx.restore();
+  return count + (moving ? 1 : 0);
 }
 
 // ===== Cache build + composite =====
