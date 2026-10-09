@@ -33,6 +33,8 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 - 🌙 **Day and night:** always day, always night, or a slow cycle (one day is five real minutes, so nothing flashes). Windows, streetlights, and headlights come on one by one at dusk.
 - 〰️ **Contour lines** from the real elevation, with a sensible interval picked for each place and bold index contours.
 - 🔄 **Rotate**, zoom, toggle a grid, switch between classic green and an elevation color ramp, or turn on chunky retro pixels.
+- 🔗 **Share a link** that rebuilds the same starting map and view, like `#place=morro_bay` or `#seed=2000&hills=50...`.
+- 📱 **Pinch to zoom** and two-finger pan on touch screens.
 - 💾 **Save** to your browser or **export** a map as JSON.
 
 ![A grown city](docs/city.png)
@@ -43,7 +45,7 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 |---|---|
 | Use the selected tool (starts on Pan) | Left click or drag |
 | Pan | Right drag, middle drag, Alt + drag, arrows, or WASD |
-| Zoom | Mouse wheel, `+` / `-` |
+| Zoom | Mouse wheel, `+` / `-`, or pinch |
 | Rotate view | `Q` / `E` |
 | Undo | `Ctrl` + `Z` |
 | Grid / contours / tint / retro pixels | `G` / `C` / `T` / `P` |
@@ -75,7 +77,7 @@ X1 is the share of the drainage that is steep (23 degrees or more) and burned at
 
 **Wind.** A slowly shifting wind spawns gusts just upwind of wherever you are looking, and they drift through. Only the screen area under each gust gets redrawn, so a calm forest costs nothing.
 
-**Traffic.** Each road tile scores the development within 3 tiles, then spreads that score along the road network with a 28% falloff per tile. Cars hide behind buildings using a small depth buffer of building silhouettes.
+**Traffic.** Each road tile scores the development within 3 tiles, then spreads that score along the road network with a 28% falloff per tile. Cars, lit windows, and streetlights hide behind buildings and hills using two small depth buffers: one of building silhouettes, one of the terrain itself.
 
 ## Add your own place
 
@@ -99,9 +101,9 @@ The notebook reproduces the shipped presets byte for byte, so you can rebuild th
 - [x] Game speeds
 - [x] Bridges
 - [x] Day and night cycle
-- [ ] Shareable map links
-- [ ] Hills that hide cars
-- [ ] Pinch to zoom on phones
+- [x] Shareable map links
+- [x] Hills that hide cars
+- [x] Pinch to zoom on phones
 
 ## Credits
 
