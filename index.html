@@ -158,6 +158,9 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       <button class="tb" data-tool="civ3" title="Fire station: factories nearby grow faster">🚒</button>
       <button class="tb" data-tool="civ4" title="Police station: towers need police coverage">🚓</button>
       <button class="tb" data-tool="civ5" title="Stadium: shops nearby boom">🏟️</button>
+      <button class="tb" data-tool="civ6" title="Bus depot: fewer cars, cleaner air">🚌</button>
+      <button class="tb" data-tool="civ7" title="EV charging: cleaner cars">🔌</button>
+      <button class="tb" data-tool="civ8" title="Bike share: fewer cars, cleaner air">🚲</button>
     </div>
     <div class="sect">Disasters</div>
     <div class="grid2">
@@ -284,7 +287,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       GeoTIFF reading: geotiff.js (MIT license).<br>
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
-      <p class="credit">Version 4.8 · MIT license</p>
+      <p class="credit">Version 4.9 · MIT license</p>
       <div class="btns"><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -332,7 +335,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
     <div class="body">
       <p>The ground can only rise or fall one step from one tile to the next, so raising a spot drags the hillside up with it, just like the 1993 original.</p>
       <p>📊 The report card grades your city on wildfire, debris flow, earthquake, sea level rise, air quality, and services, by the share of residents exposed. Click a row to see it on the map.</p>
-      <p>Factories, busy roads, and smoke pollute the air, and the wind carries it downwind. Homes grow slower in dirty air, so put industry downwind of town.</p>
+      <p>Factories, busy roads, and smoke pollute the air, and the wind carries it downwind. Homes grow slower in dirty air, so put industry downwind of town. Bus depots, EV charging, and bike share cut traffic pollution.</p>
       <p>Zones only grow on flat tiles near a road. Use Level to make room. A lone zone stays small and rural. Taller buildings need a real neighborhood around them, and demand: homes need jobs nearby, and shops and factories need residents. Hover a zone to see what it is waiting for. Homes like water views and dislike dirty air.</p>
       <p>Traffic follows development. Busy neighborhoods fill their roads with cars, and a road to nowhere stays empty. Every building type comes in four styles.</p>
       <p>Civic buildings change the city around them. Parks make homes nicer, hospitals act like jobs, fire stations help factories, stadiums pack the shops and the roads, and every tower needs police coverage. Pick one to see its reach.</p>
@@ -950,8 +953,15 @@ const CIVIC = [null,
     effect: 'Everything within 10 tiles grows 20% faster, and towers (tier 3) need police coverage.' },
   { key: 'stadium',  name: 'Stadium',        icon: '🏟️', r: 9,  styles: 4, sil: 16, w: 2, color: [170, 170, 170],
     effect: 'Takes a flat 2 by 2 lot. Shops within 9 tiles grow 50% faster and get extra customers. Draws big crowds on the roads.' },
+  { key: 'bus',      name: 'Bus depot',      icon: '🚌', r: 10, styles: 3, sil: 10, w: 1, color: [242, 194, 48],
+    effect: 'Within 10 tiles, takes a quarter of the cars off the road and cuts traffic pollution by a third.' },
+  { key: 'ev',       name: 'EV charging',    icon: '🔌', r: 7,  styles: 3, sil: 10, w: 1, color: [60, 192, 96],
+    effect: 'Within 7 tiles, cars switch to electric: same traffic, 30% less tailpipe pollution.' },
+  { key: 'bike',     name: 'Bike share',     icon: '🚲', r: 5,  styles: 3, sil: 6,  w: 1, color: [58, 122, 232],
+    effect: 'Within 5 tiles, a fifth of trips go by bike: fewer cars and 20% less traffic pollution.' },
 ];
 const civ = new Uint8Array(N * N);
+const civCars = new Float32Array(N * N), civEmit = new Float32Array(N * N); // transit: share of cars left, share of road pollution left
 const civA = new Int32Array(N * N); // anchor tile of each civic footprint (stadiums cover 2 by 2)
 function w2vt(wx, wy) { const v = w2v(wx + 0.5, wy + 0.5); return [Math.floor(v[0]), Math.floor(v[1])]; }
 function isBigStadium(t) { const a = civA[t]; return civ[t] === 5 && a % N < N - 1 && civ[a + 1] === 5 && civA[a + 1] === a; }
@@ -986,7 +996,7 @@ const civDense = new Float32Array(N * N), civDemR = new Float32Array(N * N), civ
 const civPolice = new Uint8Array(N * N);
 function recomputeCivic() {
   civBoost[1].fill(1); civBoost[2].fill(1); civBoost[3].fill(1);
-  civDense.fill(0); civDemR.fill(0); civDemC.fill(0); civPolice.fill(0); civFire.fill(0); civHosp.fill(0);
+  civDense.fill(0); civDemR.fill(0); civDemC.fill(0); civPolice.fill(0); civFire.fill(0); civHosp.fill(0); civCars.fill(1); civEmit.fill(1);
   for (let wy = 0; wy < N; wy++) for (let wx = 0; wx < N; wx++) {
     const id = civ[wy * N + wx]; if (!id) continue;
     if (id === 5 && civA[wy * N + wx] !== wy * N + wx) continue; // count each stadium once, from its anchor
@@ -1000,6 +1010,10 @@ function recomputeCivic() {
       else if (id === 3) { civBoost[3][t] *= 1.3; civFire[t] = 1; }
       else if (id === 4) { civBoost[1][t] *= 1.2; civBoost[2][t] *= 1.2; civBoost[3][t] *= 1.2; civPolice[t] = 1; }
       else if (id === 5) { civBoost[2][t] *= 1.5; civDemC[t] += 20; }
+      else if (id === 6) { civCars[t] *= 0.75; civEmit[t] *= 0.67; }
+      else if (id === 7) { civEmit[t] *= 0.7; }
+      else if (id === 8) { civCars[t] *= 0.8; civEmit[t] *= 0.8; }
+      if (id === 1 && dx * dx + dy * dy <= 4) civEmit[t] *= 0.9; // park trees soak up a little
     }
   }
 }
@@ -1104,6 +1118,51 @@ function drawCivic(g, id, x, y, lod, h) {
         box(g, x + 8, y + 3, 3, 2.2, '#f0f0f0', '#202020', '#f4f4f4');
         if (D) { g.fillStyle = '#e02020'; g.fillRect(x + 7, y - 0.5, 1, 1); g.fillStyle = '#2050e0'; g.fillRect(x + 8.5, y - 0.5, 1, 1); }
       }
+      break;
+    }
+    case 6: { // bus depots
+      const bus = (bx, by, c1, c2) => { box(g, bx, by, 3.2, 3.2, c1, c2, '#e8e8e8'); if (D) { g.fillStyle = '#bfe4ff'; g.fillRect(bx - 3, by - 2.6, 2.4, 1); } };
+      if (v === 0) {
+        box(g, x - 3, y - 1.5, 9, 9, '#d8d0c0', '#b0a898', '#8a8a8a');
+        if (D) face(g, false, x - 3, y - 1.5, 9, 9, f => { f.fillStyle = '#3c3a36'; f.fillRect(1, 3, 3, 6); f.fillRect(5, 3, 3, 6); });
+        bus(x + 7, y + 3, '#f2c230', '#c89a10');
+      } else if (v === 1) {
+        box(g, x - 2, y - 1, 10, 7, '#c8d4dc', '#9aa8b2', '#5a7aa0');
+        bus(x + 6, y + 4, '#3a7ae8', '#2858b0'); bus(x - 7, y + 4, '#3a7ae8', '#2858b0');
+      } else {
+        g.fillStyle = '#9a9a9a'; for (const [px, py] of [[x - 8, y], [x + 8, y], [x, y - 4], [x, y + 4]]) g.fillRect(px - 0.5, py - 9, 1, 9);
+        bus(x - 2, y + 1, '#2ea860', '#1e7c44'); bus(x + 4, y - 2, '#f2c230', '#c89a10');
+        box(g, x, y - 9, 10, 1.4, '#6e9a5e', '#4e7a40', '#8ec07a');
+      }
+      if (D) { g.fillStyle = '#1e3a78'; g.fillRect(x - 11, y - 8, 0.8, 8); g.fillRect(x - 13, y - 11, 5, 3); g.fillStyle = '#fff'; g.fillRect(x - 12, y - 10, 3, 1); }
+      break;
+    }
+    case 7: { // EV charging
+      const car = (cx_, cy_, c) => box(g, cx_, cy_, 2.6, 1.8, c, dk(c), '#dfe8ef');
+      const charger = (cx_, cy_) => { box(g, cx_, cy_, 1, 3, '#f0f0f0', '#c8c8c8', '#3cc060'); };
+      if (v === 0) {
+        charger(x - 4, y - 2); charger(x + 2, y - 1); car(x - 1, y + 2, '#e84a3a'); car(x + 5, y + 3, '#f4f4f4');
+        g.fillStyle = '#ccc'; for (const [px, py] of [[x - 7, y], [x + 7, y]]) g.fillRect(px - 0.5, py - 9, 1, 9);
+        box(g, x, y - 9, 9, 1.2, '#3cc060', '#2a9048', '#5ad87c');
+      } else if (v === 1) { // solar canopy
+        charger(x - 3, y - 1); car(x + 2, y + 2, '#3a7ae8');
+        g.fillStyle = '#aaa'; for (const [px, py] of [[x - 7, y], [x + 7, y]]) g.fillRect(px - 0.5, py - 8, 1, 8);
+        box(g, x, y - 8, 10, 1, '#26324a', '#1c2638', '#3a5a8c');
+        if (D) { g.strokeStyle = 'rgba(160,190,230,0.6)'; g.lineWidth = 0.4; g.beginPath(); for (let k = -6; k <= 6; k += 3) { g.moveTo(x + k, y - 9 - 5 + Math.abs(k) / 2); g.lineTo(x + k, y - 9 + 5 - Math.abs(k) / 2); } g.stroke(); g.lineWidth = px1; }
+      } else { // charging lot
+        for (const [cx_, cy_, c] of [[x - 6, y - 1, '#9a5ad8'], [x, y - 3, '#f2d040'], [x + 6, y - 1, '#f4f4f4'], [x, y + 3, '#3cc060']]) { charger(cx_ - 2, cy_ - 1); car(cx_ + 1, cy_ + 1, c); }
+      }
+      if (D) { g.fillStyle = '#3cc060'; g.fillRect(x - 12, y - 6, 3, 3); g.fillStyle = '#fff'; g.fillRect(x - 11, y - 5.5, 1, 2); }
+      break;
+    }
+    case 8: { // bike share
+      const rack = (rx, ry, n) => { for (let k = 0; k < n; k++) { const bx = rx + k * 2.2, by = ry + k * 1.1, c = CAR_COLS[(k + v) % CAR_COLS.length];
+        g.strokeStyle = '#333'; g.lineWidth = 0.5; g.beginPath(); g.arc(bx - 1, by, 0.8, 0, 7); g.arc(bx + 1, by, 0.8, 0, 7); g.stroke();
+        g.strokeStyle = c; g.lineWidth = 0.7; g.beginPath(); g.moveTo(bx - 1, by); g.lineTo(bx, by - 1.4); g.lineTo(bx + 1, by); g.stroke(); } g.lineWidth = px1; };
+      ground(g, x, y, 13, '#c8c4b8');
+      if (v === 0) { box(g, x - 6, y - 2, 2, 5, '#3a7ae8', '#2858b0', '#e8e8e8'); rack(x - 3, y - 1, 5); }
+      else if (v === 1) { tinyTree(g, x - 8, y); tinyTree(g, x + 8, y); rack(x - 4, y + 1, 4); box(g, x, y - 4, 2, 4, '#3cc060', '#2a9048', '#e8e8e8'); }
+      else { box(g, x - 3, y - 2, 6, 6, '#f0e2c8', '#c8b898', '#c05436'); rack(x + 2, y + 1, 4); if (D) face(g, true, x - 3, y - 2, 6, 6, f => { f.fillStyle = '#bfe4ff'; f.fillRect(1, 2, 4, 2.5); }); }
       break;
     }
     case 5: { // stadiums: drawn inside the footprint diamond so neighbors never overlap them
@@ -1873,26 +1932,27 @@ function applyView(v, day) {
 // Factories, busy roads and wildfire smoke put out pollution that the wind carries downwind as a plume:
 // it spreads sideways as it travels, and barely reaches upwind. Homes grow slower in dirty air,
 // so a factory downwind of town is fine and one upwind is a problem.
-const poll = new Float32Array(N * N);
+const poll = new Float32Array(N * N), pollRoad = new Float32Array(N * N);
 const POLL_SRC = { 11: 2, 6: 5, 12: 10 };
 const POLL_MOD = 3, POLL_HIGH = 8;
+let ROAD_EMIT = 0.9;
 function computePollution() {
-  poll.fill(0);
-  const ux = Math.cos(wind.a), uy = Math.sin(wind.a), R = 10;
-  const emit = (sx, sy, Q) => {
+  poll.fill(0); pollRoad.fill(0);
+  const ux = Math.cos(wind.a), uy = Math.sin(wind.a);
+  const emit = (sx, sy, Q, R = 10, isRoad = false) => {
     for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
       const X = sx + dx, Y = sy + dy; if (!inW(X, Y)) continue;
       const along = dx * ux + dy * uy, cross = Math.abs(-dx * uy + dy * ux);
       let k;
       if (along >= 0) { const sg = 1 + 0.35 * along; k = Math.exp(-cross * cross / (2 * sg * sg)) * Math.exp(-along / 7) / sg; }
       else k = Math.exp(along * 1.2 - cross * 0.8);
-      poll[Y * N + X] += Q * k;
+      poll[Y * N + X] += Q * k; if (isRoad) pollRoad[Y * N + X] += Q * k;
     }
   };
   for (let t = 0; t < N * N; t++) {
     const x = t % N, y = (t / N) | 0;
     if (POLL_SRC[bld[t]]) emit(x, y, POLL_SRC[bld[t]]);
-    else if (road[t] && traffic[t] > 0.3) emit(x, y, traffic[t] * 1.2);
+    else if (road[t] && traffic[t] > 0.3) emit(x, y, traffic[t] * ROAD_EMIT * civEmit[t], 4, true); // traffic: a local source
     if (burnT[t] > 0) emit(x, y, 6);
   }
 }
@@ -1904,6 +1964,7 @@ const civHosp = new Uint8Array(N * N);
 const repMask = new Float32Array(N * N);
 let repView = null;
 const REP_COL = { fire: [235, 110, 30], debris: [214, 52, 40], quake: [150, 90, 200], slr: [40, 120, 230], air: [120, 100, 70], svc: [220, 40, 80] };
+function wuiAt(x, y) { let n = 0; for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const X = x + dx, Y = y + dy; if (inW(X, Y) && tree[Y * N + X]) n++; } return n >= 4; }
 function homesAt(t) { if (zone[t] !== 1) return 0; const d = dens[t]; return POP[d >= 2.5 ? 3 : d >= 1.5 ? 2 : d >= 0.5 ? 1 : 0]; }
 function floodMaskFor(level) {
   const m = new Uint8Array(N * N), q = [];
@@ -1924,10 +1985,11 @@ function buildReport() {
   const rows = [];
   if (!total) return { total, rows };
   const sum = f => { let s = 0; for (let t = 0; t < N * N; t++) if (f(t)) s += homesAt(t); return s; };
-  // wildfire: homes within 3 tiles of forest (the wildland-urban interface)
-  const nearForest = t => { const x = t % N, y = (t / N) | 0; return near(x, y, 3, (X, Y) => tree[Y * N + X] > 0); };
-  const fire = sum(t => homesAt(t) && nearForest(t));
-  rows.push({ key: 'fire', icon: '🔥', name: 'Wildfire', note: 'homes within 3 tiles of forest', exposed: fire });
+  // wildfire: homes with real forest within 3 tiles (the wildland-urban interface); fire stations halve the exposure
+  let fire = 0;
+  for (let t = 0; t < N * N; t++) { const h = homesAt(t); if (h && wuiAt(t % N, (t / N) | 0)) fire += civFire[t] ? h / 2 : h; }
+  fire = Math.round(fire);
+  rows.push({ key: 'fire', icon: '🔥', name: 'Wildfire', note: 'homes with forest within 3 tiles (fire stations cut this in half)', exposed: fire });
   // debris flow: homes in Moderate or High drainages at a typical 24 mm/hr storm
   const keep = i15; i15 = 24; computeHazard(); const debris = sum(t => hazCls[t] >= 2); const debrisMask = hazCls.slice(); i15 = keep; computeHazard();
   rows.push({ key: 'debris', icon: '🌧️', name: 'Debris flow', note: 'homes in Moderate or High drainages at 24 mm/hr', exposed: debris, mask: t => debrisMask[t] >= 2 ? 1 : 0 });
@@ -1942,8 +2004,10 @@ function buildReport() {
     rows.push({ key: 'slr', icon: '🌊', name: 'Sea level rise', note: `homes underwater at +1 m: ${s1.toLocaleString()}, at +2 m`, exposed: s2, mask: t => m2[t] === 1 ? 1 : 0 });
   }
   // air quality
-  const air = sum(t => poll[t] >= POLL_MOD);
-  rows.push({ key: 'air', icon: '🌫️', name: 'Air quality', note: 'homes in moderate or worse air', exposed: air });
+  let air = 0, fromRoad = 0;
+  for (let t = 0; t < N * N; t++) { const h = homesAt(t); if (h && poll[t] >= POLL_MOD) { air += h; fromRoad += h * pollRoad[t] / poll[t]; } }
+  const blame = air ? (fromRoad / air > 0.5 ? 'mostly traffic: try 🚌 🔌 🚲' : 'mostly industry: move it downwind') : 'clean air';
+  rows.push({ key: 'air', icon: '🌫️', name: 'Air quality', note: `homes in moderate or worse air · ${blame}`, exposed: air });
   // services
   const cf = sum(t => civFire[t]), cp = sum(t => civPolice[t]), ch = sum(t => civHosp[t]);
   const cov = (cf + cp + ch) / 3;
@@ -1974,7 +2038,7 @@ function setRepView(k, rows) {
     const r = rows.find(x => x.key === k);
     for (let t = 0; t < N * N; t++) {
       const x = t % N, y = (t / N) | 0;
-      if (k === 'fire') repMask[t] = !isWaterW(x, y) && !tree[t] && near(x, y, 3, (X, Y) => tree[Y * N + X] > 0) ? 0.5 : 0;
+      if (k === 'fire') repMask[t] = !isWaterW(x, y) && !tree[t] && wuiAt(x, y) ? (civFire[t] ? 0.25 : 0.55) : 0;
       else if (k === 'debris' || k === 'slr') repMask[t] = r.mask(t);
       else if (k === 'quake') repMask[t] = liquefiable(x, y) ? 0.8 : 0;
       else if (k === 'air') repMask[t] = Math.min(1, poll[t] / POLL_HIGH);
@@ -2003,7 +2067,7 @@ function computeTraffic() {
       const X = wx + dx, Y = wy + dy;
       if (inW(X, Y)) { const b = bld[Y * N + X], c2 = civ[Y * N + X]; if (b) s += TWT[BTIER[b]]; if (c2) s += c2 === 5 ? 3 : 2; }
     }
-    local[t] = Math.min(1, s / 18) * balance;
+    local[t] = Math.min(1, s / 18) * balance * civCars[t];
   }
   // Spread along the network, fading with distance, so roads to nowhere stay quiet.
   traffic.set(local);
@@ -2919,7 +2983,7 @@ function toast(msg) {
   const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2200);
 }
-const TOOL_NAMES = { raise: 'Raise', lower: 'Lower', level: 'Level', smooth: 'Smooth', water: 'Water', trees: 'Trees', road: 'Road', doze: 'Bulldoze', zone1: 'Residential', zone2: 'Commercial', zone3: 'Industrial', pan: 'Pan', civ1: 'Park', civ2: 'Hospital', civ3: 'Fire station', civ4: 'Police', civ5: 'Stadium', fire: 'Ignite', storm: 'Storm', quake: 'Earthquake' };
+const TOOL_NAMES = { raise: 'Raise', lower: 'Lower', level: 'Level', smooth: 'Smooth', water: 'Water', trees: 'Trees', road: 'Road', doze: 'Bulldoze', zone1: 'Residential', zone2: 'Commercial', zone3: 'Industrial', pan: 'Pan', civ1: 'Park', civ2: 'Hospital', civ3: 'Fire station', civ4: 'Police', civ5: 'Stadium', civ6: 'Bus depot', civ7: 'EV charging', civ8: 'Bike share', fire: 'Ignite', storm: 'Storm', quake: 'Earthquake' };
 document.querySelectorAll('.tb[data-tool]').forEach(b => b.addEventListener('click', () => {
   document.querySelectorAll('.tb[data-tool]').forEach(x => x.classList.remove('on'));
   const wasStorm = tool === 'storm';
