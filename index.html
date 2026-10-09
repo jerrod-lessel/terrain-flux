@@ -172,6 +172,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
     <button class="txt" id="btn-load" title="Load from this browser">📂 Load</button>
     <button class="txt" id="btn-export" title="Download as .json">⤓ Export</button>
     <button class="txt" id="btn-import" title="Open a .json map">⤒ Import</button>
+    <button class="txt" id="btn-share" title="Copy a link that opens this map">🔗 Share link</button>
     <input type="file" id="file-json" accept=".json,application/json" hidden>
 
     <div class="sect">Real places</div>
@@ -271,8 +272,20 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       GeoTIFF reading: geotiff.js (MIT license).<br>
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
-      <p class="credit">Version 4.5 · MIT license</p>
+      <p class="credit">Version 4.6 · MIT license</p>
       <div class="btns"><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal hidden" id="sharebox">
+  <div class="win bev">
+    <div class="tbar">SHARE THIS MAP</div>
+    <div class="body" style="display:block">
+      <p id="share-msg" style="margin:0 0 8px">Copied! Anyone who opens this link gets the same map and view.</p>
+      <input id="share-url" readonly style="width:100%;font-family:inherit;font-size:16px;padding:4px 6px;background:var(--well);color:var(--ink);border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo);">
+      <p class="small" style="margin:8px 0">The link rebuilds the starting map and your view. Buildings, roads, and edits are not in it; use Export for that.</p>
+      <div class="btns"><button class="txt" id="share-close" style="text-align:center">Done</button></div>
     </div>
   </div>
 </div>
@@ -336,6 +349,16 @@ const cx = cache.getContext('2d');
 // Depth buffer: building silhouettes painted with their draw-order diagonal, so cars can hide behind them
 const dcan = document.createElement('canvas');
 const dctx = dcan.getContext('2d', { willReadFrequently: true });
+// Terrain depth: every tile top painted with its draw-order diagonal, so things behind a ridge can hide too
+const tcan = document.createElement('canvas'), tctx = tcan.getContext('2d', { willReadFrequently: true });
+let tdepthData = null;
+function terrainDepth(p, d) { tctx.fillStyle = `rgb(0,${d + 1},0)`; tctx.beginPath(); tctx.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) tctx.lineTo(p[i], p[i + 1]); tctx.closePath(); tctx.fill(); }
+// true if a hill (2+ diagonals in front) or a building in front covers this cache pixel
+function hiddenAt(X, Y, d) {
+  if (!depthData || X < 0 || Y < 0 || X >= depthW || Y >= depthH) return false;
+  const i = (Y * depthW + X) * 4;
+  return depthData[i] - 1 > d || (tdepthData && tdepthData[i + 1] - 1 > d + 1);
+}
 let depthData = null, depthW = 0, depthH = 0;
 const SIL_H = { 4: 15, 7: 26, 8: 50, 9: 16, 5: 30, 10: 56, 11: 12, 6: 26, 12: 36 };
 function silhouette(x, y, id, d, Hx) {
@@ -464,11 +487,13 @@ function drawTile(g, vx, vy, lod) {
     if (flood[t] === 1) { polyNoStroke(g, [Tx, Ty, Rx, Ry, Bx, By, Lx, Ly], 'rgba(52,128,212,0.8)'); if (!partialMode) waterVis.push(Tx, (Ty + By) / 2, ((wx * 7919) ^ (wy * 104729)) & 1023); }
     if (showGrid && !lod) outlinePts(g, [Tx, Ty, Rx, Ry, Bx, By, Lx, Ly], 'rgba(0,0,0,0.22)', px1);
     if (showContours && flood[t] !== 1) drawContours(g, vx, vy, ht, hr, hb, hl, lod);
+    if (!partialMode) terrainDepth([Tx, Ty, Rx, Ry, Bx, By, Lx, Ly], vx + vy);
   } else {
     const sY = F - s * HS, depth = s - (ht + hr + hb + hl) / 4;
     if (s > hl || s > hb) poly(g, [Lx, sY + TH / 2, Bx, sY + TH, Bx, By, Lx, Ly], '#2a6fb4');
     if (s > hr || s > hb) poly(g, [Bx, sY + TH, Rx, sY + TH / 2, Rx, Ry, Bx, By], '#1f5a98');
     poly(g, [Tx, sY, Rx, sY + TH / 2, Bx, sY + TH, Lx, sY + TH / 2], waterCol(depth));
+    if (!partialMode) terrainDepth([Tx, sY, Rx, sY + TH / 2, Bx, sY + TH, Lx, sY + TH / 2], vx + vy);
     if (showGrid && !lod) outlinePts(g, [Tx, sY, Rx, sY + TH / 2, Bx, sY + TH, Lx, sY + TH / 2], 'rgba(0,0,40,0.18)', px1);
     if (!partialMode) waterVis.push(Tx, sY + TH / 2, ((wx * 7919) ^ (wy * 104729)) & 1023);
   }
@@ -1563,7 +1588,7 @@ function drawNight() {
   if (nightK > 0.01) { ctx.fillStyle = `rgba(8,16,46,${(0.52 * nightK).toFixed(3)})`; ctx.fillRect(0, 0, W, Hh); }
   if (nightK > 0.25) {
     const z = zoom, px = Math.max(1, Math.round(1.6 * z)), py = Math.max(1, Math.round(1.6 * z));
-    const occluded = (X, Y, d) => depthData && X >= 0 && Y >= 0 && X < depthW && Y < depthH && depthData[(Y * depthW + X) * 4] - 1 > d;
+    const occluded = (X, Y, d) => hiddenAt(X, Y, d);
     // windows
     for (let i = 0; i < bldVis.length; i += 5) {
       const t = bldVis[i], id = bldVis[i + 3], d = bldVis[i + 4];
@@ -1588,7 +1613,11 @@ function drawNight() {
       const x = roadVis[i], y = roadVis[i + 1], h = hash2(x, y);
       if ((h & 1) || !lightOn(h, 2)) continue;
       const v = w2v(x + 0.5, y + 0.5), hh = isWaterW(x, y) ? bridgeLevel(x, y, x + 0.5, y + 0.5) : hAtW(x + 0.5, y + 0.5);
-      const X = ((v[0] - v[1]) * TW / 2) * z + camX, Y = ((v[0] + v[1]) * TH / 2 - hh * HS) * z + camY;
+      const wxp = (v[0] - v[1]) * TW / 2, wyp = (v[0] + v[1]) * TH / 2 - hh * HS, d = x + y >= 0 ? Math.floor(v[0]) + Math.floor(v[1]) : 0;
+      let blocked = false;
+      for (const [ox, oy] of [[0, 0], [-7, 0], [7, 0], [0, -3]]) if (hiddenAt(Math.round((wxp + ox) * z + cacheCX), Math.round((wyp + oy) * z + cacheCY), d)) { blocked = true; break; }
+      if (blocked) continue;
+      const X = wxp * z + camX, Y = wyp * z + camY;
       ctx.fillStyle = `rgba(255,190,110,${(0.16 * nightK).toFixed(3)})`;
       ctx.beginPath(); ctx.ellipse(X, Y, 9 * z, 4.5 * z, 0, 0, Math.PI * 2); ctx.fill();
     }
@@ -1658,7 +1687,7 @@ function drawCar(px, py, hsh, alpha, cw, ch) {
   const sx = (v[0] - v[1]) * TW / 2, sy = (v[0] + v[1]) * TH / 2 - h * HS;
   if (depthData) { // hide the car if a building in front of its tile covers this pixel
     const X = Math.round(sx * zoom + cacheCX), Y = Math.round((sy - 1) * zoom + cacheCY);
-    if (X >= 0 && Y >= 0 && X < depthW && Y < depthH && depthData[(Y * depthW + X) * 4] - 1 > Math.floor(v[0]) + Math.floor(v[1])) return 0;
+    if (hiddenAt(X, Y, Math.floor(v[0]) + Math.floor(v[1]))) return 0;
   }
   const X = Math.round(sx * zoom + camX - cw / 2), Y = Math.round(sy * zoom + camY - ch);
   ctx.globalAlpha = alpha;
@@ -1719,6 +1748,8 @@ function buildCache() {
   cx.fillStyle = gr; cx.fillRect(0, 0, W, Hh);
   if (dcan.width !== W || dcan.height !== Hh) { dcan.width = W; dcan.height = Hh; }
   dctx.setTransform(1, 0, 0, 1, 0, 0); dctx.clearRect(0, 0, W, Hh);
+  if (tcan.width !== W || tcan.height !== Hh) { tcan.width = W; tcan.height = Hh; }
+  tctx.setTransform(1, 0, 0, 1, 0, 0); tctx.clearRect(0, 0, W, Hh); tctx.setTransform(zoom, 0, 0, zoom, camX, camY);
   dctx.setTransform(zoom, 0, 0, zoom, camX, camY);
   cx.setTransform(zoom, 0, 0, zoom, camX, camY);
   px1 = 1 / zoom; cx.lineWidth = px1; cx.lineJoin = 'round';
@@ -1738,6 +1769,7 @@ function buildCache() {
   }
   cacheCX = camX; cacheCY = camY; cacheZoom = zoom;
   depthData = dctx.getImageData(0, 0, W, Hh).data; depthW = W; depthH = Hh;
+  tdepthData = tctx.getImageData(0, 0, W, Hh).data;
   for (const q of gusts) q.prev = zoom >= 0.3 ? gustRect(q) : null;
 }
 
@@ -2261,10 +2293,12 @@ function generate({ hills, water, trees, coast, river, seed }) {
       if (mn >= seaL && mx < seaL + amp * 0.85 + 1 && tn[y * N + x] > thr && rand() < 0.85) tr[y * N + x] = 1 + Math.floor(rand() * 3);
     }
   }
-  return { A, sea: seaL, tr, seed };
+  return { A, sea: seaL, tr, seed, params: { hills, water, trees, coast, river, seed } };
 }
 
+let recipe = null; // what a share link can rebuild: a generated map or a real place
 function applyGen(g, keepUndo) {
+  recipe = { kind: 'gen', p: g.params };
   if (keepUndo) snapshot();
   HM.set(g.A); sea = g.sea; tree.set(g.tr); makePatches(g.seed);
   lake.fill(0); road.fill(0); zone.fill(0); bld.fill(0); dens.fill(0); civ.fill(0);
@@ -2375,6 +2409,7 @@ function loadPreset(id) {
   const p = PRESETS.find(x => x.id === id); if (!p) return;
   const a = Float32Array.from(decodePreset(p.data));
   document.getElementById('relief').value = p.relief;
+  recipe = { kind: 'place', id };
   const { mn, mx } = applyElevation(a, null, { relief: p.relief, name: p.name, km: p.km, seed: p.id.length * 97 + 13 });
   document.getElementById('dem-status').textContent = `${p.icon} ${p.name}: ${Math.max(0, mn)} to ${mx} m across ${p.km} km (each tile is about ${Math.round(p.km * 1000 / N)} m). SRTM 30 m, NASA/USGS.`;
   toast(`${p.name}. ${p.blurb}`);
@@ -2388,6 +2423,7 @@ async function loadDEM(file) {
     const w = img.getWidth(), h = img.getHeight(), s = Math.min(w, h);
     const x0 = Math.floor((w - s) / 2), y0 = Math.floor((h - s) / 2);
     const r = await img.readRasters({ window: [x0, y0, x0 + s, y0 + s], width: NC, height: NC, samples: [0], resampleMethod: 'nearest' });
+    recipe = null;
     const { mn, mx } = applyElevation(r[0], img.getGDALNoData(), { relief: +document.getElementById('relief').value, name: file.name });
     st.textContent = `✓ ${file.name}: ${Math.round(mn)} to ${Math.round(mx)} m, ${w}×${h} px cropped to the middle square`;
     toast('Real terrain loaded. Now ruin it.');
@@ -2677,9 +2713,21 @@ function updateStatus() {
 function evPos(e) { const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) * canvas.width / r.width, y: (e.clientY - r.top) * canvas.height / r.height }; }
 function schedulePanRebuild() { if (panTimer) return; panTimer = setTimeout(() => { panTimer = null; cacheDirty = true; }, 140); }
 canvas.addEventListener('contextmenu', e => e.preventDefault());
+// Two fingers on a touch screen: pinch to zoom, drag to pan. Zoom snaps between the fixed levels.
+const touches = new Map(); let pinch = null;
+function pinchInfo() { const [a, b] = [...touches.values()]; return { d: Math.hypot(a.x - b.x, a.y - b.y), x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; }
 canvas.addEventListener('pointerdown', e => {
-  canvas.setPointerCapture(e.pointerId);
+  try { canvas.setPointerCapture(e.pointerId); } catch (err) { }
   const p = evPos(e);
+  if (e.pointerType === 'touch') {
+    touches.set(e.pointerId, p);
+    if (touches.size === 2) { // second finger: cancel any one-finger action and start a pinch
+      if (drag && drag.mode === 'paint') undo();
+      drag = null; roadGhost = []; clearInterval(holdTimer); holdTimer = null;
+      const i = pinchInfo(); pinch = { d0: i.d, x: i.x, y: i.y }; return;
+    }
+    if (touches.size > 2) return;
+  }
   if (e.button === 1 || e.button === 2 || (e.button === 0 && e.altKey) || tool === 'pan') {
     drag = { mode: 'pan', x: p.x, y: p.y, cx: camX, cy: camY }; canvas.style.cursor = 'grabbing'; return;
   }
@@ -2695,6 +2743,14 @@ canvas.addEventListener('pointerdown', e => {
 });
 canvas.addEventListener('pointermove', e => {
   const p = evPos(e);
+  if (e.pointerType === 'touch' && touches.has(e.pointerId)) touches.set(e.pointerId, p);
+  if (pinch && touches.size === 2) {
+    const i = pinchInfo();
+    camX += i.x - pinch.x; camY += i.y - pinch.y; pinch.x = i.x; pinch.y = i.y;
+    if (i.d / pinch.d0 > 1.35) { setZoom(zi + 1, i.x, i.y); pinch.d0 = i.d; }
+    else if (i.d / pinch.d0 < 0.74) { setZoom(zi - 1, i.x, i.y); pinch.d0 = i.d; }
+    compDirty = true; mmViewDirty = true; schedulePanRebuild(); return;
+  }
   if (drag && drag.mode === 'pan') {
     camX = drag.cx + (p.x - drag.x); camY = drag.cy + (p.y - drag.y);
     compDirty = true; mmViewDirty = true; schedulePanRebuild(); return;
@@ -2714,8 +2770,12 @@ function endDrag() {
   if (pendingPan) { pendingPan = false; selectTool('pan'); } // disasters are one-shot: back to panning
 }
 function selectTool(name) { const b = document.querySelector(`.tb[data-tool="${name}"]`); if (b) b.click(); }
-canvas.addEventListener('pointerup', endDrag);
-canvas.addEventListener('pointercancel', endDrag);
+function pointerEnd(e) {
+  if (e.pointerType === 'touch') { touches.delete(e.pointerId); if (pinch) { if (touches.size < 2) { pinch = null; drag = null; cacheDirty = true; } return; } }
+  endDrag();
+}
+canvas.addEventListener('pointerup', pointerEnd);
+canvas.addEventListener('pointercancel', pointerEnd);
 canvas.addEventListener('pointerleave', () => { if (!drag) { hover = null; compDirty = true; } }); // status keeps the last tile you pointed at
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
@@ -2727,7 +2787,7 @@ window.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
   const k = e.key.toLowerCase();
   if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); undo(); return; }
-  if (k === 'escape') { roadGhost = []; if (drag && drag.mode === 'road') drag = null; genModal.classList.add('hidden'); helpBox.classList.add('hidden'); aboutBox.classList.add('hidden'); compDirty = true; return; }
+  if (k === 'escape') { roadGhost = []; if (drag && drag.mode === 'road') drag = null; genModal.classList.add('hidden'); helpBox.classList.add('hidden'); aboutBox.classList.add('hidden'); document.getElementById('sharebox').classList.add('hidden'); compDirty = true; return; }
   if (!genModal.classList.contains('hidden')) return;
   const PAN = 48;
   if (k === 'q') rotate(-1); else if (k === 'e') rotate(1);
@@ -2761,11 +2821,57 @@ function loop(ts) {
   }
 }
 
+// ===== Share links =====
+// #place=morro_bay or #seed=2000&hills=50&water=22&trees=45&coast=1&river=1, plus the view: &v=rot,zoom,x,y,day
+function shareURL() {
+  if (!recipe) return null;
+  const q = new URLSearchParams();
+  if (recipe.kind === 'place') q.set('place', recipe.id);
+  else { const p = recipe.p; q.set('seed', p.seed); q.set('hills', p.hills); q.set('water', p.water); q.set('trees', p.trees); q.set('coast', +p.coast); q.set('river', +p.river); }
+  const c = viewCenterWorld();
+  q.set('v', [rot, zi, Math.round(c[0]), Math.round(c[1]), dayMode].join(','));
+  return location.href.split('#')[0] + '#' + q.toString();
+}
+document.getElementById('btn-share').addEventListener('click', async () => {
+  const url = shareURL();
+  if (!url) { toast('Maps from your own DEM file cannot be shared as a link. Use Export instead.'); return; }
+  const box = document.getElementById('sharebox'), inp = document.getElementById('share-url');
+  inp.value = url;
+  let ok = false; try { await navigator.clipboard.writeText(url); ok = true; } catch (e) { }
+  document.getElementById('share-msg').textContent = ok ? 'Copied! Anyone who opens this link gets the same map and view.' : 'Copy this link. Anyone who opens it gets the same map and view.';
+  box.classList.remove('hidden'); inp.focus(); inp.select();
+});
+document.getElementById('share-close').addEventListener('click', () => document.getElementById('sharebox').classList.add('hidden'));
+function openFromHash() {
+  const h = location.hash.slice(1); if (!h) return false;
+  const q = new URLSearchParams(h);
+  try {
+    if (q.get('place') && PRESETS.some(p => p.id === q.get('place'))) loadPreset(q.get('place'));
+    else if (q.get('seed')) {
+      const set = (id, v) => { if (v != null) document.getElementById(id).value = v; };
+      set('seed', q.get('seed')); set('g-hills', q.get('hills')); set('g-water', q.get('water')); set('g-trees', q.get('trees'));
+      if (q.get('coast') != null) document.getElementById('g-coast').checked = q.get('coast') === '1';
+      if (q.get('river') != null) document.getElementById('g-river').checked = q.get('river') === '1';
+      previewGen(); applyGen(lastGen, false);
+    } else return false;
+    const v = (q.get('v') || '').split(',').map(Number);
+    if (v.length >= 4 && v.every(Number.isFinite)) {
+      while (rot !== ((v[0] % 4) + 4) % 4) rotate(1);
+      setZoom(Math.max(0, Math.min(ZOOMS.length - 1, v[1])));
+      recenterWorld([v[2], v[3]]);
+      if (v[4]) setDayMode(v[4] % 3);
+    }
+    genModal.classList.add('hidden');
+    return true;
+  } catch (e) { console.error(e); return false; }
+}
+
 // ===== Boot =====
 resize();
 canvas.style.cursor = 'grab';
 previewGen();
 applyGen(lastGen, false);
+openFromHash();
 updateStatus();
 requestAnimationFrame(loop);
 </script>
