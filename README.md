@@ -24,6 +24,7 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 - 🌊 **Raise or lower the sea** and place water. It pools on flat ground and runs downhill as a stream, with waterfalls, on slopes.
 - 🌧️ **Bring a storm** after a fire and watch debris flows run down the burned drainages, using a simplified USGS M1 likelihood model borrowed from [Scar Threshold](https://scar-threshold.pages.dev).
 - ⏱️ **Pick a game speed:** pause, slow, normal, or fast.
+- 🌎 **Trigger an earthquake:** pick a magnitude and an epicenter, then watch buildings collapse, slopes slide, waterfront ground liquefy, bridges drop, and fires break out.
 - 🔥 **Start a wildfire** and watch it run downwind and uphill, leave a burn scar graded by severity, and heal over a few game years.
 - 🏙️ **Zone and grow a city.** 9 building types with 4 styles each, 36 designs, all drawn in code.
 - 🏥 **Build civic buildings:** parks, hospitals, fire stations, police stations, and stadiums, 21 designs in all. Each one changes how the city around it grows.
@@ -33,9 +34,10 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 - 🌙 **Day and night:** always day, always night, or a slow cycle (one day is five real minutes, so nothing flashes). Windows, streetlights, and headlights come on one by one at dusk.
 - 〰️ **Contour lines** from the real elevation, with a sensible interval picked for each place and bold index contours.
 - 🔄 **Rotate**, zoom, toggle a grid, switch between classic green and an elevation color ramp, or turn on chunky retro pixels.
-- 🔗 **Share a link** that rebuilds the same starting map and view, like `#place=morro_bay` or `#seed=2000&hills=50...`.
+- 🔗 **Share a link to exactly what you see:** terrain, water, roads, buildings, scars, and your view, usually in 2 to 4 KB.
+- 📁 **Back up to a file** when you want a full copy, or for maps built from your own DEM.
 - 📱 **Pinch to zoom** and two-finger pan on touch screens.
-- 💾 **Save** to your browser or **export** a map as JSON.
+- 💾 **Quick-save** to your browser.
 
 ![A grown city](docs/city.png)
 
@@ -71,6 +73,10 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 
 X1 is the share of the drainage that is steep (23 degrees or more) and burned at moderate or high severity, X2 is the average burn severity standing in for dNBR, X3 is soil erodibility held at 0.25, and R is the peak 15-minute rainfall in mm. Classes match Scar Threshold: Low under 0.2, Moderate, High at 0.6 or above. Only drainages with at least 10% recently burned ground are assessed. When it rains, each drainage rolls against its likelihood, and a flow starts at the highest badly burned slope upstream, runs down the channel until the ground flattens, and drops a fan. Hazard fades as burn scars heal. It is a toy built on a real model's shape, not a forecast.
 
+**Earthquakes.** Shaking uses a Modified Mercalli style intensity that falls off with distance, `MMI = 1.68 + 1.2 M - 2.6 log10(R + 5)` with R in km, and low flat ground next to water shakes one step harder (liquefaction). Each tile then rolls for damage: buildings collapse above a type-specific intensity (towers and heavy industry first, houses last), roads crack, bridges drop a whole span, steep slopes away from the shore slide, and collapsed buildings can start fires that join the wildfire model. Rubble, landslide scars, and sand boils fade over a year and a half. It is a toy attenuation curve, not a ShakeMap.
+
+**Share links.** A link stores the recipe for the starting map (a seed or a real place) plus only what changed since, packed into a byte array, compressed with deflate, and base64url encoded after the `#`. Opening it regenerates the base map and replays the changes, which reproduces the city exactly. Tree planting on real places is seeded so the base is identical every time.
+
 **Growth.** Any zone next to a road can become a small building. Bigger buildings need a real neighborhood around them and demand nearby: homes need jobs, while shops and factories need residents. Lone zones stay rural forever. Buildings shrink if their demand disappears. Hover a zone to see what it is waiting for.
 
 **Civic buildings.** Each one reaches a radius of tiles. Parks speed up nearby homes and count as a nicer neighborhood. Hospitals count as jobs for homes. Fire stations speed up factories. Police stations speed up everything, and towers need police coverage. Stadiums take a 2 by 2 lot, boost shops, and pull crowds onto the roads.
@@ -104,6 +110,8 @@ The notebook reproduces the shipped presets byte for byte, so you can rebuild th
 - [x] Shareable map links
 - [x] Hills that hide cars
 - [x] Pinch to zoom on phones
+- [x] Earthquakes
+- [x] One link that shares the whole city
 
 ## Credits
 
