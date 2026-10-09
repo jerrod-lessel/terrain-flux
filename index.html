@@ -269,7 +269,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       GeoTIFF reading: geotiff.js (MIT license).<br>
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
-      <p class="credit">Version 4.3 · MIT license</p>
+      <p class="credit">Version 4.4 · MIT license</p>
       <div class="btns"><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -286,6 +286,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       <p>Wind gusts roll across the map and set the trees they pass swaying. Watch the wind readout in the status bar.</p>
       <p>Sea level rise works on coastal real places. It floods using the real elevation, and only land connected to the ocean, so low spots behind high ground stay dry. Hover a flooded tile to see it, and the panel totals the land, buildings, and people affected.</p>
       <p>Storms (🌧️) turn burn scars into debris flow danger. Each drainage gets a likelihood from a simplified version of the USGS M1 model used in Scar Threshold: steep burned ground, burn severity, and rain rate. Make it rain and High drainages usually let go, sending mud down the channel and spreading a fan where the ground flattens.</p>
+      <p>Drag a road across water to build a bridge. Bridges need land on both ends and can span up to 16 tiles.</p>
       <p>Water pools on flat ground. Place it on a slope and it runs downhill as a stream, with waterfalls, until it reaches water or a low spot. The sea level buttons flood or drain the whole map.</p>
       <p>Wildfires run downwind and uphill. Forest burns long and hot, grass burns fast and light, and roads, water, beaches, and bare rock stop them. Fire stations slow fires inside their reach. Burned ground stays scarred by severity and heals over about five game years, and forests grow back.</p>
       <p>Load DEM takes a real GeoTIFF, crops the center square, and squeezes it into 128 by 128 tiles. Cliffs get softened into slopes because the engine refuses to do anything else.</p>
@@ -315,7 +316,7 @@ let showGrid = true, tint = 'hypso', tool = 'pan', brush = 1, levelTarget = 0;
 let dem = null, month = 0, simOn = true, speed = 2, lastSpeed = 2, lastSim = 0, carClock = 0, carClockLast = 0;
 // Game speed: one month of growth per tick. Fire, debris flows and traffic scale with it; weather stays real-time.
 const MONTH_MS = [0, 4000, 1600, 600], FIRE_MS = [0, 480, 300, 160], CAR_K = [0.6, 0.6, 0.85, 1.3];
-let hover = null, drag = null, roadGhost = [], holdTimer = null, panTimer = null;
+let pendingPan = false, hover = null, drag = null, roadGhost = [], holdTimer = null, panTimer = null;
 const undoStack = [];
 let cacheDirty = true, compDirty = true, mmBaseDirty = true, mmViewDirty = true;
 let cacheCX = 0, cacheCY = 0, cacheZoom = 1, px1 = 1, frame = 0;
@@ -472,7 +473,7 @@ function drawTile(g, vx, vy, lod) {
   // map-edge slab
   if (vy === N - 1) cliff(g, Lx, Ly, hl, Bx, By, hb, F + TH / 2, F + TH, true);
   if (vx === N - 1) cliff(g, Bx, By, hb, Rx, Ry, hr, F + TH, F + TH / 2, false);
-  if (s >= 0) return;
+  if (s >= 0) { if (road[t]) { drawBridge(g, vx, vy, s, lod); if (!partialMode) roadVis.push(wx, wy); } return; }
 
   if (road[t]) { drawRoad(g, vx, vy, ht, hr, hb, hl, lod); if (!partialMode) roadVis.push(wx, wy); return; }
   if (bld[t]) { drawBuilding(g, bld[t], Tx, Ty + TH / 2, lod, hash2(wx, wy)); if (!partialMode) silhouette(Tx, Ty + TH / 2, bld[t], vx + vy); return; }
@@ -526,7 +527,7 @@ function drawTrees(g, vx, vy, ht, hr, hb, hl, n, hash, lod, sw) {
 }
 
 function drawRoad(g, vx, vy, ht, hr, hb, hl, lod) {
-  const isR = (a, b) => { if (a < 0 || b < 0 || a >= N || b >= N) return false; const w = t2w(a, b); return road[w[1] * N + w[0]] === 1; };
+  const isR = (a, b) => { if (a < 0 || b < 0 || a >= N || b >= N) return false; const w = t2w(a, b); return road[w[1] * N + w[0]] > 0; };
   const n0 = isR(vx - 1, vy), n1 = isR(vx + 1, vy), m0 = isR(vx, vy - 1), m1 = isR(vx, vy + 1);
   const W = 0.25, a = 0.5 - W, b = 0.5 + W;
   const br = (lit(0, 0, ht, 1, 0, hr, 0, 1, hl) + lit(1, 0, hr, 1, 1, hb, 0, 1, hl)) / 2;
@@ -542,6 +543,44 @@ function drawRoad(g, vx, vy, ht, hr, hb, hl, lod) {
   const C = P(0.5, 0.5);
   g.strokeStyle = 'rgba(245,232,160,0.9)'; g.lineWidth = 0.8; g.setLineDash([2, 2]);
   g.beginPath();
+  const arm = (u, v) => { const E = P(u, v); g.moveTo(C[0], C[1]); g.lineTo(E[0], E[1]); };
+  if (n0) arm(0, 0.5); if (n1) arm(1, 0.5); if (m0) arm(0.5, 0); if (m1) arm(0.5, 1);
+  g.stroke(); g.setLineDash([]); g.lineWidth = px1;
+}
+
+// ===== Bridges =====
+// Any road on water is a bridge: a deck a little above the surface, on pillars, with railings.
+const DECK = 0.8; // levels above the water
+function bridgeLevel(wx, wy) { const [mn, mx] = tMinMax(wx, wy); let s = lake[wy * N + wx] ? mx : -1; if (mn < sea) s = Math.max(s, sea); return s + DECK; }
+function drawBridge(g, vx, vy, s, lod) {
+  const hD = s + DECK;
+  const P = (u, v) => [((vx + u) - (vy + v)) * TW / 2, ((vx + u) + (vy + v)) * TH / 2 - hD * HS];
+  const isR = (a, b) => { if (a < 0 || b < 0 || a >= N || b >= N) return false; const w = t2w(a, b); return road[w[1] * N + w[0]] > 0; };
+  const n0 = isR(vx - 1, vy), n1 = isR(vx + 1, vy), m0 = isR(vx, vy - 1), m1 = isR(vx, vy + 1);
+  const W = 0.3, a = 0.5 - W, b = 0.5 + W;
+  const pieces = [[a, a, b, b]];
+  if (n0) pieces.push([0, a, a, b]); if (n1) pieces.push([b, a, 1, b]);
+  if (m0) pieces.push([a, 0, b, a]); if (m1) pieces.push([a, b, b, 1]);
+  // pillar in the middle of the span, down to the water
+  const C = P(0.5, 0.5), wy = ((vx + vy + 1) * TH / 2) - s * HS;
+  g.fillStyle = '#4e4e56'; g.fillRect(C[0] - 1.5, C[1], 3, Math.max(0, wy - C[1]) + 1);
+  // deck thickness, then the deck itself
+  for (const [u0, v0, u1, v1] of pieces) {
+    const A = P(u0, v0), B = P(u1, v0), Cc = P(u1, v1), D = P(u0, v1);
+    polyNoStroke(g, [A[0], A[1] + 2, B[0], B[1] + 2, Cc[0], Cc[1] + 2, D[0], D[1] + 2], '#55555c');
+  }
+  for (const [u0, v0, u1, v1] of pieces) {
+    const A = P(u0, v0), B = P(u1, v0), Cc = P(u1, v1), D = P(u0, v1);
+    poly(g, [A[0], A[1], B[0], B[1], Cc[0], Cc[1], D[0], D[1]], '#8c8c94');
+  }
+  if (lod) return;
+  // railings along the sides of each arm
+  g.strokeStyle = '#d8d8de'; g.lineWidth = 0.7; g.beginPath();
+  const rail = (u0, v0, u1, v1) => { const A = P(u0, v0), B = P(u1, v1); g.moveTo(A[0], A[1] - 1); g.lineTo(B[0], B[1] - 1); };
+  if (n0 || n1) { rail(n0 ? 0 : a, a, n1 ? 1 : b, a); rail(n0 ? 0 : a, b, n1 ? 1 : b, b); }
+  if (m0 || m1) { rail(a, m0 ? 0 : a, a, m1 ? 1 : b); rail(b, m0 ? 0 : a, b, m1 ? 1 : b); }
+  g.stroke();
+  g.strokeStyle = 'rgba(245,232,160,0.9)'; g.lineWidth = 0.8; g.setLineDash([2, 2]); g.beginPath();
   const arm = (u, v) => { const E = P(u, v); g.moveTo(C[0], C[1]); g.lineTo(E[0], E[1]); };
   if (n0) arm(0, 0.5); if (n1) arm(1, 0.5); if (m0) arm(0.5, 0); if (m1) arm(0.5, 1);
   g.stroke(); g.setLineDash([]); g.lineWidth = px1;
@@ -1468,7 +1507,7 @@ function drawStormFX(dt) {
 // ===== Traffic & cars =====
 const BTIER = { 4: 1, 7: 2, 8: 3, 9: 1, 5: 2, 10: 3, 11: 1, 6: 2, 12: 3 };
 const TWT = [0, 1, 2.5, 5];
-function isRoadW(x, y) { return inW(x, y) && road[y * N + x] === 1; }
+function isRoadW(x, y) { return inW(x, y) && road[y * N + x] > 0; }
 function computeTraffic() {
   // Local demand: built-up density within 3 tiles. A city with homes AND jobs commutes more.
   const balance = (lastPop > 0 && lastJobs > 0) ? 1 : 0.4;
@@ -1518,7 +1557,8 @@ function laneTraffic(alongX, a, fixed) {
 }
 function slotHash(n, line) { let h = Math.imul(n | 0, 0x9E3779B1) ^ Math.imul(line | 0, 0x85EBCA77); h = Math.imul(h ^ (h >>> 15), 0xC2B2AE3D); return (h ^ (h >>> 13)) >>> 0; }
 function drawCar(px, py, hsh, alpha, cw, ch) {
-  const h = hAtW(px, py), v = w2v(px, py);
+  const bx = Math.max(0, Math.min(N - 1, Math.floor(px))), by = Math.max(0, Math.min(N - 1, Math.floor(py)));
+  const h = (road[by * N + bx] && isWaterW(bx, by)) ? bridgeLevel(bx, by) : hAtW(px, py), v = w2v(px, py);
   const sx = (v[0] - v[1]) * TW / 2, sy = (v[0] + v[1]) * TH / 2 - h * HS;
   if (depthData) { // hide the car if a building in front of its tile covers this pixel
     const X = Math.round(sx * zoom + cacheCX), Y = Math.round((sy - 1) * zoom + cacheCY);
@@ -1839,7 +1879,7 @@ function demolishSloped() {
   }
 }
 function applyTool(h) {
-  if (tool === 'fire') { const [wx, wy] = t2w(h.vx, h.vy); ignite(wx, wy, false); return; }
+  if (tool === 'fire') { const [wx, wy] = t2w(h.vx, h.vy); if (ignite(wx, wy, false)) pendingPan = true; return; }
   if (tool === 'water') { const [wx, wy] = t2w(h.vx, h.vy), [mn, mx] = tMinMax(wx, wy); if (mn !== mx && !isWaterW(wx, wy)) { traceStream(wx, wy); dirtyAll(); return; } }
   if (tool.startsWith('civ')) {
     const id = +tool[3], [wx, wy] = t2w(h.vx, h.vy);
@@ -1900,14 +1940,24 @@ function roadPath(a, b) {
 }
 function commitRoad() {
   snapshot();
-  let skipped = 0;
-  for (const [vx, vy] of roadGhost) {
-    const [wx, wy] = t2w(vx, vy), t = wy * N + wx;
-    if (isWaterW(wx, wy)) { skipped++; continue; }
+  // Water crossings become bridges if they are no longer than MAX_SPAN tiles and land waits on the far side.
+  const MAX_SPAN = 16, tiles = roadGhost.map(([vx, vy]) => t2w(vx, vy));
+  const wet = tiles.map(([wx, wy]) => isWaterW(wx, wy));
+  let skipped = 0, bridged = 0;
+  for (let i = 0; i < tiles.length; i++) {
+    const [wx, wy] = tiles[i], t = wy * N + wx;
+    if (wet[i]) {
+      let j = i; while (j < tiles.length && wet[j]) j++;
+      const span = j - i;
+      if (span <= MAX_SPAN && i > 0 && j < tiles.length) { for (let k = i; k < j; k++) { const [x, y] = tiles[k]; road[y * N + x] = 2; } bridged += span; }
+      else skipped += span;
+      i = j - 1; continue;
+    }
     removeCivAt(t); road[t] = 1; tree[t] = zone[t] = bld[t] = 0; dens[t] = 0;
   }
   roadGhost = [];
-  if (skipped) toast('Roads skip water. Bridges are a future-you problem.');
+  if (skipped) toast(`Bridges need land on both ends and can span up to ${MAX_SPAN} tiles of water.`);
+  else if (bridged) toast(`🌉 Bridge built: ${bridged} tile${bridged > 1 ? 's' : ''} long.`);
   dirtyAll();
 }
 
@@ -1985,7 +2035,7 @@ function boxSum(S, x, y, r) {
   return S[(y1 + 1) * M1 + x1 + 1] - S[y0 * M1 + x1 + 1] - S[(y1 + 1) * M1 + x0] + S[y0 * M1 + x0];
 }
 function tierCap(wx, wy, z) {
-  const rn = near(wx, wy, 2, (X, Y) => road[Y * N + X] === 1);
+  const rn = near(wx, wy, 2, (X, Y) => road[Y * N + X] > 0);
   let nb = 0;
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if ((dx || dy) && inW(wx + dx, wy + dy) && zone[(wy + dy) * N + wx + dx] === z) nb++; }
   if (!rn) return nb >= 2 ? [1, 'no road, growing slowly', false] : [0, 'needs a road', false];
@@ -2462,7 +2512,7 @@ function setSpeed(sp) {
 document.querySelectorAll('.spd').forEach(b => b.addEventListener('click', () => setSpeed(+b.dataset.s)));
 function toggleSim() { setSpeed(speed ? 0 : lastSpeed); }
 document.getElementById('i15').addEventListener('input', e => { i15 = +e.target.value; document.getElementById('i15-v').textContent = i15; refreshHazard(); updateStatus(); });
-document.getElementById('btn-rain').addEventListener('click', startStorm);
+document.getElementById('btn-rain').addEventListener('click', () => { startStorm(); selectTool('pan'); });
 // About panel. Set REPO_URL once the GitHub repo exists and the source link appears.
 const REPO_URL = '';
 const aboutBox = document.getElementById('aboutbox');
@@ -2558,7 +2608,9 @@ function endDrag() {
   if (drag && drag.mode === 'road' && roadGhost.length) commitRoad();
   if (drag && drag.mode === 'pan') { cacheDirty = true; canvas.style.cursor = tool === 'pan' ? 'grab' : 'crosshair'; }
   drag = null; clearInterval(holdTimer); holdTimer = null; compDirty = true;
+  if (pendingPan) { pendingPan = false; selectTool('pan'); } // disasters are one-shot: back to panning
 }
+function selectTool(name) { const b = document.querySelector(`.tb[data-tool="${name}"]`); if (b) b.click(); }
 canvas.addEventListener('pointerup', endDrag);
 canvas.addEventListener('pointercancel', endDrag);
 canvas.addEventListener('pointerleave', () => { if (!drag) { hover = null; compDirty = true; } }); // status keeps the last tile you pointed at
