@@ -132,6 +132,14 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       <button class="tb" data-tool="zone3" title="Industrial zone"><span class="z" style="color:#d07a2a">I</span></button>
       <button class="tb" data-tool="pan" title="Pan (or right-drag anywhere)">✋</button>
     </div>
+    <div class="sect">Civic</div>
+    <div class="grid2">
+      <button class="tb" data-tool="civ1" title="Park: homes nearby grow faster">🌳</button>
+      <button class="tb" data-tool="civ2" title="Hospital: counts as jobs for nearby homes">🏥</button>
+      <button class="tb" data-tool="civ3" title="Fire station: factories nearby grow faster">🚒</button>
+      <button class="tb" data-tool="civ4" title="Police station: towers need police coverage">🚓</button>
+      <button class="tb" data-tool="civ5" title="Stadium: shops nearby boom">🏟️</button>
+    </div>
     <div id="toolname" class="sunk">Raise</div>
     <div class="row" title="Brush size in tiles">⬚<input type="range" id="brush" min="1" max="6" value="1"><span id="brushv">1</span></div>
 
@@ -178,6 +186,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
   <span>Height <span class="v" id="st-h">-</span></span>
   <span>Sea <span class="v" id="st-sea">-</span></span>
   <span>Zone <span class="v" id="st-zone">-</span></span>
+  <span>Wind <span class="v" id="st-wind">-</span></span>
   <span class="v" id="st-hint"></span>
   <span class="help">Q/E rotate · wheel zoom · right-drag pan · Ctrl+Z undo · <a href="#" id="help-link" style="color:inherit">help</a> · <a href="#" id="about-link" style="color:inherit">about</a></span>
 </div>
@@ -224,7 +233,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       GeoTIFF reading: geotiff.js (MIT license).<br>
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
-      <p class="credit">Version 3.7 · MIT license</p>
+      <p class="credit">Version 3.8 · MIT license</p>
       <div class="btns"><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -237,6 +246,8 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       <p>The ground can only rise or fall one step from one tile to the next, so raising a spot drags the hillside up with it, just like the 1993 original.</p>
       <p>Zones only grow on flat tiles near a road. Use Level to make room. A lone zone stays small and rural. Taller buildings need a real neighborhood around them, and demand: homes need jobs nearby, and shops and factories need residents. Hover a zone to see what it is waiting for. Homes like water views and dislike factories.</p>
       <p>Traffic follows development. Busy neighborhoods fill their roads with cars, and a road to nowhere stays empty. Every building type comes in four styles.</p>
+      <p>Civic buildings change the city around them. Parks make homes nicer, hospitals act like jobs, fire stations help factories, stadiums pack the shops and the roads, and every tower needs police coverage. Pick one to see its reach.</p>
+      <p>Wind gusts roll across the map and set the trees they pass swaying. Watch the wind readout in the status bar.</p>
       <p>Water placed on a slope makes a waterfall. The sea level buttons flood or drain the whole map.</p>
       <p>Load DEM takes a real GeoTIFF, crops the center square, and squeezes it into 128 by 128 tiles. Cliffs get softened into slopes because the engine refuses to do anything else.</p>
       <p>Keys: Q/E rotate, +/- zoom, arrows or WASD pan, G grid, T tint, P pixels, Space pause, Esc cancel.</p>
@@ -282,8 +293,8 @@ const dcan = document.createElement('canvas');
 const dctx = dcan.getContext('2d', { willReadFrequently: true });
 let depthData = null, depthW = 0, depthH = 0;
 const SIL_H = { 4: 15, 7: 26, 8: 50, 9: 16, 5: 30, 10: 56, 11: 12, 6: 26, 12: 36 };
-function silhouette(x, y, id, d) {
-  const hw = 12, q = 6, H = SIL_H[id] || 20;
+function silhouette(x, y, id, d, Hx) {
+  const hw = 12, q = 6, H = Hx || SIL_H[id] || 20;
   dctx.fillStyle = `rgb(${d + 1},0,0)`;
   dctx.beginPath();
   dctx.moveTo(x - hw, y); dctx.lineTo(x, y + q); dctx.lineTo(x + hw, y); dctx.lineTo(x + hw, y - H); dctx.lineTo(x, y - H - q); dctx.lineTo(x - hw, y - H);
@@ -411,7 +422,7 @@ function drawTile(g, vx, vy, lod) {
     if (s > hr || s > hb) poly(g, [Bx, sY + TH, Rx, sY + TH / 2, Rx, Ry, Bx, By], '#1f5a98');
     poly(g, [Tx, sY, Rx, sY + TH / 2, Bx, sY + TH, Lx, sY + TH / 2], waterCol(depth));
     if (showGrid && !lod) outlinePts(g, [Tx, sY, Rx, sY + TH / 2, Bx, sY + TH, Lx, sY + TH / 2], 'rgba(0,0,40,0.18)', px1);
-    waterVis.push(Tx, sY + TH / 2, ((wx * 7919) ^ (wy * 104729)) & 1023);
+    if (!partialMode) waterVis.push(Tx, sY + TH / 2, ((wx * 7919) ^ (wy * 104729)) & 1023);
   }
 
   // map-edge slab
@@ -419,8 +430,9 @@ function drawTile(g, vx, vy, lod) {
   if (vx === N - 1) cliff(g, Bx, By, hb, Rx, Ry, hr, F + TH, F + TH / 2, false);
   if (s >= 0) return;
 
-  if (road[t]) { drawRoad(g, vx, vy, ht, hr, hb, hl, lod); roadVis.push(wx, wy); return; }
-  if (bld[t]) { drawBuilding(g, bld[t], Tx, Ty + TH / 2, lod, hash2(wx, wy)); silhouette(Tx, Ty + TH / 2, bld[t], vx + vy); return; }
+  if (road[t]) { drawRoad(g, vx, vy, ht, hr, hb, hl, lod); if (!partialMode) roadVis.push(wx, wy); return; }
+  if (bld[t]) { drawBuilding(g, bld[t], Tx, Ty + TH / 2, lod, hash2(wx, wy)); if (!partialMode) silhouette(Tx, Ty + TH / 2, bld[t], vx + vy); return; }
+  if (civ[t]) { drawCivic(g, civ[t], Tx, Ty + TH / 2, lod, hash2(wx, wy)); if (!partialMode) silhouette(Tx, Ty + TH / 2, 0, vx + vy, CIVIC[civ[t]].sil); return; }
   if (zone[t]) {
     const zc = ['', 'rgba(70,200,70,0.30)', 'rgba(70,110,255,0.30)', 'rgba(255,140,50,0.32)'][zone[t]];
     polyNoStroke(g, [Tx, Ty, Rx, Ry, Bx, By, Lx, Ly], zc);
@@ -430,7 +442,7 @@ function drawTile(g, vx, vy, lod) {
       g.setLineDash([]);
     }
   }
-  if (tree[t]) drawTrees(g, vx, vy, ht, hr, hb, hl, tree[t], (wx * 31 + wy * 17) & 255, lod);
+  if (tree[t]) drawTrees(g, vx, vy, ht, hr, hb, hl, tree[t], (wx * 31 + wy * 17) & 255, lod, (lod || !gusts.length) ? 0 : swayAt(wx, wy));
 }
 
 function cliff(g, ax, ay, ha, bx, by, hb, ay0, by0, left) {
@@ -446,7 +458,8 @@ function cliff(g, ax, ay, ha, bx, by, hb, ay0, by0, left) {
 }
 
 const TREE_SPOTS = [[], [[0.5, 0.5]], [[0.33, 0.4], [0.64, 0.63]], [[0.3, 0.32], [0.7, 0.42], [0.47, 0.72]]];
-function drawTrees(g, vx, vy, ht, hr, hb, hl, n, hash, lod) {
+function drawTrees(g, vx, vy, ht, hr, hb, hl, n, hash, lod, sw) {
+  sw = sw || 0;
   const spots = TREE_SPOTS[n];
   for (let i = 0; i < spots.length; i++) {
     const [u, v] = spots[i];
@@ -454,13 +467,15 @@ function drawTrees(g, vx, vy, ht, hr, hb, hl, n, hash, lod) {
     if (lod) { g.fillStyle = '#1f5a22'; g.fillRect(x - 3, y - 7, 6, 7); continue; }
     if (((hash >> i) & 1) === 0) {
       g.fillStyle = '#4a2c14'; g.fillRect(x - 0.75, y - 4, 1.5, 4);
-      g.fillStyle = '#1d4f1c'; g.fillRect(x - 4, y - 10, 8, 6); g.fillRect(x - 3, y - 12, 6, 9);
-      g.fillStyle = '#2e7a2a'; g.fillRect(x - 3, y - 11, 5, 4); g.fillRect(x - 2, y - 12, 3, 2);
-      g.fillStyle = '#5aa843'; g.fillRect(x - 2, y - 11, 2, 1);
+      const a = sw * 0.6, b = sw;
+      g.fillStyle = '#1d4f1c'; g.fillRect(x - 4 + a, y - 10, 8, 6); g.fillRect(x - 3 + b, y - 12, 6, 9);
+      g.fillStyle = '#2e7a2a'; g.fillRect(x - 3 + b, y - 11, 5, 4); g.fillRect(x - 2 + b, y - 12, 3, 2);
+      g.fillStyle = '#5aa843'; g.fillRect(x - 2 + b, y - 11, 2, 1);
     } else {
       g.fillStyle = '#4a2c14'; g.fillRect(x - 0.75, y - 3, 1.5, 3);
-      polyNoStroke(g, [x, y - 16, x + 4.5, y - 3, x - 4.5, y - 3], '#174424');
-      polyNoStroke(g, [x, y - 16, x, y - 3, x - 4.5, y - 3], '#2a6b34');
+      const tx = x + sw * 1.3, mx = x + sw * 0.5;
+      polyNoStroke(g, [tx, y - 16, mx + 4.5, y - 3, mx - 4.5, y - 3], '#174424');
+      polyNoStroke(g, [tx, y - 16, mx, y - 3, mx - 4.5, y - 3], '#2a6b34');
     }
   }
 }
@@ -757,6 +772,271 @@ function bHeavy(g, x, y, D, v) {
 }
 
 
+// ===== Civic buildings: parks, hospitals, fire, police, stadiums =====
+// Each one changes how the city around it grows. Effects reach a radius in tiles.
+const CIVIC = [null,
+  { key: 'park',     name: 'Park',           icon: '🌳', r: 4,  styles: 5, sil: 9,  w: 1, color: [96, 190, 86],
+    effect: 'Homes within 4 tiles grow 40% faster and count it as a nicer neighborhood.' },
+  { key: 'hospital', name: 'Hospital',       icon: '🏥', r: 9,  styles: 4, sil: 34, w: 4, color: [240, 240, 236],
+    effect: 'Within 9 tiles, counts as jobs for nearby homes, and homes grow 20% faster.' },
+  { key: 'fire',     name: 'Fire station',   icon: '🚒', r: 10, styles: 4, sil: 22, w: 3, color: [200, 60, 44],
+    effect: 'Factories within 10 tiles grow 30% faster. Will fight wildfires when those arrive.' },
+  { key: 'police',   name: 'Police station', icon: '🚓', r: 10, styles: 4, sil: 18, w: 3, color: [70, 100, 170],
+    effect: 'Everything within 10 tiles grows 20% faster, and towers (tier 3) need police coverage.' },
+  { key: 'stadium',  name: 'Stadium',        icon: '🏟️', r: 8,  styles: 4, sil: 16, w: 6, color: [170, 170, 170],
+    effect: 'Shops within 8 tiles grow 50% faster and get extra customers. Draws big crowds on the roads.' },
+];
+const civ = new Uint8Array(N * N);
+const civBoost = [null, new Float32Array(N * N), new Float32Array(N * N), new Float32Array(N * N)];
+const civDense = new Float32Array(N * N), civDemR = new Float32Array(N * N), civDemC = new Float32Array(N * N);
+const civPolice = new Uint8Array(N * N);
+function recomputeCivic() {
+  civBoost[1].fill(1); civBoost[2].fill(1); civBoost[3].fill(1);
+  civDense.fill(0); civDemR.fill(0); civDemC.fill(0); civPolice.fill(0);
+  for (let wy = 0; wy < N; wy++) for (let wx = 0; wx < N; wx++) {
+    const id = civ[wy * N + wx]; if (!id) continue;
+    const r = CIVIC[id].r;
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      if (dx * dx + dy * dy > r * r) continue;
+      const X = wx + dx, Y = wy + dy; if (!inW(X, Y)) continue;
+      const t = Y * N + X;
+      if (id === 1) { civBoost[1][t] *= 1.4; civDense[t] += 10; }
+      else if (id === 2) { civBoost[1][t] *= 1.2; civDemR[t] += 15; }
+      else if (id === 3) { civBoost[3][t] *= 1.3; }
+      else if (id === 4) { civBoost[1][t] *= 1.2; civBoost[2][t] *= 1.2; civBoost[3][t] *= 1.2; civPolice[t] = 1; }
+      else if (id === 5) { civBoost[2][t] *= 1.5; civDemC[t] += 20; }
+    }
+  }
+}
+
+function tinyTree(g, x, y) {
+  g.fillStyle = '#4a2c14'; g.fillRect(x - 0.6, y - 3, 1.2, 3);
+  g.fillStyle = '#1f5a22'; g.fillRect(x - 3, y - 8, 6, 5); g.fillRect(x - 2, y - 9, 4, 7);
+  g.fillStyle = '#3a8a32'; g.fillRect(x - 2, y - 8, 3, 2);
+}
+function ground(g, x, y, hw, col) { polyNoStroke(g, [x, y - hw / 2, x + hw, y, x, y + hw / 2, x - hw, y], col); }
+function redCross(g, x, y, s) { g.fillStyle = '#d82020'; g.fillRect(x - s / 2, y - s * 1.5, s, s * 3); g.fillRect(x - s * 1.5, y - s / 2, s * 3, s); }
+
+function drawCivic(g, id, x, y, lod, h) {
+  const v = h % CIVIC[id].styles, D = !lod;
+  switch (id) {
+    case 1: { // parks
+      ground(g, x, y, 15, '#5aa84a');
+      if (v === 0) { // classic park: path, bench, trees
+        g.strokeStyle = '#dccca4'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(x - 9, y - 4.5); g.lineTo(x + 9, y + 4.5); g.stroke(); g.lineWidth = px1;
+        if (D) { g.fillStyle = '#7a5030'; g.fillRect(x + 2, y - 2, 3, 1); }
+        tinyTree(g, x + 6, y - 3); tinyTree(g, x - 7, y + 1); tinyTree(g, x + 1, y + 5);
+      } else if (v === 1) { // pond park
+        g.fillStyle = '#4aa8e0'; g.beginPath(); g.ellipse(x + 3, y + 1, 6, 3, 0, 0, Math.PI * 2); g.fill();
+        if (D) { g.fillStyle = '#c8ecff'; g.fillRect(x + 1, y, 3, 0.8); }
+        tinyTree(g, x - 3, y - 3); tinyTree(g, x - 9, y + 1);
+      } else if (v === 2) { // playground
+        ground(g, x + 3, y + 1, 7, '#e2cf96');
+        g.strokeStyle = '#d83a2a'; g.lineWidth = 1; g.beginPath();
+        g.moveTo(x - 1, y + 2); g.lineTo(x + 1, y - 5); g.lineTo(x + 3, y + 2); g.moveTo(x + 4, y + 3); g.lineTo(x + 6, y - 4); g.lineTo(x + 8, y + 3);
+        g.moveTo(x + 1, y - 5); g.lineTo(x + 6, y - 4); g.stroke();
+        g.strokeStyle = '#f2c230'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(x - 4, y - 3); g.lineTo(x - 9, y + 2); g.stroke(); g.lineWidth = px1;
+        tinyTree(g, x - 6, y - 4);
+      } else if (v === 3) { // fountain plaza
+        ground(g, x, y, 11, '#d8d2c4');
+        cyl(g, x, y + 1, 3.5, 1.5, '#b8b2a4', '#9a9486', '#5ab4e8');
+        if (D) { g.fillStyle = 'rgba(235,248,255,0.9)'; g.fillRect(x - 0.5, y - 5, 1, 4.5); g.fillRect(x - 1.5, y - 5, 3, 0.8); }
+        tinyTree(g, x - 10, y + 1); tinyTree(g, x + 10, y + 1); tinyTree(g, x, y - 4);
+      } else { // sports field
+        ground(g, x, y, 13, '#4c9c3c');
+        if (D) {
+          g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 0.6;
+          g.beginPath(); g.moveTo(x, y - 5.5); g.lineTo(x + 11, y); g.lineTo(x, y + 5.5); g.lineTo(x - 11, y); g.closePath();
+          g.moveTo(x - 5.5, y - 2.75); g.lineTo(x + 5.5, y + 2.75); g.stroke(); g.lineWidth = px1;
+          g.fillStyle = '#fff'; g.fillRect(x - 9, y - 2, 0.8, 2); g.fillRect(x + 8.5, y, 0.8, 2);
+        }
+      }
+      break;
+    }
+    case 2: { // hospitals
+      if (v === 0) {
+        box(g, x, y, 11, 22, '#f2f2ee', '#c8c8c2', '#e0e0da');
+        if (D) { face(g, true, x, y, 11, 22, f => bands(f, 11, 22, 5, '#8ec4e8')); face(g, false, x, y, 11, 22, f => { bands(f, 11, 22, 5, '#5a8cb4'); });
+          redCross(g, x, y - 22, 1.5); }
+      } else if (v === 1) {
+        box(g, x, y, 13, 10, '#f4f2ec', '#ccc8c0', '#8ab4d8');
+        if (D) { face(g, true, x, y, 13, 10, f => { f.fillStyle = '#d82020'; f.fillRect(0, 2, 13, 1.2); f.fillStyle = '#a8d4f0'; f.fillRect(1.5, 4.5, 10, 3); });
+          face(g, false, x, y, 13, 10, f => { f.fillStyle = '#d82020'; f.fillRect(5.5, 2, 2, 6); f.fillRect(3.5, 4, 6, 2); }); }
+      } else if (v === 2) {
+        box(g, x, y, 10, 32, '#e8eef2', '#b8c4cc', '#d8e0e6');
+        if (D) { face(g, true, x, y, 10, 32, f => wins(f, 10, 32, 7, 3, 1.8, 2.2, '#8ec4e8')); face(g, false, x, y, 10, 32, f => wins(f, 10, 32, 7, 3, 1.8, 2.2, '#5a8cb4'));
+          g.strokeStyle = '#d82020'; g.lineWidth = 0.8; g.beginPath(); g.ellipse(x, y - 32, 5, 2.5, 0, 0, Math.PI * 2); g.stroke(); g.lineWidth = px1; redCross(g, x, y - 32, 1); }
+      } else {
+        box(g, x + 5, y - 2.5, 6, 16, '#d8cfc0', '#b0a696', '#e6dfd2'); box(g, x - 5, y + 2.5, 6, 12, '#d8cfc0', '#b0a696', '#e6dfd2');
+        if (D) { face(g, true, x - 5, y + 2.5, 6, 12, f => wins(f, 6, 12, 3, 2, 1.6, 2, '#8ec4e8')); face(g, false, x + 5, y - 2.5, 6, 16, f => wins(f, 6, 16, 4, 2, 1.6, 2, '#5a8cb4'));
+          redCross(g, x - 5, y + 2.5 - 12, 1.2); }
+      }
+      break;
+    }
+    case 3: { // fire stations
+      if (v === 0) {
+        box(g, x - 6, y - 3, 3, 22, '#a03a26', '#7c2c1c', '#5e2216');
+        box(g, x, y, 11, 12, '#b8442c', '#8c3220', '#6e2a1c');
+        if (D) face(g, false, x, y, 11, 12, f => { f.fillStyle = '#f0e6d8'; f.fillRect(1, 4, 4, 8); f.fillRect(6, 4, 4, 8); f.fillStyle = '#3a2c24'; f.fillRect(1.6, 4.6, 2.8, 7.4); f.fillRect(6.6, 4.6, 2.8, 7.4); });
+      } else if (v === 1) {
+        box(g, x, y, 12, 11, '#a8acb0', '#80868c', '#c0c4c8');
+        if (D) { face(g, false, x, y, 12, 11, f => { f.fillStyle = '#d83020'; f.fillRect(1, 3, 4.5, 8); f.fillRect(6.5, 3, 4.5, 8); });
+          face(g, true, x, y, 12, 11, f => { f.fillStyle = '#d83020'; f.fillRect(0, 1, 12, 1.2); }); }
+      } else if (v === 2) {
+        box(g, x, y, 10, 12, '#f0ece4', '#c8c4bc', null); hip(g, x, y, 10, 12, 6, '#c03424', '#8e2418');
+        if (D) { box(g, x, y - 16, 2, 4, '#f0ece4', '#c8c4bc', '#c03424'); face(g, false, x, y, 10, 12, f => { f.fillStyle = '#c03424'; f.fillRect(1.5, 4, 7, 8); }); }
+      } else {
+        box(g, x - 3, y - 1.5, 9, 11, '#c24a30', '#943622', '#7a2c1c');
+        if (D) face(g, false, x - 3, y - 1.5, 9, 11, f => { f.fillStyle = '#3a2c24'; f.fillRect(2, 4, 5, 7); });
+        box(g, x + 8, y + 4, 3, 2.5, '#e02a1c', '#b0201a', '#f0f0f0');
+      }
+      break;
+    }
+    case 4: { // police
+      const flag = () => { g.fillStyle = '#ccc'; g.fillRect(x + 9, y - 22, 0.8, 18); g.fillStyle = '#2c4c9c'; g.fillRect(x + 9.8, y - 22, 4, 2.5); g.fillStyle = '#e8e8e8'; g.fillRect(x + 9.8, y - 20.5, 4, 1); };
+      if (v === 0) {
+        box(g, x, y, 11, 14, '#8a9aae', '#66788e', '#a0aec0');
+        if (D) { face(g, true, x, y, 11, 14, f => { f.fillStyle = '#1e3a78'; f.fillRect(0, 1, 11, 2); wins(f, 11, 14, 2, 3, 2, 2, '#cfe4f4', 5); }); flag(); }
+      } else if (v === 1) {
+        box(g, x, y, 11, 13, '#a85c44', '#844634', '#946050');
+        if (D) { face(g, true, x, y, 11, 13, f => { f.fillStyle = '#2c4c9c'; f.fillRect(1, 1.5, 9, 2.4); f.fillStyle = '#fff'; f.fillRect(2, 2.3, 7, 0.8); wins(f, 11, 13, 2, 3, 2, 2, '#f2e2c0', 5); }); }
+      } else if (v === 2) {
+        box(g, x, y, 11, 16, '#5a7ca8', '#3e5c84', '#7a98c0');
+        if (D) { face(g, true, x, y, 11, 16, f => bands(f, 11, 16, 4, '#bcd8f4')); face(g, false, x, y, 11, 16, f => bands(f, 11, 16, 4, '#8aaad0')); flag(); }
+      } else {
+        box(g, x - 2, y - 1, 8, 9, '#9aa4b2', '#748090', '#b0bac6');
+        if (D) face(g, true, x - 2, y - 1, 8, 9, f => { f.fillStyle = '#1e3a78'; f.fillRect(0, 1, 8, 1.6); f.fillStyle = '#cfe4f4'; f.fillRect(1.5, 4, 5, 3); });
+        box(g, x + 8, y + 3, 3, 2.2, '#f0f0f0', '#202020', '#f4f4f4');
+        if (D) { g.fillStyle = '#e02020'; g.fillRect(x + 7, y - 0.5, 1, 1); g.fillStyle = '#2050e0'; g.fillRect(x + 8.5, y - 0.5, 1, 1); }
+      }
+      break;
+    }
+    case 5: { // stadiums
+      if (v === 0 || v === 3) { // bowl (3 adds light towers)
+        if (v === 3) { g.fillStyle = '#888'; g.fillRect(x - 12, y - 24, 0.8, 22); g.fillRect(x + 11, y - 24, 0.8, 22); }
+        g.fillStyle = '#6e6e6e'; g.beginPath(); g.ellipse(x, y, 15, 7.5, 0, 0, Math.PI * 2); g.fill();
+        g.fillRect(x - 15, y - 7, 30, 7);
+        g.fillStyle = '#b4b4b4'; g.beginPath(); g.ellipse(x, y - 7, 15, 7.5, 0, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#8a8a8a'; g.beginPath(); g.ellipse(x, y - 7, 12, 6, 0, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#3e9a3a'; g.beginPath(); g.ellipse(x, y - 6, 9, 4.5, 0, 0, Math.PI * 2); g.fill();
+        if (D) { g.fillStyle = 'rgba(255,255,255,0.85)'; g.fillRect(x - 0.4, y - 10, 0.8, 8);
+          if (v === 3) { g.fillStyle = '#fff6b0'; g.fillRect(x - 13, y - 26, 3, 2); g.fillRect(x + 10, y - 26, 3, 2); } }
+      } else if (v === 1) { // ballpark
+        polyNoStroke(g, [x, y - 8, x + 14, y - 1, x + 13, y - 7, x, y - 13], '#9a9a9a');
+        polyNoStroke(g, [x, y - 8, x - 14, y - 1, x - 13, y - 7, x, y - 13], '#b8b8b8');
+        ground(g, x, y, 14, '#4ca040');
+        ground(g, x, y + 2, 5, '#c89a60');
+        if (D) { g.fillStyle = '#fff'; g.fillRect(x - 0.6, y + 4, 1.2, 1); g.fillRect(x - 0.6, y - 0.5, 1.2, 1); g.fillRect(x - 5.5, y + 2, 1.2, 1); g.fillRect(x + 4.5, y + 2, 1.2, 1); }
+      } else { // dome
+        g.fillStyle = '#7a7a7a'; g.beginPath(); g.ellipse(x, y, 14, 7, 0, 0, Math.PI * 2); g.fill();
+        const gr = g.createLinearGradient(x - 14, 0, x + 14, 0); gr.addColorStop(0, '#fbfbf8'); gr.addColorStop(1, '#b8b8b2');
+        g.fillStyle = gr; g.beginPath(); g.ellipse(x, y - 2, 14, 12, 0, Math.PI, Math.PI * 2); g.ellipse(x, y - 2, 14, 7, 0, 0, Math.PI); g.fill();
+        if (D) { g.strokeStyle = 'rgba(120,120,120,0.6)'; g.lineWidth = 0.5; g.beginPath();
+          for (const k of [-0.5, 0, 0.5]) { g.moveTo(x + k * 14, y + 3); g.quadraticCurveTo(x + k * 9, y - 14, x, y - 14); } g.stroke(); g.lineWidth = px1; }
+      }
+      break;
+    }
+  }
+}
+
+// ===== Wind: gusts roll across the map and set the trees they pass swaying =====
+// Only the screen area under each gust is redrawn, so calm forests cost nothing.
+const wind = { a: Math.random() * Math.PI * 2, spd: 10 };
+const gusts = [];
+let windT = 0, lastWind = 0, nextGust = 0, windSX = 0, partialMode = false, lastWindLabel = 0;
+function swayAt(wx, wy) {
+  let s = 0;
+  for (const q of gusts) {
+    const dx = wx + 0.5 - q.x, dy = wy + 0.5 - q.y, d2 = dx * dx + dy * dy;
+    if (d2 < q.r * q.r) { const f = 1 - Math.sqrt(d2) / q.r; s += q.str * f * f; }
+  }
+  if (!s) return 0;
+  s = Math.min(1, s);
+  const ph = ((wx * 92821) ^ (wy * 68917)) & 255;
+  return s * (windSX * 1.1 + 1.5 * Math.sin(windT * 5 + ph * 0.1));
+}
+function gustRect(q) {
+  const x0 = Math.max(0, Math.floor(q.x - q.r)), x1 = Math.min(N, Math.ceil(q.x + q.r));
+  const y0 = Math.max(0, Math.floor(q.y - q.r)), y1 = Math.min(N, Math.ceil(q.y + q.r));
+  if (x0 >= x1 || y0 >= y1) return null;
+  let anyTree = false;
+  for (let y = y0; y < y1 && !anyTree; y++) for (let x = x0; x < x1; x++) if (tree[y * N + x]) { anyTree = true; break; }
+  if (!anyTree) return null;
+  let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity, hmin = 99, hmax = 0;
+  for (const [px, py] of [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]) {
+    const v = w2v(px, py), sx = (v[0] - v[1]) * TW / 2, sy = (v[0] + v[1]) * TH / 2;
+    xmin = Math.min(xmin, sx); xmax = Math.max(xmax, sx); ymin = Math.min(ymin, sy); ymax = Math.max(ymax, sy);
+  }
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const h = HM[y * NC + x]; if (h < hmin) hmin = h; if (h > hmax) hmax = h; }
+  const z = cacheZoom;
+  return { x0: (xmin - TW / 2) * z + cacheCX, x1: (xmax + TW / 2) * z + cacheCX,
+           y0: (ymin - hmax * HS - 24) * z + cacheCY, y1: (ymax - hmin * HS + TH) * z + cacheCY };
+}
+function unionRect(a, b) {
+  if (!a) return b; if (!b) return a;
+  return { x0: Math.min(a.x0, b.x0), y0: Math.min(a.y0, b.y0), x1: Math.max(a.x1, b.x1), y1: Math.max(a.y1, b.y1) };
+}
+function redrawRect(r) {
+  const W = cache.width, Hh = cache.height;
+  const x0 = Math.max(0, Math.floor(r.x0)), y0 = Math.max(0, Math.floor(r.y0)), x1 = Math.min(W, Math.ceil(r.x1)), y1 = Math.min(Hh, Math.ceil(r.y1));
+  if (x1 <= x0 || y1 <= y0) return;
+  cx.save();
+  cx.setTransform(1, 0, 0, 1, 0, 0);
+  cx.beginPath(); cx.rect(x0, y0, x1 - x0, y1 - y0); cx.clip();
+  const gr = cx.createLinearGradient(0, 0, 0, Hh); gr.addColorStop(0, '#0a0f18'); gr.addColorStop(1, '#1c2838');
+  cx.fillStyle = gr; cx.fillRect(x0, y0, x1 - x0, y1 - y0);
+  const z = cacheZoom;
+  cx.setTransform(z, 0, 0, z, cacheCX, cacheCY); cx.lineWidth = 1 / z; cx.lineJoin = 'round';
+  partialMode = true;
+  const lod = z < 0.3, topPad = (MAXH * HS + 70) * z, botPad = (TH + (-BASE + 1) * HS) * z, side = TW * z;
+  for (let d = 0; d <= 2 * N - 2; d++) {
+    const sy = d * TH / 2 * z + cacheCY;
+    if (sy - topPad > y1) break;
+    if (sy + botPad < y0) continue;
+    const v0 = Math.max(0, d - N + 1), v1 = Math.min(N - 1, d);
+    for (let vx = v0; vx <= v1; vx++) {
+      const vy = d - vx, sx = (vx - vy) * TW / 2 * z + cacheCX;
+      if (sx < x0 - side || sx > x1 + side) continue;
+      drawTile(cx, vx, vy, lod);
+    }
+  }
+  partialMode = false;
+  cx.restore();
+}
+const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+function windStep(ts) {
+  if (ts - lastWind < 95) return;
+  const dt = Math.min(0.3, (ts - lastWind) / 1000); lastWind = ts; windT = ts / 1000;
+  wind.a += (Math.random() - 0.5) * 0.01;
+  wind.spd = Math.max(4, Math.min(30, wind.spd + (Math.random() - 0.5) * 0.5));
+  const ux = Math.cos(wind.a), uy = Math.sin(wind.a);
+  const vc = w2v(N / 2, N / 2), vv = w2v(N / 2 + ux, N / 2 + uy);
+  windSX = ((vv[0] - vc[0]) - (vv[1] - vc[1])) / 1.414;
+  if (ts - lastWindLabel > 1000) {
+    lastWindLabel = ts;
+    const deg = (Math.atan2(-ux, uy) * 180 / Math.PI + 360) % 360; // where the wind blows from (north = up)
+    document.getElementById('st-wind').textContent = `${COMPASS[Math.round(deg / 45) % 8]} ${Math.round(wind.spd)} km/h`;
+  }
+  if (ts > nextGust && gusts.length < 2) {
+    const side = (Math.random() - 0.5) * N * 0.9;
+    gusts.push({ x: N / 2 - ux * N * 0.6 - uy * side, y: N / 2 - uy * N * 0.6 + ux * side,
+      r: 4 + Math.random() * 3.5, str: 0.6 + Math.random() * 0.5, v: 2 + Math.random() * 2.5, prev: null });
+    nextGust = ts + 1500 + Math.random() * 5000;
+  }
+  const animate = zoom >= 0.3 && !cacheDirty;
+  for (let i = gusts.length - 1; i >= 0; i--) {
+    const q = gusts[i];
+    const k = dt * q.v * (wind.spd / 12);
+    q.x += ux * k; q.y += uy * k;
+    const gone = Math.hypot(q.x - N / 2, q.y - N / 2) > N * 0.75 + q.r;
+    if (gone) gusts.splice(i, 1);
+    if (!animate) { q.prev = null; continue; }
+    const r = gone ? null : gustRect(q), u = unionRect(q.prev, r);
+    if (u) { redrawRect(u); compDirty = true; }
+    q.prev = r;
+  }
+}
+
 // ===== Traffic & cars =====
 const BTIER = { 4: 1, 7: 2, 8: 3, 9: 1, 5: 2, 10: 3, 11: 1, 6: 2, 12: 3 };
 const TWT = [0, 1, 2.5, 5];
@@ -771,7 +1051,7 @@ function computeTraffic() {
     let s = 0;
     for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
       const X = wx + dx, Y = wy + dy;
-      if (inW(X, Y)) { const b = bld[Y * N + X]; if (b) s += TWT[BTIER[b]]; }
+      if (inW(X, Y)) { const b = bld[Y * N + X], c2 = civ[Y * N + X]; if (b) s += TWT[BTIER[b]]; if (c2) s += c2 === 5 ? 8 : 2; }
     }
     local[t] = Math.min(1, s / 18) * balance;
   }
@@ -891,6 +1171,7 @@ function buildCache() {
   }
   cacheCX = camX; cacheCY = camY; cacheZoom = zoom;
   depthData = dctx.getImageData(0, 0, W, Hh).data; depthW = W; depthH = Hh;
+  for (const q of gusts) q.prev = zoom >= 0.3 ? gustRect(q) : null;
 }
 
 function surfQuad(vx, vy) {
@@ -931,6 +1212,15 @@ function composite() {
     const a = 0.45 + 0.25 * Math.sin(frame * 0.6);
     for (const [vx, vy] of roadGhost) polyNoStroke(ctx, surfQuad(vx, vy), `rgba(255,220,60,${a.toFixed(2)})`);
   }
+  // civic coverage preview
+  if (hover && tool.startsWith('civ') && !(drag && drag.mode === 'pan')) {
+    const r = CIVIC[+tool[3]].r;
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      if (dx * dx + dy * dy > r * r) continue;
+      const a = hover.vx + dx, b = hover.vy + dy;
+      if (a >= 0 && b >= 0 && a < N && b < N) polyNoStroke(ctx, surfQuad(a, b), 'rgba(255,240,150,0.13)');
+    }
+  }
   // cursor
   if (hover && !(drag && drag.mode === 'pan') && tool !== 'pan') {
     const tiles = tool === 'road' ? [[hover.vx, hover.vy]] : brushTiles(hover.vx, hover.vy);
@@ -954,6 +1244,7 @@ function drawMMBase() {
     let col;
     if (lake[t] || mn < sea) { const s = Math.max(lake[t] ? mx : -1, mn < sea ? sea : -1), k = Math.min(1, (s - avg) / 4); col = [78 - 54 * k, 156 - 84 * k, 214 - 70 * k]; }
     else if (road[t]) col = [96, 96, 104];
+    else if (civ[t]) col = CIVIC[civ[t]].color;
     else if (bld[t]) col = [226, 218, 196];
     else {
       col = landColor(wx, wy, mn, avg);
@@ -1104,12 +1395,19 @@ function cornerSet(tiles) {
 function demolishSloped() {
   for (let wy = 0; wy < N; wy++) for (let wx = 0; wx < N; wx++) {
     const t = wy * N + wx;
-    if (!bld[t] && !dens[t]) continue;
+    if (!bld[t] && !dens[t] && !civ[t]) continue;
     const [mn, mx] = tMinMax(wx, wy);
-    if (mn !== mx || mn < sea) { bld[t] = 0; dens[t] = 0; }
+    if (mn !== mx || mn < sea) { bld[t] = 0; dens[t] = 0; civ[t] = 0; }
   }
 }
 function applyTool(h) {
+  if (tool.startsWith('civ')) {
+    const id = +tool[3], [wx, wy] = t2w(h.vx, h.vy), t = wy * N + wx, [mn, mx] = tMinMax(wx, wy);
+    if (civ[t] === id) return;
+    if (mn !== mx || mn < sea || lake[t]) { toast('Needs flat, dry ground. Try Level first.'); return; }
+    civ[t] = id; tree[t] = road[t] = zone[t] = bld[t] = 0; dens[t] = 0;
+    dirtyAll(); return;
+  }
   const tiles = brushTiles(h.vx, h.vy);
   const q = [];
   switch (tool) {
@@ -1133,10 +1431,10 @@ function applyTool(h) {
       for (const [vx, vy] of tiles) {
         const [wx, wy] = t2w(vx, vy), t = wy * N + wx;
         const wet = isWaterW(wx, wy);
-        if (tool === 'water') { lake[t] = 1; tree[t] = road[t] = zone[t] = bld[t] = 0; dens[t] = 0; }
-        else if (tool === 'trees') { if (!wet && !road[t] && !bld[t]) { tree[t] = 1 + Math.floor(Math.random() * 3); zone[t] = 0; } }
-        else if (tool === 'doze') { lake[t] = tree[t] = road[t] = zone[t] = bld[t] = 0; dens[t] = 0; }
-        else if (tool.startsWith('zone')) { const z = +tool[4]; if (!wet && !road[t] && zone[t] !== z) { zone[t] = z; tree[t] = 0; bld[t] = 0; dens[t] = 0; } }
+        if (tool === 'water') { lake[t] = 1; tree[t] = road[t] = zone[t] = bld[t] = civ[t] = 0; dens[t] = 0; }
+        else if (tool === 'trees') { if (!wet && !road[t] && !bld[t] && !civ[t]) { tree[t] = 1 + Math.floor(Math.random() * 3); zone[t] = 0; } }
+        else if (tool === 'doze') { lake[t] = tree[t] = road[t] = zone[t] = bld[t] = civ[t] = 0; dens[t] = 0; }
+        else if (tool.startsWith('zone')) { const z = +tool[4]; if (!wet && !road[t] && !civ[t] && zone[t] !== z) { zone[t] = z; tree[t] = 0; bld[t] = 0; dens[t] = 0; } }
       }
   }
   dirtyAll();
@@ -1154,7 +1452,7 @@ function commitRoad() {
   for (const [vx, vy] of roadGhost) {
     const [wx, wy] = t2w(vx, vy), t = wy * N + wx;
     if (isWaterW(wx, wy)) { skipped++; continue; }
-    road[t] = 1; tree[t] = zone[t] = bld[t] = 0; dens[t] = 0;
+    road[t] = 1; tree[t] = zone[t] = bld[t] = civ[t] = 0; dens[t] = 0;
   }
   roadGhost = [];
   if (skipped) toast('Roads skip water. Bridges are a future-you problem.');
@@ -1163,16 +1461,16 @@ function commitRoad() {
 
 // ===== Undo =====
 function snapshot() {
-  undoStack.push({ HM: HM.slice(), lake: lake.slice(), tree: tree.slice(), road: road.slice(), zone: zone.slice(), bld: bld.slice(), dens: dens.slice(), sea });
+  undoStack.push({ HM: HM.slice(), lake: lake.slice(), tree: tree.slice(), road: road.slice(), zone: zone.slice(), bld: bld.slice(), dens: dens.slice(), civ: civ.slice(), sea });
   if (undoStack.length > 30) undoStack.shift();
 }
 function undo() {
   const s = undoStack.pop();
   if (!s) { toast('Nothing to undo'); return; }
-  HM.set(s.HM); lake.set(s.lake); tree.set(s.tree); road.set(s.road); zone.set(s.zone); bld.set(s.bld); dens.set(s.dens); sea = s.sea;
+  HM.set(s.HM); lake.set(s.lake); tree.set(s.tree); road.set(s.road); zone.set(s.zone); bld.set(s.bld); dens.set(s.dens); civ.set(s.civ); sea = s.sea;
   dirtyAll();
 }
-function dirtyAll() { cacheDirty = true; mmBaseDirty = true; mmViewDirty = true; computeTraffic(); }
+function dirtyAll() { cacheDirty = true; mmBaseDirty = true; mmViewDirty = true; recomputeCivic(); computeTraffic(); }
 
 // ===== Simulation =====
 const BLD = [null, [0, 4, 7, 8], [0, 9, 5, 10], [0, 11, 6, 12]];
@@ -1190,7 +1488,7 @@ const SAT_ALL = new Int32Array(M1 * M1), SAT_R = new Int32Array(M1 * M1), SAT_J 
 const TIERW = [0, 1, 3, 6];
 function buildSATs() {
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-    const t = y * N + x, b = bld[t], w = b ? TIERW[BTIER[b]] : 0, z = zone[t];
+    const t = y * N + x, b = bld[t], z = zone[t], w = (b ? TIERW[BTIER[b]] : 0) + (civ[t] ? CIVIC[civ[t]].w : 0);
     const o = (y + 1) * M1 + x + 1, up = y * M1 + x + 1, lf = (y + 1) * M1 + x, ul = y * M1 + x;
     SAT_ALL[o] = w + SAT_ALL[up] + SAT_ALL[lf] - SAT_ALL[ul];
     SAT_R[o] = (z === 1 ? w : 0) + SAT_R[up] + SAT_R[lf] - SAT_R[ul];
@@ -1206,12 +1504,14 @@ function tierCap(wx, wy, z) {
   let nb = 0;
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if ((dx || dy) && inW(wx + dx, wy + dy) && zone[(wy + dy) * N + wx + dx] === z) nb++; }
   if (!rn) return nb >= 2 ? [1, 'no road, growing slowly', false] : [0, 'needs a road', false];
-  const demand = z === 1 ? boxSum(SAT_J, wx, wy, 12) : boxSum(SAT_R, wx, wy, z === 3 ? 14 : 12);
+  const t = wy * N + wx;
+  const demand = (z === 1 ? boxSum(SAT_J, wx, wy, 12) + civDemR[t] : boxSum(SAT_R, wx, wy, z === 3 ? 14 : 12) + (z === 2 ? civDemC[t] : 0));
   const dn = z === 1 ? 'jobs' : 'residents';
-  if (nb < 3 || boxSum(SAT_ALL, wx, wy, 4) < 14) return [1, 'rural, needs more neighbors', true];
+  if (nb < 3 || boxSum(SAT_ALL, wx, wy, 4) + civDense[t] < 14) return [1, 'rural, needs more neighbors', true];
   if (demand < 6) return [1, 'needs ' + dn + ' nearby', true];
-  if (nb < 5 || boxSum(SAT_ALL, wx, wy, 6) < 60) return [2, 'needs a denser neighborhood', true];
+  if (nb < 5 || boxSum(SAT_ALL, wx, wy, 6) + civDense[t] < 60) return [2, 'needs a denser neighborhood', true];
   if (demand < 25) return [2, 'needs more ' + dn + ' nearby', true];
+  if (!civPolice[t]) return [2, 'towers need police coverage', true];
   return [3, 'maxed out', true];
 }
 function simTick() {
@@ -1227,7 +1527,7 @@ function simTick() {
     const capD = cap === 0 ? 0.45 : cap === 3 ? 3 : cap + 0.45;
     let d = dens[t];
     if (d < capD) {
-      let g = (d < 0.5 ? 0.06 : d < 1.5 ? 0.045 : 0.035) * (rn ? 1 : 0.2);
+      let g = (d < 0.5 ? 0.06 : d < 1.5 ? 0.045 : 0.035) * (rn ? 1 : 0.2) * civBoost[z][t];
       if (z === 1) {
         if (near(wx, wy, 3, isWaterW)) g *= 1.3;
         if (near(wx, wy, 3, (X, Y) => zone[Y * N + X] === 3)) g *= 0.5;
@@ -1329,7 +1629,7 @@ function generate({ hills, water, trees, coast, river, seed }) {
 function applyGen(g, keepUndo) {
   if (keepUndo) snapshot();
   HM.set(g.A); sea = g.sea; tree.set(g.tr); makePatches(g.seed);
-  lake.fill(0); road.fill(0); zone.fill(0); bld.fill(0); dens.fill(0);
+  lake.fill(0); road.fill(0); zone.fill(0); bld.fill(0); dens.fill(0); civ.fill(0);
   dem = null; month = 0;
   document.getElementById('dem-status').innerHTML = 'Any GeoTIFF works. <a href="https://apps.nationalmap.gov/downloader/" target="_blank" rel="noopener" style="color:inherit">USGS downloader</a>';
   centerOn(N / 2, N / 2, sea + 2);
@@ -1401,7 +1701,7 @@ function applyElevation(a, nd, opts) {
   }
   const tmp = Int16Array.from(HM); lipschitz(tmp); HM.set(tmp);
   sea = s0; dem = { min: mn, max: mx, ocean, sea: s0, maxL, name: opts.name || null, km: opts.km || null };
-  lake.fill(0); tree.fill(0); road.fill(0); zone.fill(0); bld.fill(0); dens.fill(0); month = 0;
+  lake.fill(0); tree.fill(0); road.fill(0); zone.fill(0); bld.fill(0); dens.fill(0); civ.fill(0); month = 0;
   plantRealTrees(opts.seed || 7);
   if (tint !== 'hypso') toggleTint();
   centerOn(N / 2, N / 2, sea + 4);
@@ -1469,14 +1769,14 @@ document.getElementById('file-dem').addEventListener('change', e => { const f = 
 const SAVE_KEY = 'terrain-sandbox-v3';
 function serialize() {
   return JSON.stringify({ format: 'terrain-sandbox', v: 3, N, sea, rot, month, dem,
-    HM: Array.from(HM), lake: Array.from(lake), tree: Array.from(tree), road: Array.from(road), zone: Array.from(zone), bld: Array.from(bld),
+    HM: Array.from(HM), lake: Array.from(lake), tree: Array.from(tree), road: Array.from(road), zone: Array.from(zone), bld: Array.from(bld), civ: Array.from(civ),
     dens: Array.from(dens, x => Math.round(x * 100) / 100) });
 }
 function deserialize(txt) {
   const o = JSON.parse(txt);
   if (o.format !== 'terrain-sandbox' || o.v !== 3 || o.N !== N) throw new Error('This is not a v3 terrain map');
   snapshot();
-  HM.set(o.HM); lake.set(o.lake); tree.set(o.tree); road.set(o.road); zone.set(o.zone); bld.set(o.bld); dens.set(o.dens);
+  HM.set(o.HM); lake.set(o.lake); tree.set(o.tree); road.set(o.road); zone.set(o.zone); bld.set(o.bld); dens.set(o.dens); civ.fill(0); if (o.civ) civ.set(o.civ);
   sea = o.sea; month = o.month || 0; dem = o.dem || null;
   if (o.rot !== rot) { rot = o.rot || 0; document.getElementById('viewlbl').textContent = 'View ' + ['N', 'E', 'S', 'W'][rot]; }
   centerOn(N / 2, N / 2, sea + 2);
@@ -1511,12 +1811,13 @@ function toast(msg) {
   const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2200);
 }
-const TOOL_NAMES = { raise: 'Raise', lower: 'Lower', level: 'Level', smooth: 'Smooth', water: 'Water', trees: 'Trees', road: 'Road', doze: 'Bulldoze', zone1: 'Residential', zone2: 'Commercial', zone3: 'Industrial', pan: 'Pan' };
+const TOOL_NAMES = { raise: 'Raise', lower: 'Lower', level: 'Level', smooth: 'Smooth', water: 'Water', trees: 'Trees', road: 'Road', doze: 'Bulldoze', zone1: 'Residential', zone2: 'Commercial', zone3: 'Industrial', pan: 'Pan', civ1: 'Park', civ2: 'Hospital', civ3: 'Fire station', civ4: 'Police', civ5: 'Stadium' };
 document.querySelectorAll('.tb[data-tool]').forEach(b => b.addEventListener('click', () => {
   document.querySelectorAll('.tb[data-tool]').forEach(x => x.classList.remove('on'));
   b.classList.add('on'); tool = b.dataset.tool; roadGhost = [];
   document.getElementById('toolname').textContent = TOOL_NAMES[tool];
   canvas.style.cursor = tool === 'pan' ? 'grab' : 'crosshair';
+  document.getElementById('st-hint').textContent = tool.startsWith('civ') ? CIVIC[+tool[3]].icon + ' ' + CIVIC[+tool[3]].effect : '';
   compDirty = true;
 }));
 document.getElementById('brush').addEventListener('input', e => { brush = +e.target.value; document.getElementById('brushv').textContent = brush; compDirty = true; });
@@ -1574,6 +1875,8 @@ function updateStatus() {
     else { const [cap, why] = tierCap(wx, wy, zone[t]); const tier = dens[t] >= 2.5 ? 3 : dens[t] >= 1.5 ? 2 : dens[t] >= 0.5 ? 1 : 0;
       zt = `${zn} ${dens[t].toFixed(1)}` + (tier >= cap && cap < 3 ? ` (${why})` : ''); }
   }
+  if (civ[t]) zt = `${CIVIC[civ[t]].icon} ${CIVIC[civ[t]].name} (reaches ${CIVIC[civ[t]].r} tiles)`;
+  else if (zone[t] && civBoost[zone[t]][t] > 1.01) zt += ` · growth x${civBoost[zone[t]][t].toFixed(1)}`;
   document.getElementById('st-zone').textContent = zt;
 }
 
@@ -1647,6 +1950,7 @@ let lastAnim = 0, lastMM = 0;
 function loop(ts) {
   requestAnimationFrame(loop);
   if (cacheDirty) { buildCache(); cacheDirty = false; compDirty = true; }
+  windStep(ts);
   if (ts - lastAnim > 110) { lastAnim = ts; frame++; compDirty = true; }
   if (carsLive) compDirty = true;
   if (compDirty) { composite(); compDirty = false; }
