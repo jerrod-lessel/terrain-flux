@@ -65,8 +65,12 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
 #toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);padding:4px 12px;font-size:18px;pointer-events:none;opacity:0;transition:opacity .2s;}
 #toast.show{opacity:1;}
 
-#status{display:flex;gap:18px;flex-wrap:wrap;padding:3px 10px;font-size:16px;color:var(--dim);flex-shrink:0;border-top:2px solid var(--lo);}
+#status{display:flex;flex-direction:column;justify-content:center;gap:1px;padding:3px 10px;height:46px;font-size:16px;line-height:19px;color:var(--dim);flex-shrink:0;border-top:2px solid var(--lo);overflow:hidden;}
+#status .srow{display:flex;gap:18px;align-items:baseline;white-space:nowrap;min-width:0;overflow:hidden;}
 #status span.v{color:var(--ink);}
+#status #st-tile{display:inline-block;min-width:6ch;}
+#status #st-h{display:inline-block;min-width:13ch;}
+#status .grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;}
 #status .help{margin-left:auto;color:var(--dim);}
 
 .modal{position:fixed;inset:0;z-index:50;background:rgba(5,8,14,.72);display:flex;align-items:center;justify-content:center;padding:12px;}
@@ -169,7 +173,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
       <button class="tb" id="rot-r" title="Rotate view (E)">⟳</button>
       <button class="tb" id="zm-out" title="Zoom out (-)">－</button>
       <button class="tb" id="zm-in" title="Zoom in (+)">＋</button>
-      <button class="tb" id="tg-grid" title="Grid (G)">▦</button>
+      <button class="tb on" id="tg-grid" title="Grid (G)">▦</button>
       <button class="tb on" id="tg-tint" title="Color: classic green or elevation tint (T)">🎨</button>
       <button class="tb" id="tg-retro" title="Chunky retro pixels (P)">👾</button>
     </div>
@@ -182,13 +186,16 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
 </div>
 
 <div id="status">
+  <div class="srow">
   <span>Tile <span class="v" id="st-tile">-</span></span>
   <span>Height <span class="v" id="st-h">-</span></span>
   <span>Sea <span class="v" id="st-sea">-</span></span>
-  <span>Zone <span class="v" id="st-zone">-</span></span>
   <span>Wind <span class="v" id="st-wind">-</span></span>
-  <span class="v" id="st-hint"></span>
   <span class="help">Q/E rotate · wheel zoom · right-drag pan · Ctrl+Z undo · <a href="#" id="help-link" style="color:inherit">help</a> · <a href="#" id="about-link" style="color:inherit">about</a></span>
+  </div>
+  <div class="srow">
+  <span class="grow">Zone <span class="v" id="st-zone">-</span> &nbsp; <span class="v" id="st-hint"></span></span>
+  </div>
 </div>
 
 <div class="modal" id="genmodal">
@@ -272,7 +279,7 @@ const zone = new Uint8Array(N * N);    // 1 R, 2 C, 3 I
 const bld  = new Uint8Array(N * N);    // building sprite id
 const dens = new Float32Array(N * N);
 let sea = 4, rot = 0, zi = 3, zoom = ZOOMS[3], camX = 0, camY = 0, pixelScale = 1;
-let showGrid = false, tint = 'hypso', tool = 'raise', brush = 1, levelTarget = 0;
+let showGrid = true, tint = 'hypso', tool = 'raise', brush = 1, levelTarget = 0;
 let dem = null, month = 0, simOn = true;
 let hover = null, drag = null, roadGhost = [], holdTimer = null, panTimer = null;
 const undoStack = [];
