@@ -16,6 +16,8 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 
 New here? A one-minute guided tour runs on your first visit: load Morro Bay, build a starter town, add a fire station, light a fire upwind, make it rain, and read your report card. Replay it anytime from About or Help.
 
+🔬 **The science:** [METHODS.md](METHODS.md) explains each hazard model (USGS debris flows, NOAA sea level rise, earthquake shaking, wildfire, air pollution, biomes), its sources, and where it stops being true.
+
 ## What you can do
 
 - 🏔️ **Sculpt terrain** with raise, lower, level, and smooth tools. Hillsides follow the cursor the way they did in 1993.
