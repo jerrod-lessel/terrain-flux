@@ -21,6 +21,7 @@ New here? A one-minute guided tour runs on your first visit: load Morro Bay, bui
 - 🏔️ **Sculpt terrain** with raise, lower, level, and smooth tools. Hillsides follow the cursor the way they did in 1993.
 - 📍 **Start from a real place:** Morro Bay, Big Sur, Yosemite Valley, or San Francisco, built from 30 m SRTM elevation.
 - 🌊 **Model sea level rise** on coastal real places, in meters, with NOAA 2022 scenario shortcuts and a tally of land, buildings, and people affected.
+- 🌍 **Paint biomes:** temperate forest, prairie, desert, chaparral, rainforest, bayou, mangrove, savanna, boreal, tundra, and alpine, each with its own ground, plants, and fire behavior. Or fill a whole map by climate.
 - 🗺️ **Load your own DEM:** drop in any single-band GeoTIFF.
 - 🌍 **Generate a map** with sliders for hills, water, and trees, plus optional coastline and river.
 - 🌊 **Raise or lower the sea** and place water. It pools on flat ground and runs downhill as a stream, with waterfalls, on slopes.
@@ -72,6 +73,8 @@ New here? A one-minute guided tour runs on your first visit: load Morro Bay, bui
 **Sea level rise.** Flooding uses the real SRTM meters stored with each place, not the game's blocky steps, and only spreads to land connected to the ocean (a breadth-first search from the sea), so low ground behind a ridge stays dry. It is a preview and destroys nothing. SRTM's vertical accuracy is a few meters, so small rises often fall below what the data can resolve.
 
 **Contours.** Each tile runs marching squares on its four corners and draws the segments onto the tilted tile surface. Real places contour the true SRTM meters at an interval of about one twentieth of the relief (20 m for San Francisco, 50 m for Morro Bay, 100 m for Yosemite), with every fifth line bold.
+
+**Biomes.** Each biome sets the ground colors, the plants drawn on a tile, and how fire behaves there: chaparral spreads fire 1.7 times faster and burns hotter, prairie and savanna run fast and light, deserts, wetlands, and tundra barely burn. Bayous and mangroves can grow in shallow water. The climate fill sorts tiles Whittaker-style by temperature and moisture: elevation cools things down, water nearby makes it wetter, and smooth noise varies both across the map. Climates: temperate, arid, tropical, cold, and mixed.
 
 **Wildfire.** A tile-by-tile spread model. Each burning tile tries to ignite its neighbors with odds set by fuel (forest burns longest, grass fastest, buildings burn too), wind (exponential in the downwind component, boosted inside gusts), and slope (faster uphill). Roads, water, beaches, bare rock above 2,900 m, and fresh scars are firebreaks. Fire stations cut spread inside their reach and burn tiles out faster. Each burned tile records low, moderate, or high severity, which fades over five game years before the forest regrows. It is a game model, not a fire behavior model like FARSITE.
 
@@ -140,6 +143,10 @@ The notebook reproduces the shipped presets byte for byte, so you can rebuild th
 - [x] Mobile layout and a performance pass
 - [x] More building styles
 - [x] Demand bars and service requirements for growth
+- [x] Biomes (phase 1: looks, plants, fire)
+- [ ] Biomes phase 2: local wind, dust devils, rainforest rain, mangrove flood protection, growth effects
+- [ ] Coral reefs and volcanoes
+- [ ] Moon and Mars mode
 
 ## Credits
 
