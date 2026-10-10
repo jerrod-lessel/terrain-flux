@@ -242,6 +242,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
     <button class="txt" id="btn-load" title="Load from this browser">📂 Load</button>
     <button class="txt" id="btn-share" title="Copy a link to exactly what you see">🔗 Share</button>
     <button class="txt" id="btn-file" title="Download or open a backup file">📁 File…</button>
+    <div id="world-switch" style="display:none;gap:3px;margin-top:2px" title="Hop between your cities on each world"></div>
     <input type="file" id="file-json" accept=".json,application/json" hidden>
 
     <div class="sect">Real places</div>
@@ -350,7 +351,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
       <p>☕ Terrain Flux is free. If it made you smile, you can <a href="https://ko-fi.com/jerrodlessel" target="_blank" rel="noopener">buy me a cup of tea on Ko-fi</a>.</p>
-      <p class="credit">Version 5.13 · MIT license</p>
+      <p class="credit">Version 5.14 · MIT license</p>
       <div class="btns"><button class="txt" id="about-tour" style="text-align:center">▶ Take the tour</button><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -455,7 +456,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       <p>The ☀️ button switches between always day, a slow day and night cycle (one day is five real minutes, so nothing flashes), and always night. At night windows, streetlights, and headlights come on one by one.</p>
       <p>Earthquakes (🌎): pick a magnitude and click an epicenter. Shaking fades with distance. Tall towers and heavy industry are the most fragile, steep slopes slide, low ground next to water can liquefy, bridges can drop, and collapsed buildings can start fires.</p>
       <p>🔗 Share copies a link to exactly what you see, city and all. 📁 File saves or opens a full backup copy.</p>
-      <p>🚀 Grow a city of 7,000 people with a hospital and you can build a Spaceport (a 2 by 2 lot). Click it with ✋ Pan to launch: countdown, liftoff, and then you can follow the rocket to build on the Moon or Mars. Worlds you reach by rocket get a 🏅 in New map. The Moon and Mars are always open in New map too.</p>
+      <p>🚀 Grow a city of 7,000 people with a hospital and you can build a Spaceport (a 2 by 2 lot). Click it with ✋ Pan to launch: countdown, liftoff, and then you can follow the rocket to build on the Moon or Mars. The Moon and Mars stay locked in New map until you reach them by rocket, and each world keeps its own city: the 🌍 🌕 🔴 buttons under Map hop between them. Share links open any world for anyone.</p>
       <p>Drag a road across water to build a bridge. Bridges need land on both ends and can span up to 16 tiles.</p>
       <p>🌍 Biomes paint the land: forest, prairie, desert, chaparral, rainforest, bayou, mangrove, savanna, boreal, tundra, and alpine. Each has its own ground and plants and burns differently: chaparral and prairie burn fast, deserts and wetlands barely burn. Mangroves and bayous can grow in shallow water. Pick a climate to fill a whole map, or choose one under New map.</p>
       <p>Biomes change how things behave: prairie, savanna, and alpine are windier, rainforests are calmer and get passing showers that put out fires, and deserts get dust devils. Desert towns grow slowly without water nearby, and cold biomes grow slowly too. Mangroves, bayous, and coral reefs hold back sea level rise for the land behind them, wetlands stop debris flows, and reefs bring tourists to nearby shops.</p>
@@ -3052,9 +3053,55 @@ let launch = null;
 const REACHED_KEY = 'terrain-flux-reached';
 function reached() { try { return JSON.parse(localStorage.getItem(REACHED_KEY) || '{}'); } catch (e) { return {}; } }
 function markReached(w) { try { const r = reached(); r[w] = 1; localStorage.setItem(REACHED_KEY, JSON.stringify(r)); } catch (e) { } }
+// The Moon and Mars show greyed out until you launch there from a Spaceport (unlocks stick in this browser).
+// Share links still open any world, so a Moon link works for anyone.
 function refreshWorldBadges() {
   const r = reached(), sel = document.getElementById('g-world');
-  for (const o of sel.options) { const base = PLANETS[o.value]; o.textContent = base + (r[o.value] && o.value !== 'earth' ? ' 🏅 reached by rocket' : ''); }
+  for (const o of sel.options) {
+    const base = PLANETS[o.value], open = o.value === 'earth' || r[o.value];
+    o.disabled = !open;
+    o.textContent = base + (o.value === 'earth' ? '' : open ? ' 🏅 reached by rocket' : ' 🔒 launch a rocket to unlock');
+  }
+  if (sel.options[sel.selectedIndex] && sel.options[sel.selectedIndex].disabled) { sel.value = 'earth'; updatePlanetUI(); }
+  renderSwitcher();
+}
+// ===== One saved city per world =====
+const WORLDS_KEY = 'terrain-flux-worlds';
+function worldStore() { try { return JSON.parse(localStorage.getItem(WORLDS_KEY) || '{}'); } catch (e) { return {}; } }
+async function saveCurrentWorld() {
+  let code = null; try { code = await encodeShare(); } catch (e) { }
+  if (!code) return false; // maps from your own DEM file can't be packed this way
+  try { const st = worldStore(); st[planet] = code; localStorage.setItem(WORLDS_KEY, JSON.stringify(st)); return true; } catch (e) { return false; }
+}
+async function goToWorld(w, byRocket) {
+  if (w === planet) return;
+  const saved = await saveCurrentWorld();
+  if (!saved && !byRocket) toast('This map came from your own DEM file, so it can\'t be kept here. Use 📁 File to save a copy first.');
+  if (w !== 'earth') markReached(w);
+  const code = worldStore()[w];
+  if (code) {
+    try { const h = await decodeShare(code); dirtyAll(); setSLR(h.slr || 0); applyView(h.v, h.day);
+      toast(w === 'earth' ? '🌍 Back to your Earth city!' : w === 'moon' ? '🌕 Back to your Moon colony!' : '🔴 Back to your Mars colony!'); }
+    catch (e) { console.error(e); fresh(); }
+  } else fresh();
+  refreshWorldBadges();
+  function fresh() {
+    document.getElementById('g-world').value = w;
+    document.getElementById('seed').value = Math.floor(Math.random() * 999999);
+    previewGen(); applyGen(lastGen, true);
+    toast(w === 'moon' ? '🌕 Welcome to the Moon! Build your first colony.' : w === 'mars' ? '🔴 Welcome to Mars! Build your first colony.' : '🌍 Welcome home!');
+  }
+}
+function renderSwitcher() {
+  const box = document.getElementById('world-switch'); if (!box) return;
+  const r = reached(), worlds = ['earth', 'moon', 'mars'].filter(w => w === 'earth' || r[w]);
+  if (worlds.length < 2) { box.style.display = 'none'; return; }
+  box.style.display = 'flex'; box.innerHTML = '';
+  for (const w of worlds) {
+    const b = document.createElement('button'); b.className = 'tb' + (w === planet ? ' on' : ''); b.textContent = PLANETS[w].split(' ')[0];
+    b.title = w === planet ? `You're on ${PLANETS[w].split(' ')[1]}` : `Go to your ${PLANETS[w].split(' ')[1]} city`;
+    b.addEventListener('click', () => goToWorld(w, false)); box.appendChild(b);
+  }
 }
 function spaceportReady() {
   const hosp = [...civ].some(c => c === 2);
@@ -3133,19 +3180,13 @@ function showMission() {
   btns.innerHTML = '';
   const go = (w, label) => { const b = document.createElement('button'); b.className = 'txt'; b.style.textAlign = 'center'; b.textContent = label;
     b.addEventListener('click', () => { box.classList.add('hidden'); if (w) flyTo(w); }); btns.appendChild(b); };
-  if (planet !== 'moon') go('moon', '🌕 Build on the Moon');
-  if (planet !== 'mars') go('mars', '🔴 Build on Mars');
-  if (planet !== 'earth') go('earth', '🌍 Head back to Earth');
+  if (planet !== 'moon') go('moon', worldStore().moon ? '🌕 Back to your Moon colony' : '🌕 Build on the Moon');
+  if (planet !== 'mars') go('mars', worldStore().mars ? '🔴 Back to your Mars colony' : '🔴 Build on Mars');
+  if (planet !== 'earth') go('earth', worldStore().earth ? '🌍 Back to your Earth city' : '🌍 Head back to Earth');
   go(null, planet === 'earth' ? 'Stay on Earth' : 'Stay here');
   box.classList.remove('hidden');
 }
-function flyTo(w) {
-  markReached(w); refreshWorldBadges();
-  document.getElementById('g-world').value = w;
-  document.getElementById('seed').value = Math.floor(Math.random() * 999999);
-  previewGen(); applyGen(lastGen, true);
-  toast(w === 'moon' ? '🌕 Welcome to the Moon! Build your first colony.' : w === 'mars' ? '🔴 Welcome to Mars! Build your first colony.' : '🌍 Welcome home!');
-}
+function flyTo(w) { goToWorld(w, true); }
 
 // ===== Traffic & cars =====
 const BTIER = { 4: 1, 7: 2, 8: 3, 9: 1, 5: 2, 10: 3, 11: 1, 6: 2, 12: 3 };
@@ -3683,7 +3724,7 @@ function updatePlanetUI() {
   if (!earth && ['biome', 'fire', 'storm'].includes(tool)) selectTool('pan');
   const cl = document.getElementById('g-climate'); if (cl) cl.disabled = document.getElementById('g-world').value !== 'earth';
 }
-function dirtyAll() { updatePlanetUI(); routeDirty = true; if (typeof layer !== 'undefined' && layer) computeLayer(); if (showContours) setContourInterval(); cacheDirty = true; mmBaseDirty = true; mmViewDirty = true; recomputeCivic(); computeTraffic();
+function dirtyAll() { updatePlanetUI(); if (typeof renderSwitcher === 'function' && document.getElementById('world-switch') && dirtyAll.lastPlanet !== planet) { dirtyAll.lastPlanet = planet; renderSwitcher(); } routeDirty = true; if (typeof layer !== 'undefined' && layer) computeLayer(); if (showContours) setContourInterval(); cacheDirty = true; mmBaseDirty = true; mmViewDirty = true; recomputeCivic(); computeTraffic();
   document.getElementById('slr').value = slr; document.getElementById('slr-v').textContent = (slr ? '+' : '') + slr.toFixed(1) + ' m'; computeFlood(); }
 
 // ===== Simulation =====
@@ -4606,7 +4647,7 @@ const TOUR = [
     text: 'How exposed are your residents? Grades for wildfire, debris flow, earthquake, sea level rise, air, and services. Click a row to see it on the map.',
     run: () => showReport() },
   { title: "That's the tour!", target: () => document.getElementById('btn-share'),
-    text: 'Share a link to exactly what you see with 🔗. Earthquakes, sea level rise, and more are in the toolbar. Now go grade this mess.' },
+    text: 'Grow a city of 7,000 with a hospital, build a 🚀 Spaceport, and launch to unlock the Moon and Mars. Share a link to exactly what you see with 🔗. Earthquakes, sea level rise, and more are in the toolbar. Now go grade this mess.' },
 ];
 function tourGo(i) {
   document.querySelectorAll('.tour-hl').forEach(e => e.classList.remove('tour-hl'));
@@ -4694,6 +4735,7 @@ function lightTourFire() {
 document.getElementById('about-tour').addEventListener('click', startTour);
 document.getElementById('help-tour').addEventListener('click', startTour);
 
+refreshWorldBadges();
 // ===== Boot =====
 resize();
 canvas.style.cursor = 'grab';
