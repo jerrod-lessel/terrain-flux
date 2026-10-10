@@ -21,7 +21,7 @@ New here? A one-minute guided tour runs on your first visit: load Morro Bay, bui
 - 🏔️ **Sculpt terrain** with raise, lower, level, and smooth tools. Hillsides follow the cursor the way they did in 1993.
 - 📍 **Start from a real place:** Morro Bay, Big Sur, Yosemite Valley, or San Francisco, built from 30 m SRTM elevation.
 - 🌊 **Model sea level rise** on coastal real places, in meters, with NOAA 2022 scenario shortcuts and a tally of land, buildings, and people affected.
-- 🌍 **Paint biomes:** temperate forest, prairie, desert, chaparral, rainforest, bayou, mangrove, savanna, boreal, tundra, and alpine, each with its own ground, plants, and fire behavior. Or fill a whole map by climate.
+- 🌍 **Paint biomes:** temperate forest, prairie, desert, chaparral, rainforest, bayou, mangrove, savanna, boreal, tundra, alpine, coral reef, and lava rock, each with its own ground, plants, and fire behavior. Or fill a whole map by climate.
 - 🗺️ **Load your own DEM:** drop in any single-band GeoTIFF.
 - 🌍 **Generate a map** with sliders for hills, water, and trees, plus optional coastline and river.
 - 🌊 **Raise or lower the sea** and place water. It pools on flat ground and runs downhill as a stream, with waterfalls, on slopes.
@@ -31,6 +31,7 @@ New here? A one-minute guided tour runs on your first visit: load Morro Bay, bui
 - 🗺️ **Map layers** for air pollution, fire, police, hospital, and transit coverage, wildfire risk, liquefaction, debris flow, sea level rise, and service gaps, so you can see where to build next. Every layer spotlights what it is about while the rest of the map dims: hazard layers light up the tiles at risk, and coverage layers draw a ring around each station's reach and light up the gaps outside them.
 - 🌫️ **Watch the air:** factories, busy roads, and smoke pollute, the wind carries it downwind, and homes struggle to grow in dirty air.
 - 🌎 **Trigger an earthquake:** pick a magnitude and an epicenter, then watch buildings collapse, slopes slide, waterfront ground liquefy, bridges drop, and fires break out.
+- 🌋 **Raise a volcano** and watch lava run downhill, bury what it meets, start fires, cool into lava rock, and build new land at the sea.
 - 🔥 **Start a wildfire** and watch it run downwind and uphill, leave a burn scar graded by severity, and heal over a few game years.
 - 🏙️ **Zone and grow a city.** 9 building types with 6 styles each, 54 designs, all drawn in code, from A-frame cabins to a certain pyramid-shaped tower.
 - 🏥 **Build civic buildings:** parks, hospitals, fire stations, police stations, stadiums, bus depots, EV charging, and bike share, 38 designs in all. Each one changes how the city around it grows.
@@ -75,6 +76,10 @@ New here? A one-minute guided tour runs on your first visit: load Morro Bay, bui
 **Contours.** Each tile runs marching squares on its four corners and draws the segments onto the tilted tile surface. Real places contour the true SRTM meters at an interval of about one twentieth of the relief (20 m for San Francisco, 50 m for Morro Bay, 100 m for Yosemite), with every fifth line bold.
 
 **Biomes.** Each biome sets the ground colors, the plants drawn on a tile, and how fire behaves there: chaparral spreads fire 1.7 times faster and burns hotter, prairie and savanna run fast and light, deserts, wetlands, and tundra barely burn. Bayous and mangroves can grow in shallow water. The climate fill sorts tiles Whittaker-style by temperature and moisture: elevation cools things down, water nearby makes it wetter, and smooth noise varies both across the map. Climates: temperate, arid, tropical, cold, and mixed.
+
+Biomes also change behavior. Gusts and fire spread are stronger in prairie, savanna, desert, tundra, and alpine, and weaker in rainforest and wetlands. Deserts get dust devils, and rainforests get passing showers that put out fires underneath them. Desert towns grow at about half speed unless water is within 4 tiles, and cold biomes grow slowly. Mangroves hold back 2 m of sea level rise for land within 3 tiles, and bayous and coral reefs hold back 1 m (on Morro Bay at +5 m, a mangrove belt cut flooded tiles from 81 to 50). Wetlands stop debris flows, and reefs give shops within 6 tiles a tourism boost.
+
+**Volcanoes.** Clicking raises a cone with a crater, then four or five lava paths run steepest-way-down from the rim, nudged a little at random. Lava buries whatever it reaches, ignites neighbors, glows for a few months while it cools into lava rock, and where it reaches shallow sea it builds new land.
 
 **Wildfire.** A tile-by-tile spread model. Each burning tile tries to ignite its neighbors with odds set by fuel (forest burns longest, grass fastest, buildings burn too), wind (exponential in the downwind component, boosted inside gusts), and slope (faster uphill). Roads, water, beaches, bare rock above 2,900 m, and fresh scars are firebreaks. Fire stations cut spread inside their reach and burn tiles out faster. Each burned tile records low, moderate, or high severity, which fades over five game years before the forest regrows. It is a game model, not a fire behavior model like FARSITE.
 
@@ -144,8 +149,8 @@ The notebook reproduces the shipped presets byte for byte, so you can rebuild th
 - [x] More building styles
 - [x] Demand bars and service requirements for growth
 - [x] Biomes (phase 1: looks, plants, fire)
-- [ ] Biomes phase 2: local wind, dust devils, rainforest rain, mangrove flood protection, growth effects
-- [ ] Coral reefs and volcanoes
+- [x] Biomes phase 2: local wind, dust devils, rainforest rain, coastal protection, growth effects
+- [x] Coral reefs and volcanoes
 - [ ] Moon and Mars mode
 
 ## Credits
