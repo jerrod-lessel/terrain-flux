@@ -31,8 +31,8 @@ New here? A one-minute guided tour runs on your first visit: load Morro Bay, bui
 - 🌫️ **Watch the air:** factories, busy roads, and smoke pollute, the wind carries it downwind, and homes struggle to grow in dirty air.
 - 🌎 **Trigger an earthquake:** pick a magnitude and an epicenter, then watch buildings collapse, slopes slide, waterfront ground liquefy, bridges drop, and fires break out.
 - 🔥 **Start a wildfire** and watch it run downwind and uphill, leave a burn scar graded by severity, and heal over a few game years.
-- 🏙️ **Zone and grow a city.** 9 building types with 4 styles each, 36 designs, all drawn in code.
-- 🏥 **Build civic buildings:** parks, hospitals, fire stations, police stations, stadiums, bus depots, EV charging, and bike share, 30 designs in all. Each one changes how the city around it grows.
+- 🏙️ **Zone and grow a city.** 9 building types with 6 styles each, 54 designs, all drawn in code, from A-frame cabins to a certain pyramid-shaped tower.
+- 🏥 **Build civic buildings:** parks, hospitals, fire stations, police stations, stadiums, bus depots, EV charging, and bike share, 38 designs in all. Each one changes how the city around it grows.
 - 🌬️ **Feel the wind:** gusts roll across the map and set the forests they pass swaying.
 - 🌉 **Bridge the water:** drag a road across a river or bay and it becomes a bridge on pillars, up to 16 tiles long.
 - 🚗 **Watch traffic** fill the roads near homes and jobs, while the road to nowhere stays empty.
@@ -41,7 +41,7 @@ New here? A one-minute guided tour runs on your first visit: load Morro Bay, bui
 - 🔄 **Rotate**, zoom, toggle a grid, switch between classic green and an elevation color ramp, or turn on chunky retro pixels.
 - 🔗 **Share a link to exactly what you see:** terrain, water, roads, buildings, scars, and your view, usually in 2 to 4 KB.
 - 📁 **Back up to a file** when you want a full copy, or for maps built from your own DEM.
-- 📱 **Pinch to zoom** and two-finger pan on touch screens.
+- 📱 **Phone friendly:** the toolbar slides out as a drawer, and pinch to zoom and two-finger pan work on touch screens.
 - 📸 **Take a snapshot** of the current view as a PNG, with an optional small credit.
 - 💾 **Quick-save** to your browser.
 
@@ -130,6 +130,8 @@ The notebook reproduces the shipped presets byte for byte, so you can rebuild th
 - [x] Map layers for coverage and gaps
 - [x] Guided tour
 - [x] Snapshots
+- [x] Mobile layout and a performance pass
+- [x] More building styles
 
 ## Credits
 
@@ -137,6 +139,10 @@ The notebook reproduces the shipped presets byte for byte, so you can rebuild th
 - GeoTIFF reading: [geotiff.js](https://github.com/geotiffjs/geotiff.js) (MIT)
 - Fonts: [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P) and [VT323](https://fonts.google.com/specimen/VT323) (SIL Open Font License)
 - Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.
+
+## Support
+
+Terrain Flux is free. If it made you smile, you can [buy me a cup of tea on Ko-fi](https://ko-fi.com/jerrodlessel). ☕
 
 ## License
 
