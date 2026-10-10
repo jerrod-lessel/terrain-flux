@@ -106,7 +106,11 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
 .modal{position:fixed;inset:0;z-index:50;background:rgba(5,8,14,.72);display:flex;align-items:center;justify-content:center;padding:12px;}
 .modal.hidden{display:none;}
 .win{width:440px;max-width:100%;}
-.win .tbar{background:var(--title);color:var(--title-ink);font-family:'Press Start 2P',monospace;font-size:10px;padding:7px 8px;letter-spacing:1px;}
+.win .tbar{background:var(--title);color:var(--title-ink);font-family:'Press Start 2P',monospace;font-size:10px;padding:7px 8px;letter-spacing:1px;position:relative;flex-shrink:0;}
+/* every pop-up window fits the screen and scrolls inside, and has a close button in its title bar */
+.modal .win{max-height:100%;display:flex;flex-direction:column;}
+.modal .win .body{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch;}
+.win .tbar .x{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--title-ink);font-size:16px;line-height:1;cursor:pointer;padding:2px 6px;}
 .win .body{padding:12px;display:flex;gap:12px;flex-wrap:wrap;}
 #pv{width:192px;height:192px;image-rendering:pixelated;background:#0b1018;}
 .gcol{flex:1;min-width:190px;display:flex;flex-direction:column;gap:8px;}
@@ -120,6 +124,8 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
 .btns .txt{text-align:center;}
 #btn-make{font-family:'Press Start 2P',monospace;font-size:9px;padding:9px;}
 #helpbox .body{display:block;font-size:17px;line-height:1.3;}
+#helpbox .win{width:min(600px,100%);}
+#helpbox .btns{position:sticky;bottom:-12px;background:var(--panel);padding:8px 0 4px;margin-top:4px;}
 #helpbox .body p{margin:0 0 8px;}
 
 #btn-tools{display:none;}
@@ -326,7 +332,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
       <p>☕ Terrain Flux is free. If it made you smile, you can <a href="https://ko-fi.com/jerrodlessel" target="_blank" rel="noopener">buy me a cup of tea on Ko-fi</a>.</p>
-      <p class="credit">Version 5.6 · MIT license</p>
+      <p class="credit">Version 5.6.1 · MIT license</p>
       <div class="btns"><button class="txt" id="about-tour" style="text-align:center">▶ Take the tour</button><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -3705,6 +3711,16 @@ function openFromHash() {
     return true;
   } catch (e) { console.error(e); return false; }
 }
+
+// ===== Pop-up windows: close button + click outside to close =====
+document.querySelectorAll('.modal').forEach(m => {
+  const bar = m.querySelector('.tbar');
+  if (bar && !bar.querySelector('.x')) {
+    const x = document.createElement('button'); x.className = 'x'; x.textContent = '✕'; x.title = 'Close (Esc)'; x.setAttribute('aria-label', 'Close');
+    x.addEventListener('click', () => m.classList.add('hidden')); bar.appendChild(x);
+  }
+  m.addEventListener('click', e => { if (e.target === m) m.classList.add('hidden'); });
+});
 
 // ===== Mobile tools drawer =====
 // On narrow screens the toolbar slides in from the left; picking a tool or touching the map closes it.
