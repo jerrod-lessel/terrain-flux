@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Terrain Flux | Lessel Geospatial</title>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" data-fallback="1" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23000'/%3E%3Cpath d='M30 48 44 24 58 48Z' fill='%238c8c8c'/%3E%3Cpath d='M6 48 24 14 42 48Z' fill='%23fff'/%3E%3Cpath d='M8 56c8-4 16-4 24 0s16 4 24 0' fill='none' stroke='%238c8c8c' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
@@ -28,7 +32,16 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
 .sunk{border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo);}
 
 #top{display:flex;align-items:center;gap:14px;padding:6px 10px;background:var(--title);color:var(--title-ink);flex-shrink:0;flex-wrap:wrap;}
-#top h1{font-family:'Press Start 2P',monospace;font-size:11px;margin:0;letter-spacing:1px;}
+#top h1{font-family:'Press Start 2P',monospace;font-size:11px;margin:0;letter-spacing:1px;display:flex;align-items:center;gap:8px;}
+#top h1 .logo{width:22px;height:22px;flex-shrink:0;}
+#tour{position:fixed;left:50%;bottom:62px;transform:translateX(-50%);width:min(470px,94vw);z-index:60;}
+#tour.hidden{display:none;}
+#tour h3{font-family:'Press Start 2P',monospace;font-size:11px;margin:0 0 8px;line-height:1.4;}
+#tour p{margin:0 0 10px;font-size:18px;line-height:1.25;}
+#tour .btns{flex-wrap:wrap;}
+#tour .btns .txt{width:auto;flex:1;text-align:center;white-space:nowrap;}
+#tour-act{font-weight:bold;background:var(--well);}
+.tour-hl{outline:3px solid #f0c060 !important;outline-offset:2px;box-shadow:0 0 0 6px rgba(240,192,96,0.35);position:relative;z-index:3;}
 #top .tag{font-size:17px;opacity:.85;}
 .hud{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
 .lcd{background:var(--lcd);color:var(--lcd-ink);padding:1px 8px;font-size:19px;min-width:64px;text-align:center;border:2px solid;border-color:#000 #555 #555 #000;}
@@ -113,7 +126,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
 <body>
 
 <header id="top">
-  <h1>⛰ TERRAIN FLUX</h1>
+  <h1><svg class="logo" xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' aria-hidden='true'><rect width='64' height='64' fill='#000'/><path d='M30 48 44 24 58 48Z' fill='#8c8c8c'/><path d='M6 48 24 14 42 48Z' fill='#fff'/><path d='M8 56c8-4 16-4 24 0s16 4 24 0' fill='none' stroke='#8c8c8c' stroke-width='3' stroke-linecap='round'/></svg>TERRAIN FLUX</h1>
   <span class="tag">Someone has to grade this mess.</span>
   <div class="hud">
     <div class="lcd" id="hud-date">JAN 1900</div>
@@ -220,6 +233,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       <button class="tb" id="tg-layer" title="Map layers: pollution, coverage, gaps (L)">🗺️</button>
       <button class="tb" id="tg-day" title="Always day (N to switch)">☀️</button>
       <button class="tb" id="tg-contour" title="Contour lines (C)">〰</button>
+      <button class="tb" id="tg-snap" title="Snapshot: save a picture of this view (K)">📸</button>
       <button class="tb" id="tg-retro" title="Chunky retro pixels (P)">👾</button>
     </div>
     <div id="mmwin" class="bev">
@@ -288,8 +302,8 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       GeoTIFF reading: geotiff.js (MIT license).<br>
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
-      <p class="credit">Version 5.2 · MIT license</p>
-      <div class="btns"><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
+      <p class="credit">Version 5.4 · MIT license</p>
+      <div class="btns"><button class="txt" id="about-tour" style="text-align:center">▶ Take the tour</button><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
 </div>
@@ -340,6 +354,32 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
   </div>
 </div>
 
+<div id="tour" class="win bev hidden" role="dialog" aria-live="polite">
+  <div class="tbar" id="tour-step">TOUR</div>
+  <div class="body" style="display:block">
+    <h3 id="tour-title"></h3>
+    <p id="tour-text"></p>
+    <div class="btns">
+      <button class="txt" id="tour-skip">Skip</button>
+      <button class="txt" id="tour-back">◂ Back</button>
+      <button class="txt" id="tour-act"></button>
+      <button class="txt" id="tour-next">Next ▸</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal hidden" id="snapbox">
+  <div class="win bev" style="width:min(760px,96vw)">
+    <div class="tbar">SNAPSHOT</div>
+    <div class="body" style="display:block">
+      <img id="snap-img" alt="Snapshot of the current view" style="display:block;width:100%;max-height:60vh;object-fit:contain;background:#0b1018;border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo);">
+      <div class="row" style="margin:8px 0"><label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="snap-mark" checked style="accent-color:var(--accent)">Add the Terrain Flux credit</label></div>
+      <p class="small" id="snap-note" style="margin:0 0 8px">Saved as a PNG. If nothing downloaded, right-click the picture and choose Save image.</p>
+      <div class="btns"><button class="txt" id="snap-dl" style="text-align:center">⤓ Download PNG</button><button class="txt" id="snap-close" style="text-align:center">Close</button></div>
+    </div>
+  </div>
+</div>
+
 <div class="modal hidden" id="helpbox">
   <div class="win bev">
     <div class="tbar">HOW THIS WORKS</div>
@@ -360,8 +400,8 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       <p>Water pools on flat ground. Place it on a slope and it runs downhill as a stream, with waterfalls, until it reaches water or a low spot. The sea level buttons flood or drain the whole map.</p>
       <p>Wildfires run downwind and uphill. Forest burns long and hot, grass burns fast and light, and roads, water, beaches, and bare rock stop them. Fire stations slow fires inside their reach. Burned ground stays scarred by severity and heals over about five game years, and forests grow back.</p>
       <p>Load DEM takes a real GeoTIFF, crops the center square, and squeezes it into 128 by 128 tiles. Cliffs get softened into slopes because the engine refuses to do anything else.</p>
-      <p>Keys: Space pause, 1/2/3 slow/normal/fast, N day and night, L map layers, Q/E rotate, +/- zoom, arrows or WASD pan, G grid, C contours, T tint, P pixels, Esc cancel.</p>
-      <div class="btns"><button class="txt" id="help-close" style="text-align:center">Got it</button></div>
+      <p>Keys: Space pause, 1/2/3 slow/normal/fast, N day and night, L map layers, K snapshot, Q/E rotate, +/- zoom, arrows or WASD pan, G grid, C contours, T tint, P pixels, Esc cancel.</p>
+      <div class="btns"><button class="txt" id="help-tour" style="text-align:center">▶ Take the tour</button><button class="txt" id="help-close" style="text-align:center">Got it</button></div>
     </div>
   </div>
 </div>
@@ -3351,13 +3391,14 @@ window.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
   const k = e.key.toLowerCase();
   if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); undo(); return; }
-  if (k === 'escape') { roadGhost = []; if (drag && drag.mode === 'road') drag = null; genModal.classList.add('hidden'); helpBox.classList.add('hidden'); aboutBox.classList.add('hidden'); document.getElementById('sharebox').classList.add('hidden'); document.getElementById('filebox').classList.add('hidden'); document.getElementById('reportbox').classList.add('hidden'); document.getElementById('layerbox').classList.add('hidden'); compDirty = true; return; }
+  if (k === 'escape') { roadGhost = []; if (drag && drag.mode === 'road') drag = null; genModal.classList.add('hidden'); helpBox.classList.add('hidden'); aboutBox.classList.add('hidden'); document.getElementById('sharebox').classList.add('hidden'); document.getElementById('filebox').classList.add('hidden'); document.getElementById('reportbox').classList.add('hidden'); document.getElementById('layerbox').classList.add('hidden'); document.getElementById('snapbox').classList.add('hidden'); compDirty = true; return; }
   if (!genModal.classList.contains('hidden')) return;
   const PAN = 48;
   if (k === 'q') rotate(-1); else if (k === 'e') rotate(1);
   else if (k === '+' || k === '=') setZoom(zi + 1); else if (k === '-' || k === '_') setZoom(zi - 1);
   else if (k === 'c') toggleContours();
   else if (k === 'l') document.getElementById('tg-layer').click();
+  else if (k === 'k') takeSnapshot();
   else if (k === 'n') setDayMode((dayMode + 1) % 3);
   else if (k === 'g') toggleGrid(); else if (k === 't') toggleTint(); else if (k === 'p') toggleRetro();
   else if (k === ' ') { e.preventDefault(); toggleSim(); }
@@ -3423,12 +3464,166 @@ function openFromHash() {
   } catch (e) { console.error(e); return false; }
 }
 
+// ===== Snapshot =====
+// Captures exactly what is on screen (no cursor), at full resolution, with an optional small credit.
+// the logo drawn with paths (an SVG image could taint the canvas in some browsers)
+function drawLogo(o, x, y, s) {
+  const k = s / 64;
+  o.fillStyle = '#000'; o.fillRect(x, y, s, s);
+  o.fillStyle = '#8c8c8c'; o.beginPath(); o.moveTo(x + 30 * k, y + 48 * k); o.lineTo(x + 44 * k, y + 24 * k); o.lineTo(x + 58 * k, y + 48 * k); o.fill();
+  o.fillStyle = '#fff'; o.beginPath(); o.moveTo(x + 6 * k, y + 48 * k); o.lineTo(x + 24 * k, y + 14 * k); o.lineTo(x + 42 * k, y + 48 * k); o.fill();
+  o.strokeStyle = '#8c8c8c'; o.lineWidth = 3 * k; o.lineCap = 'round'; o.beginPath(); o.moveTo(x + 8 * k, y + 56 * k);
+  o.bezierCurveTo(x + 16 * k, y + 52 * k, x + 24 * k, y + 52 * k, x + 32 * k, y + 56 * k); o.bezierCurveTo(x + 40 * k, y + 60 * k, x + 48 * k, y + 60 * k, x + 56 * k, y + 56 * k); o.stroke();
+}
+let snapURL = null;
+function takeSnapshot() {
+  const keepHover = hover, keepGhost = roadGhost; hover = null; roadGhost = [];
+  composite();
+  hover = keepHover; roadGhost = keepGhost; compDirty = true;
+  const out = document.createElement('canvas'); out.width = canvas.width; out.height = canvas.height;
+  const o = out.getContext('2d'); o.drawImage(canvas, 0, 0);
+  if (document.getElementById('snap-mark').checked) {
+    const s = Math.max(1, Math.round(out.width / 900)), pad = 10 * s, h = 26 * s, txt = 'Terrain Flux · lesselgeospatial.com';
+    o.font = `${20 * s}px VT323, monospace`;
+    const w = o.measureText(txt).width + h + pad * 3;
+    o.fillStyle = 'rgba(0,0,0,0.6)'; o.fillRect(out.width - w - pad, out.height - h - pad * 2, w, h + pad);
+    drawLogo(o, out.width - w, out.height - h - pad * 1.5, h);
+    o.fillStyle = '#fff'; o.textBaseline = 'middle'; o.fillText(txt, out.width - w + h + pad, out.height - h / 2 - pad);
+  }
+  snapURL = out.toDataURL('image/png');
+  document.getElementById('snap-img').src = snapURL;
+  document.getElementById('snapbox').classList.remove('hidden');
+}
+function downloadSnap() {
+  if (!snapURL) return;
+  const a = document.createElement('a'), d = new Date();
+  a.href = snapURL; a.download = `terrain-flux-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}.png`;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+document.getElementById('tg-snap').addEventListener('click', takeSnapshot);
+document.getElementById('snap-dl').addEventListener('click', downloadSnap);
+document.getElementById('snap-mark').addEventListener('change', () => { document.getElementById('snapbox').classList.add('hidden'); takeSnapshot(); });
+document.getElementById('snap-close').addEventListener('click', () => document.getElementById('snapbox').classList.add('hidden'));
+
+// ===== Guided tour =====
+// A short, skippable walkthrough: real place, a starter town, services and layers, a wildfire,
+// the storm and debris flows, and the report card. Shown once on a first visit; replay from About or Help.
+const TOUR_KEY = 'terrain-flux-toured';
+let tourI = -1, tourTown = null;
+const qsTool = k => document.querySelector(`.tb[data-tool="${k}"]`);
+const TOUR = [
+  { title: 'Welcome to Terrain Flux', text: 'A SimCity 2000 style sandbox with real California terrain and real hazards. This tour takes about a minute. Skip it anytime.' },
+  { title: 'Start from a real place', target: () => document.getElementById('preset-list'), act: 'Load Morro Bay',
+    text: 'Real places come from 30 m NASA elevation data. Morro Bay has the Rock, the sandspit, and the estuary.', run: () => loadPreset('morro_bay') },
+  { title: 'Look around', target: () => document.getElementById('viewctl'),
+    text: 'Drag to pan, scroll or pinch to zoom, and Q / E to rotate. The 🗺️ button opens map layers, and ☀️ switches day and night.' },
+  { title: 'Build a town', target: () => qsTool('road').parentElement, act: 'Build me a starter town',
+    text: 'Lay roads, then zone homes (R), shops (C), and industry (I). Zones grow on flat ground near roads. Want a shortcut?', run: () => buildTourTown() },
+  { title: 'Add services, see the gaps', target: () => qsTool('civ1').parentElement, act: 'Add a fire station',
+    text: 'Civic buildings shape the city around them. The fire coverage layer rings each station, and bright tiles outside the rings are the gaps.',
+    run: () => { if (!tourTown) buildTourTown(); placeTourCivic(3); setLayer('fire'); } },
+  { title: 'Wildfire', target: () => qsTool('fire'), act: 'Light a fire upwind',
+    text: 'Fire runs downwind and uphill. Forest burns hot, roads and water stop it, and fire stations slow it down. Watch the wind readout below.',
+    run: () => { setLayer(null); if (!tourTown) buildTourTown(); lightTourFire(); } },
+  { title: 'Storms and debris flows', target: () => qsTool('storm'), act: 'Make it rain',
+    text: 'After a fire, steep burned slopes can let go in heavy rain. Drainages are rated with a simplified USGS model borrowed from Scar Threshold, my real post-fire hazard map.',
+    run: () => { i15 = 40; document.getElementById('i15').value = 40; document.getElementById('i15-v').textContent = 40; startStorm(); } },
+  { title: 'Your report card', target: () => document.getElementById('btn-report'), act: 'Open the report card',
+    text: 'How exposed are your residents? Grades for wildfire, debris flow, earthquake, sea level rise, air, and services. Click a row to see it on the map.',
+    run: () => showReport() },
+  { title: "That's the tour!", target: () => document.getElementById('btn-share'),
+    text: 'Share a link to exactly what you see with 🔗. Earthquakes, sea level rise, and more are in the toolbar. Now go grade this mess.' },
+];
+function tourGo(i) {
+  document.querySelectorAll('.tour-hl').forEach(e => e.classList.remove('tour-hl'));
+  tourI = i;
+  const box = document.getElementById('tour');
+  if (i < 0 || i >= TOUR.length) { box.classList.add('hidden'); try { localStorage.setItem(TOUR_KEY, '1'); } catch (e) { } return; }
+  const st = TOUR[i];
+  document.getElementById('tour-step').textContent = `TOUR ${i + 1} / ${TOUR.length}`;
+  document.getElementById('tour-title').textContent = st.title;
+  document.getElementById('tour-text').textContent = st.text;
+  const act = document.getElementById('tour-act');
+  act.style.display = st.act ? '' : 'none'; act.textContent = st.act ? '▶ ' + st.act : '';
+  document.getElementById('tour-back').style.visibility = i > 0 ? 'visible' : 'hidden';
+  document.getElementById('tour-next').textContent = i === TOUR.length - 1 ? 'Finish' : 'Next ▸';
+  const el = st.target && st.target();
+  if (el) { el.classList.add('tour-hl'); el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+  box.classList.remove('hidden');
+}
+function startTour() {
+  ['genmodal', 'helpbox', 'aboutbox', 'reportbox', 'layerbox', 'sharebox', 'filebox'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  selectTool('pan'); tourTown = null; tourGo(0);
+}
+document.getElementById('tour-next').addEventListener('click', () => tourGo(tourI + 1));
+document.getElementById('tour-back').addEventListener('click', () => tourGo(tourI - 1));
+document.getElementById('tour-skip').addEventListener('click', () => tourGo(-1));
+document.getElementById('tour-act').addEventListener('click', () => { const st = TOUR[tourI]; if (st && st.run) st.run(); tourGo(tourI + 1); });
+
+// A starter town on the flattest dry patch near the middle of the view, industry on the downwind side.
+function buildTourTown() {
+  const S = 14, c = viewCenterWorld();
+  let best = null, bestScore = Infinity;
+  for (let y = Math.max(2, Math.round(c[1]) - 30); y < Math.min(N - S - 2, Math.round(c[1]) + 30); y += 2)
+    for (let x = Math.max(2, Math.round(c[0]) - 30); x < Math.min(N - S - 2, Math.round(c[0]) + 30); x += 2) {
+      let sum = 0, sum2 = 0, wet = 0, n = 0;
+      for (let dy = 0; dy <= S; dy += 2) for (let dx = 0; dx <= S; dx += 2) { const h = HM[(y + dy) * NC + x + dx]; sum += h; sum2 += h * h; n++; if (isWaterW(Math.min(N - 1, x + dx), Math.min(N - 1, y + dy))) wet++; }
+      const mean = sum / n, score = sum2 / n - mean * mean + wet * 50 + Math.hypot(x + S / 2 - c[0], y + S / 2 - c[1]) * 0.05;
+      if (mean > sea + 0.5 && score < bestScore) { bestScore = score; best = [x, y, Math.max(sea + 1, Math.round(mean))]; }
+    }
+  if (!best) { toast('No dry, flat-ish ground nearby. Try panning to land first.'); return; }
+  snapshot();
+  const [x0, y0, h0] = best, q = [];
+  for (let y = y0; y <= y0 + S; y++) for (let x = x0; x <= x0 + S; x++) { HM[y * NC + x] = h0; q.push(y * NC + x); }
+  propagate(q);
+  const eastward = Math.cos(wind.a) >= 0;
+  for (let y = y0; y < y0 + S; y++) for (let x = x0; x < x0 + S; x++) {
+    const t = y * N + x; removeCivAt(t); lake[t] = 0; tree[t] = 0; bld[t] = 0; dens[t] = 0; zone[t] = 0; road[t] = 0;
+    const lx = x - x0, ly = y - y0;
+    if (lx % 4 === 1 || ly % 4 === 1) { road[t] = 1; continue; }
+    const downwind = eastward ? lx >= S - 3 : lx <= 2;
+    zone[t] = downwind ? 3 : (lx >= 5 && lx <= 8 ? 2 : 1);
+  }
+  tourTown = { x0, y0, S };
+  dirtyAll(); demolishSloped();
+  const v = w2v(x0 + S / 2, y0 + S / 2); setZoom(Math.max(zi, 2)); centerOn(v[0], v[1], h0);
+  setSpeed(3); toast('🏗️ Starter town zoned. Fast speed for a bit so it grows.');
+}
+function placeTourCivic(id) {
+  if (!tourTown) return;
+  const { x0, y0, S } = tourTown;
+  for (let y = y0 + 2; y < y0 + S - 1; y++) for (let x = x0 + 2; x < x0 + S - 1; x++) {
+    const t = y * N + x; if (road[t] || civ[t]) continue;
+    const [mn, mx] = tMinMax(x, y); if (mn !== mx) continue;
+    if (Math.abs(x - (x0 + S / 2)) <= 2 && Math.abs(y - (y0 + S / 2)) <= 2) { civ[t] = id; civA[t] = t; zone[t] = 0; bld[t] = 0; dens[t] = 0; dirtyAll(); return; }
+  }
+}
+function lightTourFire() {
+  const { x0, y0, S } = tourTown || { x0: 60, y0: 60, S: 8 };
+  const cx = x0 + S / 2, cy = y0 + S / 2, ux = Math.cos(wind.a), uy = Math.sin(wind.a);
+  let best = null, bs = -Infinity;
+  for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) {
+    const t = y * N + x; if (!tree[t]) continue;
+    const d = Math.hypot(x - cx, y - cy); if (d < S * 0.8 || d > 30) continue;
+    const up = -((x - cx) * ux + (y - cy) * uy) / d, score = up * 2 - Math.abs(d - 14) * 0.1;
+    if (score > bs) { bs = score; best = [x, y]; }
+  }
+  if (!best) { toast('No forest close enough to burn. Try 🔥 on some trees yourself later.'); return; }
+  snapshot(); ignite(best[0], best[1], true); ignite(best[0] + 1, best[1], true); ignite(best[0], best[1] + 1, true);
+  setSpeed(2);
+  const v = w2v((best[0] + cx) / 2, (best[1] + cy) / 2); centerOn(v[0], v[1], sea + 4); cacheDirty = true;
+  toast('🔥 Fire started upwind of town');
+}
+
+document.getElementById('about-tour').addEventListener('click', startTour);
+document.getElementById('help-tour').addEventListener('click', startTour);
+
 // ===== Boot =====
 resize();
 canvas.style.cursor = 'grab';
 previewGen();
 applyGen(lastGen, false);
-openFromHash();
+if (!openFromHash()) { let seen = false; try { seen = !!localStorage.getItem(TOUR_KEY); } catch (e) { } if (!seen) startTour(); }
 updateStatus();
 requestAnimationFrame(loop);
 </script>
