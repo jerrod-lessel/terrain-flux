@@ -202,6 +202,16 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       <button class="tb" data-tool="civ7" title="EV charging: cleaner cars">🔌</button>
       <button class="tb" data-tool="civ8" title="Bike share: fewer cars, cleaner air">🚲</button>
     </div>
+    <div class="sect">Biomes</div>
+    <div class="grid2">
+      <button class="tb" data-tool="biome" title="Paint biomes: desert, prairie, rainforest and more">🌍</button>
+    </div>
+    <div id="biome-panel" style="display:none;flex-direction:column;gap:4px">
+      <div class="grid2" id="biome-list"></div>
+      <div class="small" id="biome-name"></div>
+      <select id="auto-climate" style="font-family:inherit;font-size:15px;background:var(--well);color:var(--ink);border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)"></select>
+      <button class="txt" id="btn-auto-biome" title="Spread biomes over the whole map by height and wetness">🗺️ Fill the map</button>
+    </div>
     <div class="sect">Disasters</div>
     <div class="grid2">
       <button class="tb" data-tool="fire" title="Start a wildfire">🔥</button>
@@ -301,6 +311,8 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
           <label><input type="checkbox" id="g-coast" checked>Coast</label>
           <label><input type="checkbox" id="g-river" checked>River</label>
         </div>
+        <div class="row" style="margin-top:2px"><label for="g-climate">Climate</label><select id="g-climate" style="flex:1;min-width:0;width:100%;font-family:inherit;font-size:16px;background:var(--well);color:var(--ink);border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)"><option value="classic">Classic (no biomes)</option><option value="temperate">Temperate</option><option value="arid">Arid</option><option value="tropical">Tropical</option><option value="cold">Cold</option><option value="mixed">Mixed</option></select>
+        </div>
         <div class="row"><label for="seed">Seed</label><input id="seed" value="2000" inputmode="numeric"><button class="txt" id="g-dice" style="width:auto">🎲</button></div>
       </div>
       <div style="width:100%">
@@ -332,7 +344,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
       <p>☕ Terrain Flux is free. If it made you smile, you can <a href="https://ko-fi.com/jerrodlessel" target="_blank" rel="noopener">buy me a cup of tea on Ko-fi</a>.</p>
-      <p class="credit">Version 5.6.1 · MIT license</p>
+      <p class="credit">Version 5.7 · MIT license</p>
       <div class="btns"><button class="txt" id="about-tour" style="text-align:center">▶ Take the tour</button><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -428,6 +440,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       <p>Earthquakes (🌎): pick a magnitude and click an epicenter. Shaking fades with distance. Tall towers and heavy industry are the most fragile, steep slopes slide, low ground next to water can liquefy, bridges can drop, and collapsed buildings can start fires.</p>
       <p>🔗 Share copies a link to exactly what you see, city and all. 📁 File saves or opens a full backup copy.</p>
       <p>Drag a road across water to build a bridge. Bridges need land on both ends and can span up to 16 tiles.</p>
+      <p>🌍 Biomes paint the land: forest, prairie, desert, chaparral, rainforest, bayou, mangrove, savanna, boreal, tundra, and alpine. Each has its own ground and plants and burns differently: chaparral and prairie burn fast, deserts and wetlands barely burn. Mangroves and bayous can grow in shallow water. Pick a climate to fill a whole map, or choose one under New map.</p>
       <p>Water pools on flat ground. Place it on a slope and it runs downhill as a stream, with waterfalls, until it reaches water or a low spot. The sea level buttons flood or drain the whole map.</p>
       <p>Wildfires run downwind and uphill. Forest burns long and hot, grass burns fast and light, and roads, water, beaches, and bare rock stop them. Fire stations slow fires inside their reach. Burned ground stays scarred by severity and heals over about five game years, and forests grow back.</p>
       <p>Load DEM takes a real GeoTIFF, crops the center square, and squeezes it into 128 by 128 tiles. Cliffs get softened into slopes because the engine refuses to do anything else.</p>
@@ -551,6 +564,8 @@ function hypso(level) {
 }
 function landColor(wx, wy, mn, avg) {
   const shore = sea > 0 && mn === sea && (isWaterW(wx - 1, wy) || isWaterW(wx + 1, wy) || isWaterW(wx, wy - 1) || isWaterW(wx, wy + 1));
+  const bt = biome[wy * N + wx];
+  if (bt) return shore && !BIOMES[bt].wet && BIOMES[bt].key !== 'desert' ? SAND : biomeColor(wy * N + wx, avg);
   if (tint === 'hypso') {
     if (dem || shore) return hypso(avg);
     const base = hypso(Math.max(avg, sea + 0.5));
@@ -636,7 +651,7 @@ function drawTile(g, vx, vy, lod) {
     const sY = F - s * HS, depth = s - (ht + hr + hb + hl) / 4;
     if (s > hl || s > hb) poly(g, [Lx, sY + TH / 2, Bx, sY + TH, Bx, By, Lx, Ly], '#2a6fb4');
     if (s > hr || s > hb) poly(g, [Bx, sY + TH, Rx, sY + TH / 2, Rx, Ry, Bx, By], '#1f5a98');
-    poly(g, [Tx, sY, Rx, sY + TH / 2, Bx, sY + TH, Lx, sY + TH / 2], waterCol(depth));
+    poly(g, [Tx, sY, Rx, sY + TH / 2, Bx, sY + TH, Lx, sY + TH / 2], biome[t] === 6 ? 'rgb(72,96,76)' : biome[t] === 7 ? 'rgb(64,124,128)' : waterCol(depth));
     if (!partialMode) terrainDepth([Tx, sY, Rx, sY + TH / 2, Bx, sY + TH, Lx, sY + TH / 2], vx + vy);
     if (showGrid && !lod) outlinePts(g, [Tx, sY, Rx, sY + TH / 2, Bx, sY + TH, Lx, sY + TH / 2], 'rgba(0,0,40,0.18)', px1);
     if (!partialMode) waterVis.push(Tx, sY + TH / 2, ((wx * 7919) ^ (wy * 104729)) & 1023);
@@ -645,7 +660,11 @@ function drawTile(g, vx, vy, lod) {
   // map-edge slab
   if (vy === N - 1) cliff(g, Lx, Ly, hl, Bx, By, hb, F + TH / 2, F + TH, true);
   if (vx === N - 1) cliff(g, Bx, By, hb, Rx, Ry, hr, F + TH, F + TH / 2, false);
-  if (s >= 0) { if (road[t]) { drawBridge(g, vx, vy, s, lod); if (!partialMode) roadVis.push(wx, wy); } return; }
+  if (s >= 0) {
+    if (road[t]) { drawBridge(g, vx, vy, s, lod); if (!partialMode) roadVis.push(wx, wy); }
+    else if (biome[t] && tree[t] && BIOMES[biome[t]].wet) drawTrees(g, vx, vy, s, s, s, s, tree[t], (wx * 31 + wy * 17) & 255, lod, 0, biome[t]);
+    return;
+  }
 
   if (road[t]) { drawRoad(g, vx, vy, ht, hr, hb, hl, lod); if (!partialMode) roadVis.push(wx, wy); return; }
   if (bld[t]) { drawBuilding(g, bld[t], Tx, Ty + TH / 2, lod, hash2(wx, wy)); if (!partialMode) { silhouette(Tx, Ty + TH / 2, bld[t], vx + vy); bldVis.push(t, Tx, Ty + TH / 2, bld[t], vx + vy); } return; }
@@ -660,7 +679,7 @@ function drawTile(g, vx, vy, lod) {
       g.setLineDash([]);
     }
   }
-  if (tree[t]) drawTrees(g, vx, vy, ht, hr, hb, hl, tree[t], (wx * 31 + wy * 17) & 255, lod, (lod || !gusts.length) ? 0 : swayAt(wx, wy));
+  if (tree[t]) drawTrees(g, vx, vy, ht, hr, hb, hl, tree[t], (wx * 31 + wy * 17) & 255, lod, (lod || !gusts.length) ? 0 : swayAt(wx, wy), biome[t]);
   if (rubble[t] === 1 && !lod && rubbleK(t) > 0.4) { const c = sp(vx, vy, ht, hr, hb, hl, 0.5, 0.5); drawRubblePile(g, c[0], c[1], (wx * 13 + wy * 7) & 255); }
 }
 
@@ -677,13 +696,14 @@ function cliff(g, ax, ay, ha, bx, by, hb, ay0, by0, left) {
 }
 
 const TREE_SPOTS = [[], [[0.5, 0.5]], [[0.33, 0.4], [0.64, 0.63]], [[0.3, 0.32], [0.7, 0.42], [0.47, 0.72]]];
-function drawTrees(g, vx, vy, ht, hr, hb, hl, n, hash, lod, sw) {
+function drawTrees(g, vx, vy, ht, hr, hb, hl, n, hash, lod, sw, bio) {
   sw = sw || 0;
-  const spots = TREE_SPOTS[n];
+  const spots = TREE_SPOTS[n], flora = bio ? BIOMES[bio].flora : 'forest';
   for (let i = 0; i < spots.length; i++) {
     const [u, v] = spots[i];
     const [x, y] = sp(vx, vy, ht, hr, hb, hl, u, v);
-    if (lod) { g.fillStyle = '#1f5a22'; g.fillRect(x - 3, y - 7, 6, 7); continue; }
+    if (lod) { g.fillStyle = bio ? dk('#' + BIOMES[bio].col.map(c => c.toString(16).padStart(2, '0')).join(''), 0.55) : '#1f5a22'; g.fillRect(x - 3, y - 7, 6, 7); continue; }
+    if (flora !== 'forest' && drawFlora(g, flora, x, y, hash, sw, i)) continue;
     if (((hash >> i) & 1) === 0) {
       g.fillStyle = '#4a2c14'; g.fillRect(x - 0.75, y - 4, 1.5, 4);
       const a = sw * 0.6, b = sw;
@@ -1619,6 +1639,7 @@ function fireStep(ts) {
       let p = (f === 1 && isSteep(X, Y) ? 0.06 : SPREAD[f]) * Math.exp(0.9 * w * along) * (1 + 1.5 * g) / len;
       p *= Math.max(0.5, Math.min(3, Math.exp(0.35 * (tMinMax(X, Y)[1] - hHere)))); // uphill runs
       if (civFire[Y * N + X]) p *= 0.35;
+      if (biome[Y * N + X]) p *= BIOMES[biome[Y * N + X]].fire;
       if (Math.random() < p) ignite(X, Y, true);
     }
     burnT[t] -= cover ? 2 : 1;
@@ -1637,6 +1658,7 @@ function burnOut(t, x, y) {
   // steep grassland stands in for chaparral, which burns hotter than flat grass
   let sev = bld[t] ? 3 : tree[t] ? (tree[t] >= 3 || mx > mn ? 3 : 2) : (isSteep(x, y) ? 2 : 1);
   if (civFire[t]) sev = Math.max(1, sev - 1);
+  if (biome[t]) sev = Math.max(1, Math.min(3, sev + BIOMES[biome[t]].sev));
   burnSev[t] = sev; scarMonth[t] = month; routeDirty = true;
   if (tree[t]) treeWas[t] = tree[t];
   if (bld[t]) { bld[t] = 0; dens[t] = 0; if (fireStats) fireStats.lost++; }
@@ -2114,7 +2136,8 @@ function drawQuakeRings() {
 // which never leaves the visitor's browser.
 const baseHM = new Int8Array(NC * NC), baseTree = new Uint8Array(N * N);
 let hasBase = false, quietLoad = false;
-function snapBase() { baseHM.set(HM); baseTree.set(tree); hasBase = true; }
+const baseBiome = new Uint8Array(N * N);
+function snapBase() { baseHM.set(HM); baseTree.set(tree); baseBiome.set(biome); hasBase = true; }
 const b64u = {
   enc(u8) { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); },
   dec(str) { const s = atob(str.replace(/-/g, '+').replace(/_/g, '/')); const u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
@@ -2131,6 +2154,7 @@ const SECTIONS = [
   ['hm', NC * NC, i => (HM[i] - baseHM[i]) & 255, (i, v) => { HM[i] = baseHM[i] + ((v << 24) >> 24); }],
   ['tree', N * N, i => (tree[i] - baseTree[i]) & 255, (i, v) => { tree[i] = (baseTree[i] + v) & 255; }],
   ['lake', N * N, i => lake[i], (i, v) => { lake[i] = v; }],
+  ['biome', N * N, i => (biome[i] - baseBiome[i]) & 255, (i, v) => { biome[i] = (baseBiome[i] + v) & 255; }],
   ['road', N * N, i => road[i], (i, v) => { road[i] = v; }],
   ['zone', N * N, i => zone[i], (i, v) => { zone[i] = v; }],
   ['bld', N * N, i => bld[i], (i, v) => { bld[i] = v; }],
@@ -2173,6 +2197,7 @@ function setGenControls(p) {
   document.getElementById('seed').value = p.seed; document.getElementById('g-hills').value = p.hills;
   document.getElementById('g-water').value = p.water; document.getElementById('g-trees').value = p.trees;
   document.getElementById('g-coast').checked = !!p.coast; document.getElementById('g-river').checked = !!p.river;
+  document.getElementById('g-climate').value = p.climate || 'classic';
 }
 function applyView(v, day) {
   if (!v || v.length < 4) return;
@@ -2395,6 +2420,147 @@ function setLayer(k) {
 }
 const REPORT_LAYER = { fire: 'wui', debris: 'debris', quake: 'quake', slr: 'slr', air: 'air', svc: 'gaps' };
 function setRepView(k) { document.getElementById('reportbox').classList.add('hidden'); setLayer(k ? REPORT_LAYER[k] : null); }
+
+// ===== Biomes =====
+// Paintable climate regions. Each has its own ground colors, plants, and fire behavior
+// (fire = how fast fire spreads there, sev = how much hotter or cooler it burns).
+const biome = new Uint8Array(N * N); // 0 = none (the classic look)
+const BIOMES = [null,
+  { key: 'forest',     name: 'Temperate forest', icon: '🌲', col: [84, 138, 50],   col2: [118, 158, 70],  trees: 0.55, fire: 1.0,  sev: 0,  flora: 'forest' },
+  { key: 'prairie',    name: 'Prairie',          icon: '🌾', col: [178, 170, 92],  col2: [150, 160, 80],  trees: 0.35, fire: 1.5,  sev: -1, flora: 'grass' },
+  { key: 'desert',     name: 'Desert',           icon: '🏜️', col: [226, 196, 136], col2: [204, 146, 96],  trees: 0.12, fire: 0.15, sev: -1, flora: 'cactus' },
+  { key: 'chaparral',  name: 'Chaparral',        icon: '🌿', col: [132, 136, 80],  col2: [160, 150, 96],  trees: 0.5,  fire: 1.7,  sev: 1,  flora: 'scrub' },
+  { key: 'rainforest', name: 'Rainforest',       icon: '🌴', col: [44, 112, 46],   col2: [64, 138, 58],   trees: 0.85, fire: 0.35, sev: 0,  flora: 'palm' },
+  { key: 'bayou',      name: 'Bayou',            icon: '🐊', col: [84, 102, 60],   col2: [66, 88, 58],    trees: 0.45, fire: 0.12, sev: -1, flora: 'cypress', wet: true },
+  { key: 'mangrove',   name: 'Mangrove',         icon: '🌱', col: [96, 118, 72],   col2: [78, 102, 62],   trees: 0.75, fire: 0.15, sev: -1, flora: 'mangrove', wet: true },
+  { key: 'savanna',    name: 'Savanna',          icon: '🦒', col: [198, 178, 106], col2: [178, 160, 88],  trees: 0.14, fire: 1.4,  sev: -1, flora: 'acacia' },
+  { key: 'boreal',     name: 'Boreal',           icon: '❄️', col: [92, 120, 96],   col2: [222, 230, 234], trees: 0.6,  fire: 1.1,  sev: 1,  flora: 'snowpine', snow: true },
+  { key: 'tundra',     name: 'Tundra',           icon: '🧊', col: [168, 174, 148], col2: [232, 238, 240], trees: 0.1,  fire: 0.25, sev: -1, flora: 'shrub', snow: true },
+  { key: 'alpine',     name: 'Alpine',           icon: '🏔️', col: [148, 146, 138], col2: [242, 244, 246], trees: 0.07, fire: 0.2,  sev: -1, flora: 'rock', snow: true },
+];
+let paintBiome = 3;
+function biomeColor(t, avg) {
+  const b = BIOMES[biome[t]], p = patch[t];
+  let k = b.snow ? Math.min(0.75, Math.max(0, (avg - sea) / Math.max(4, MAXH - sea) * 1.4) + p * 0.25) : p * 0.6;
+  if (b.key === 'desert') k = smoothstep(0.55, 0.75, p) * 0.8; // red rock patches
+  return [b.col[0] + (b.col2[0] - b.col[0]) * k, b.col[1] + (b.col2[1] - b.col[1]) * k, b.col[2] + (b.col2[2] - b.col[2]) * k];
+}
+// plants for each biome, drawn at a ground point (x, y); sw = wind sway
+function drawFlora(g, kind, x, y, h, sw, i) {
+  const b = sw * 0.8;
+  switch (kind) {
+    case 'cactus':
+      g.fillStyle = '#3a7a3a'; g.fillRect(x - 1, y - 9, 2, 9);
+      if (h & 1) { g.fillRect(x - 4, y - 7, 3, 1.2); g.fillRect(x - 4, y - 9, 1.2, 3); }
+      if (h & 2) { g.fillRect(x + 1, y - 5, 3, 1.2); g.fillRect(x + 2.8, y - 8, 1.2, 4); }
+      g.fillStyle = '#5aa04a'; g.fillRect(x - 1, y - 9, 0.8, 9);
+      break;
+    case 'scrub':
+      g.fillStyle = '#5e6a34'; g.fillRect(x - 4 + b, y - 4, 4, 3); g.fillRect(x + b * 0.6, y - 5, 4, 4);
+      g.fillStyle = '#7e8a4a'; g.fillRect(x - 3 + b, y - 4, 2, 1); g.fillRect(x + 1 + b * 0.6, y - 5, 2, 1);
+      if ((h >> i) & 4) { g.fillStyle = '#4a2c14'; g.fillRect(x + 4, y - 4, 1, 4); g.fillStyle = '#4e6a2e'; g.fillRect(x + 2 + b, y - 9, 6, 5); }
+      break;
+    case 'palm':
+      g.strokeStyle = '#7a5a34'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + 1, y - 7, x + 2 + b, y - 13); g.stroke(); g.lineWidth = px1;
+      g.strokeStyle = '#2e8a3a'; g.lineWidth = 1.4; g.beginPath();
+      for (const [dx, dy] of [[-5, 2], [5, 2], [-4, -2], [4, -2], [0, -3]]) { g.moveTo(x + 2 + b, y - 13); g.quadraticCurveTo(x + 2 + b + dx * 0.6, y - 15 + dy * 0.3, x + 2 + b + dx, y - 13 + dy); }
+      g.stroke(); g.lineWidth = px1;
+      break;
+    case 'cypress':
+      g.fillStyle = '#5a4a34'; g.fillRect(x - 1.5, y - 3, 3, 3); g.fillRect(x - 0.7, y - 12, 1.4, 10);
+      g.fillStyle = '#3e5a34'; g.fillRect(x - 4 + b, y - 15, 8, 5); g.fillRect(x - 3 + b, y - 17, 6, 3);
+      g.fillStyle = 'rgba(170,180,160,0.85)'; for (let k = -3; k <= 3; k += 2) g.fillRect(x + k + b, y - 11, 0.6, 3 + (k & 1) * 2);
+      break;
+    case 'mangrove':
+      g.strokeStyle = '#6a4a2a'; g.lineWidth = 0.7; g.beginPath();
+      for (const dx of [-3, -1, 1, 3]) { g.moveTo(x, y - 4); g.lineTo(x + dx, y); } g.stroke(); g.lineWidth = px1;
+      g.fillStyle = '#2e6a3a'; g.fillRect(x - 4 + b, y - 9, 8, 5); g.fillStyle = '#4a8a4a'; g.fillRect(x - 2 + b, y - 9, 4, 2);
+      break;
+    case 'acacia':
+      g.fillStyle = '#5a3a1e'; g.fillRect(x - 0.6, y - 8, 1.2, 8); g.fillRect(x - 3, y - 8, 6, 1);
+      g.fillStyle = '#6a7a34'; g.fillRect(x - 7 + b, y - 11, 14, 3); g.fillStyle = '#86963e'; g.fillRect(x - 5 + b, y - 12, 10, 1.5);
+      break;
+    case 'snowpine':
+      g.fillStyle = '#4a2c14'; g.fillRect(x - 0.75, y - 3, 1.5, 3);
+      polyNoStroke(g, [x + b, y - 15, x + 4.5, y - 3, x - 4.5, y - 3], '#24503a');
+      polyNoStroke(g, [x + b, y - 15, x + 2.5 + b * 0.5, y - 9, x - 2.5 + b * 0.5, y - 9], '#eef4f6');
+      g.fillStyle = '#eef4f6'; g.fillRect(x - 4, y - 4, 2, 1); g.fillRect(x + 2, y - 5, 2, 1);
+      break;
+    case 'shrub':
+      g.fillStyle = (h >> i) & 1 ? '#8a6a4a' : '#6a7a54'; g.fillRect(x - 2, y - 2, 4, 2); g.fillRect(x + 2, y - 1, 2, 1);
+      break;
+    case 'rock':
+      g.fillStyle = '#8a8880'; g.fillRect(x - 3, y - 3, 5, 3); g.fillStyle = '#b4b2aa'; g.fillRect(x - 2, y - 4, 3, 1.5);
+      if ((h >> i) & 2) { g.fillStyle = '#2a5a3a'; polyNoStroke(g, [x + 4 + b, y - 9, x + 6.5, y - 1, x + 1.5, y - 1], '#2a5a3a'); }
+      break;
+    case 'grass':
+      g.strokeStyle = '#8a8a3a'; g.lineWidth = 0.6; g.beginPath();
+      for (const dx of [-3, -1.5, 0, 1.5, 3]) { g.moveTo(x + dx, y); g.lineTo(x + dx + b * 1.5 + dx * 0.2, y - 4 - Math.abs(dx) * 0.3); } g.stroke(); g.lineWidth = px1;
+      if ((h >> i) & 1) { g.fillStyle = ['#e84a8a', '#f2d040', '#8a5ad8', '#f4f4f4'][(h >> (i + 2)) & 3]; g.fillRect(x - 2, y - 4, 1, 1); g.fillRect(x + 2, y - 3, 1, 1); }
+      break;
+    default: return false;
+  }
+  return true;
+}
+// Whittaker-style sorting by temperature and moisture: elevation cools things down, water nearby makes it wetter.
+const CLIMATES = {
+  temperate: { name: 'Temperate', T0: 0.5,  Ta: 0.22, M0: 0.55, Ma: 0.35 },
+  arid:      { name: 'Arid',      T0: 0.78, Ta: 0.18, M0: 0.22, Ma: 0.25 },
+  tropical:  { name: 'Tropical',  T0: 0.86, Ta: 0.12, M0: 0.72, Ma: 0.3 },
+  cold:      { name: 'Cold',      T0: 0.2,  Ta: 0.18, M0: 0.5,  Ma: 0.35 },
+  mixed:     { name: 'Mixed (a bit of everything)', T0: 0.6, Ta: 0.55, M0: 0.5, Ma: 0.6 },
+};
+function classifyBiomes(H, seaL, climate, seed, onlyFree) {
+  const c = CLIMATES[climate]; if (!c) return null;
+  const f = makeNoise(mulberry32((seed ^ 0xB10E) >>> 0)), rnd = mulberry32((seed * 7 + 3) >>> 0);
+  const bio = new Uint8Array(N * N), tr = new Uint8Array(N * N);
+  let hmax = seaL + 4; for (let i = 0; i < H.length; i++) if (H[i] > hmax) hmax = H[i];
+  const lvl = (x, y) => { const i = y * NC + x; return [H[i], H[i + 1], H[i + NC + 1], H[i + NC]]; };
+  const wetAt = (x, y) => x >= 0 && y >= 0 && x < N && y < N && Math.min(...lvl(x, y)) < seaL;
+  const n01 = v => Math.max(0, Math.min(1, (v - 0.2) / 0.6));
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const t = y * N + x, h = lvl(x, y), mn = Math.min(...h), mx = Math.max(...h), avg = (h[0] + h[1] + h[2] + h[3]) / 4;
+    const e = Math.max(0, Math.min(1, (avg - seaL) / Math.max(4, hmax - seaL)));
+    const tn = n01(f(x / 42, y / 42, 3, 0.5)), mo = n01(f(x / 30 + 77, y / 30 + 77, 3, 0.5));
+    let nearW = false; for (let dy = -3; dy <= 3 && !nearW; dy++) for (let dx = -3; dx <= 3; dx++) if (wetAt(x + dx, y + dy)) { nearW = true; break; }
+    const T = c.T0 + (tn - 0.5) * c.Ta * 2 - e * 0.32, M = c.M0 + (mo - 0.5) * c.Ma * 2 + (nearW ? 0.15 : 0);
+    let b;
+    if (mn < seaL) { // water: only warm, shallow, wet coasts get mangroves
+      if (T > 0.6 && M > 0.5 && seaL - avg <= 1.5 && nearW) b = 7; else continue;
+      if (onlyFree && (road[t] || bld[t] || civ[t] || zone[t])) continue;
+      bio[t] = b; tr[t] = rnd() < BIOMES[b].trees ? 1 + Math.floor(rnd() * 3) : 0; continue;
+    }
+    if (e > 0.82) b = 11;
+    else if (T < 0.15) b = 10;
+    else if (T < 0.32) b = 9;
+    else if (T < 0.62) b = M < 0.3 ? 2 : M < 0.5 ? (T > 0.5 ? 4 : 2) : 1;
+    else b = M < 0.25 ? 3 : M < 0.45 ? 8 : M < 0.62 ? 4 : (nearW && mn === mx && e < 0.1 ? 6 : 5);
+    bio[t] = b;
+    const dens = BIOMES[b].trees * (0.6 + 0.8 * mo);
+    tr[t] = rnd() < dens ? 1 + Math.floor(rnd() * 3) : 0;
+  }
+  return { bio, tr };
+}
+function applyBiomesToMap(climate) {
+  snapshot();
+  const r = classifyBiomes(HM, sea, climate, (hash2(month, 77) & 0xffff) + 1, true);
+  for (let t = 0; t < N * N; t++) {
+    if (road[t] || bld[t] || civ[t] || zone[t]) continue;
+    const wet = isWaterW(t % N, (t / N) | 0);
+    if (wet && !(r.bio[t] && BIOMES[r.bio[t]].wet)) { if (biome[t] && BIOMES[biome[t]].wet) { biome[t] = 0; tree[t] = 0; } continue; }
+    biome[t] = r.bio[t]; tree[t] = r.tr[t];
+  }
+  dirtyAll(); toast(`🌍 ${CLIMATES[climate].name} biomes spread across the map`);
+}
+function paintBiomeAt(t) {
+  const x = t % N, y = (t / N) | 0, b = BIOMES[paintBiome], wet = isWaterW(x, y);
+  if (road[t] || bld[t] || civ[t]) return;
+  if (wet) { // only wetland biomes go on water, and only in the shallows
+    const [mn] = tMinMax(x, y); if (!b.wet || sea - mn > 1.5 || lake[t] && false) return;
+  }
+  biome[t] = paintBiome;
+  if (!zone[t]) tree[t] = Math.random() < b.trees ? 1 + Math.floor(Math.random() * 3) : 0;
+}
 
 // ===== Traffic & cars =====
 const BTIER = { 4: 1, 7: 2, 8: 3, 9: 1, 5: 2, 10: 3, 11: 1, 6: 2, 12: 3 };
@@ -2786,6 +2952,7 @@ function demolishSloped() {
 }
 function applyTool(h) {
   if (tool === 'fire') { const [wx, wy] = t2w(h.vx, h.vy); if (ignite(wx, wy, false)) pendingPan = true; return; }
+  if (tool === 'biome') { for (const [vx, vy] of brushTiles(h.vx, h.vy)) { const [wx, wy] = t2w(vx, vy); paintBiomeAt(wy * N + wx); } dirtyAll(); return; }
   if (tool === 'quake') { if (drag && drag.quaked) return; const [wx, wy] = t2w(h.vx, h.vy); startQuake(wx, wy); if (drag) drag.quaked = true; pendingPan = true; return; }
   if (tool === 'water') { const [wx, wy] = t2w(h.vx, h.vy), [mn, mx] = tMinMax(wx, wy); if (mn !== mx && !isWaterW(wx, wy)) { traceStream(wx, wy); dirtyAll(); return; } }
   if (tool.startsWith('civ')) {
@@ -2902,13 +3069,13 @@ function traceStream(wx, wy) {
 
 // ===== Undo =====
 function snapshot() {
-  undoStack.push({ HM: HM.slice(), lake: lake.slice(), tree: tree.slice(), road: road.slice(), zone: zone.slice(), bld: bld.slice(), dens: dens.slice(), civ: civ.slice(), civA: civA.slice(), burnSev: burnSev.slice(), scarMonth: scarMonth.slice(), treeWas: treeWas.slice(), mud: mud.slice(), mudMonth: mudMonth.slice(), rubble: rubble.slice(), rubbleMonth: rubbleMonth.slice(), month, sea });
+  undoStack.push({ HM: HM.slice(), lake: lake.slice(), tree: tree.slice(), road: road.slice(), zone: zone.slice(), bld: bld.slice(), dens: dens.slice(), civ: civ.slice(), civA: civA.slice(), burnSev: burnSev.slice(), scarMonth: scarMonth.slice(), treeWas: treeWas.slice(), mud: mud.slice(), mudMonth: mudMonth.slice(), rubble: rubble.slice(), rubbleMonth: rubbleMonth.slice(), biome: biome.slice(), month, sea });
   if (undoStack.length > 30) undoStack.shift();
 }
 function undo() {
   const s = undoStack.pop();
   if (!s) { toast('Nothing to undo'); return; }
-  HM.set(s.HM); lake.set(s.lake); tree.set(s.tree); road.set(s.road); zone.set(s.zone); bld.set(s.bld); dens.set(s.dens); civ.set(s.civ); civA.set(s.civA); burnSev.set(s.burnSev); scarMonth.set(s.scarMonth); treeWas.set(s.treeWas); mud.set(s.mud); mudMonth.set(s.mudMonth); rubble.set(s.rubble); rubbleMonth.set(s.rubbleMonth); month = s.month; sea = s.sea;
+  HM.set(s.HM); lake.set(s.lake); tree.set(s.tree); road.set(s.road); zone.set(s.zone); bld.set(s.bld); dens.set(s.dens); civ.set(s.civ); civA.set(s.civA); burnSev.set(s.burnSev); scarMonth.set(s.scarMonth); treeWas.set(s.treeWas); mud.set(s.mud); mudMonth.set(s.mudMonth); rubble.set(s.rubble); rubbleMonth.set(s.rubbleMonth); biome.set(s.biome); month = s.month; sea = s.sea;
   storm = null; flows = []; rainDrops = [];
   burning.forEach(t => burnT[t] = 0); burning = []; smokeP = []; fireStats = null;
   dirtyAll();
@@ -3058,7 +3225,7 @@ function makeNoise(rand) {
 function norm(a) { let mn = Infinity, mx = -Infinity; for (const v of a) { if (v < mn) mn = v; if (v > mx) mx = v; } const r = mx - mn || 1; for (let i = 0; i < a.length; i++) a[i] = (a[i] - mn) / r; }
 const smoothstep = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
-function generate({ hills, water, trees, coast, river, seed }) {
+function generate({ hills, water, trees, coast, river, seed, climate = 'classic' }) {
   const rand = mulberry32(seed), fbm = makeNoise(rand);
   const hc = new Float32Array(NC * NC);
   const pers = 0.42 + hills / 100 * 0.16, sc = 1 / (46 - hills * 0.16);
@@ -3115,14 +3282,16 @@ function generate({ hills, water, trees, coast, river, seed }) {
       if (mn >= seaL && mx < seaL + amp * 0.85 + 1 && tn[y * N + x] > thr && rand() < 0.85) tr[y * N + x] = 1 + Math.floor(rand() * 3);
     }
   }
-  return { A, sea: seaL, tr, seed, params: { hills, water, trees, coast, river, seed } };
+  let bio = null, tr2 = tr;
+  if (climate !== 'classic') { const r = classifyBiomes(A, seaL, climate, seed, false); bio = r.bio; tr2 = r.tr; }
+  return { A, sea: seaL, tr: tr2, bio, seed, params: { hills, water, trees, coast, river, seed, climate } };
 }
 
 let recipe = null; // what a share link can rebuild: a generated map or a real place
 function applyGen(g, keepUndo) {
   recipe = { kind: 'gen', p: g.params };
   if (keepUndo) snapshot();
-  HM.set(g.A); sea = g.sea; tree.set(g.tr); makePatches(g.seed); snapBase();
+  HM.set(g.A); sea = g.sea; tree.set(g.tr); biome.fill(0); if (g.bio) biome.set(g.bio); makePatches(g.seed); snapBase();
   lake.fill(0); road.fill(0); zone.fill(0); bld.fill(0); dens.fill(0); civ.fill(0);
   burnSev.fill(0); treeWas.fill(0); burning.forEach(t => burnT[t] = 0); burning = []; smokeP = []; fireStats = null;
   mud.fill(0); rubble.fill(0); storm = null; flows = []; rainDrops = [];
@@ -3140,6 +3309,7 @@ function genParams() {
     hills: +document.getElementById('g-hills').value, water: +document.getElementById('g-water').value,
     trees: +document.getElementById('g-trees').value, coast: document.getElementById('g-coast').checked,
     river: document.getElementById('g-river').checked, seed: parseInt(document.getElementById('seed').value, 10) || 1,
+    climate: document.getElementById('g-climate').value,
   };
 }
 function previewGen() {
@@ -3150,10 +3320,11 @@ function previewGen() {
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
     const i = y * NC + x, c = [A[i], A[i + 1], A[i + NC + 1], A[i + NC]], mn = Math.min(...c), avg = (c[0] + c[1] + c[2] + c[3]) / 4;
     let col;
-    if (mn < sl) { const k = Math.min(1, (sl - avg) / 4); col = [78 - 54 * k, 156 - 84 * k, 214 - 70 * k]; }
+    if (mn < sl) { const k = Math.min(1, (sl - avg) / 4); col = [78 - 54 * k, 156 - 84 * k, 214 - 70 * k]; if (lastGen.bio && lastGen.bio[y * N + x] === 7) col = [64, 124, 128]; }
     else {
       const t = Math.min(1, (avg - sl) / Math.max(1, MAXH - sl)), b = Math.max(0.6, Math.min(1.3, 1 + (c[2] - c[0]) * 0.16));
       col = [(GL[0] + (GH[0] - GL[0]) * t) * b, (GL[1] + (GH[1] - GL[1]) * t) * b, (GL[2] + (GH[2] - GL[2]) * t) * b];
+      if (lastGen.bio && lastGen.bio[y * N + x]) { const bc = BIOMES[lastGen.bio[y * N + x]].col; col = [bc[0] * b, bc[1] * b, bc[2] * b]; }
       if (tr[y * N + x]) col = [col[0] * 0.45, col[1] * 0.62, col[2] * 0.45];
     }
     const o = (y * N + x) * 4; d[o] = col[0]; d[o + 1] = col[1]; d[o + 2] = col[2]; d[o + 3] = 255;
@@ -3162,7 +3333,7 @@ function previewGen() {
 }
 let pvPending = false;
 function schedulePreview() { if (pvPending) return; pvPending = true; requestAnimationFrame(() => { pvPending = false; previewGen(); }); }
-['g-hills', 'g-water', 'g-trees', 'g-coast', 'g-river', 'seed'].forEach(id => document.getElementById(id).addEventListener('input', schedulePreview));
+['g-hills', 'g-water', 'g-trees', 'g-coast', 'g-river', 'seed', 'g-climate'].forEach(id => document.getElementById(id).addEventListener('input', schedulePreview));
 document.getElementById('g-dice').addEventListener('click', () => { document.getElementById('seed').value = Math.floor(Math.random() * 999999); schedulePreview(); });
 const genModal = document.getElementById('genmodal');
 document.getElementById('btn-new').addEventListener('click', () => { genModal.classList.remove('hidden'); previewGen(); });
@@ -3199,7 +3370,7 @@ function applyElevation(a, nd, opts) {
   for (let i = 0; i < a.length; i++) demM[i] = ok(a[i]) ? a[i] : (ocean ? -1 : mn);
   HMload.set(HM); hasDemM = true; slr = 0;
   sea = s0; dem = { min: mn, max: mx, ocean, sea: s0, maxL, name: opts.name || null, km: opts.km || null };
-  lake.fill(0); tree.fill(0); road.fill(0); zone.fill(0); bld.fill(0); dens.fill(0); civ.fill(0); month = 0;
+  lake.fill(0); tree.fill(0); road.fill(0); zone.fill(0); bld.fill(0); dens.fill(0); civ.fill(0); biome.fill(0); month = 0;
   burnSev.fill(0); treeWas.fill(0); burning.forEach(t => burnT[t] = 0); burning = []; smokeP = []; fireStats = null;
   mud.fill(0); rubble.fill(0); storm = null; flows = []; rainDrops = [];
   plantRealTrees(opts.seed || 7);
@@ -3322,7 +3493,7 @@ function serialize() {
     HM: Array.from(HM), lake: Array.from(lake), tree: Array.from(tree), road: Array.from(road), zone: Array.from(zone), bld: Array.from(bld), civ: Array.from(civ), civA: Array.from(civA),
     dens: Array.from(dens, x => Math.round(x * 100) / 100),
     demM: hasDemM ? Array.from(demM, x => Math.round(x * 10) / 10) : null, HMload: hasDemM ? Array.from(HMload) : null, slr,
-    burnSev: Array.from(burnSev), scarMonth: Array.from(scarMonth), treeWas: Array.from(treeWas), mud: Array.from(mud), mudMonth: Array.from(mudMonth), rubble: Array.from(rubble), rubbleMonth: Array.from(rubbleMonth), recipe });
+    burnSev: Array.from(burnSev), scarMonth: Array.from(scarMonth), treeWas: Array.from(treeWas), mud: Array.from(mud), mudMonth: Array.from(mudMonth), rubble: Array.from(rubble), rubbleMonth: Array.from(rubbleMonth), biome: Array.from(biome), recipe });
 }
 function deserialize(txt) {
   const o = JSON.parse(txt);
@@ -3336,7 +3507,8 @@ function deserialize(txt) {
   hasDemM = !!(o.demM && o.HMload); if (hasDemM) { demM.set(o.demM); HMload.set(o.HMload); } slr = hasDemM ? (o.slr || 0) : 0;
   burnSev.fill(0); scarMonth.fill(0); treeWas.fill(0); if (o.burnSev) { burnSev.set(o.burnSev); scarMonth.set(o.scarMonth); treeWas.set(o.treeWas); }
   mud.fill(0); mudMonth.fill(0); if (o.mud) { mud.set(o.mud); mudMonth.set(o.mudMonth); }
-  rubble.fill(0); rubbleMonth.fill(0); if (o.rubble) { rubble.set(o.rubble); rubbleMonth.set(o.rubbleMonth); } storm = null; flows = []; rainDrops = [];
+  rubble.fill(0); rubbleMonth.fill(0); if (o.rubble) { rubble.set(o.rubble); rubbleMonth.set(o.rubbleMonth); }
+  biome.fill(0); if (o.biome) biome.set(o.biome); storm = null; flows = []; rainDrops = [];
   burning.forEach(t => burnT[t] = 0); burning = []; smokeP = []; fireStats = null;
   if (o.rot !== rot) { rot = o.rot || 0; document.getElementById('viewlbl').textContent = 'View ' + ['N', 'E', 'S', 'W'][rot]; }
   centerOn(N / 2, N / 2, sea + 2);
@@ -3374,13 +3546,14 @@ function toast(msg) {
   const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2200);
 }
-const TOOL_NAMES = { raise: 'Raise', lower: 'Lower', level: 'Level', smooth: 'Smooth', water: 'Water', trees: 'Trees', road: 'Road', doze: 'Bulldoze', zone1: 'Residential', zone2: 'Commercial', zone3: 'Industrial', pan: 'Pan', civ1: 'Park', civ2: 'Hospital', civ3: 'Fire station', civ4: 'Police', civ5: 'Stadium', civ6: 'Bus depot', civ7: 'EV charging', civ8: 'Bike share', fire: 'Ignite', storm: 'Storm', quake: 'Earthquake' };
+const TOOL_NAMES = { raise: 'Raise', lower: 'Lower', level: 'Level', smooth: 'Smooth', water: 'Water', trees: 'Trees', road: 'Road', doze: 'Bulldoze', zone1: 'Residential', zone2: 'Commercial', zone3: 'Industrial', pan: 'Pan', civ1: 'Park', civ2: 'Hospital', civ3: 'Fire station', civ4: 'Police', civ5: 'Stadium', civ6: 'Bus depot', civ7: 'EV charging', civ8: 'Bike share', fire: 'Ignite', storm: 'Storm', quake: 'Earthquake', biome: 'Biome' };
 document.querySelectorAll('.tb[data-tool]').forEach(b => b.addEventListener('click', () => {
   document.querySelectorAll('.tb[data-tool]').forEach(x => x.classList.remove('on'));
   const wasStorm = tool === 'storm';
   b.classList.add('on'); tool = b.dataset.tool; roadGhost = [];
   document.getElementById('storm-panel').style.display = tool === 'storm' ? 'flex' : 'none';
   document.getElementById('quake-panel').style.display = tool === 'quake' ? 'flex' : 'none';
+  document.getElementById('biome-panel').style.display = tool === 'biome' ? 'flex' : 'none';
   if (tool === 'storm') refreshHazard(); else if (wasStorm) cacheDirty = true;
   document.getElementById('toolname').textContent = TOOL_NAMES[tool];
   canvas.style.cursor = tool === 'pan' ? 'grab' : 'crosshair';
@@ -3388,6 +3561,7 @@ document.querySelectorAll('.tb[data-tool]').forEach(b => b.addEventListener('cli
     : tool === 'fire' ? '🔥 Click to start a fire. It runs downwind and uphill, and roads, water, and fire stations slow it down.'
     : tool === 'quake' ? '🌎 Click to set the epicenter. Towers and heavy industry are most fragile, steep slopes slide, and low ground by water can liquefy.'
     : tool === 'storm' ? '🌧️ Colors show how likely each drainage is to send a debris flow at this rain rate: green Low, orange Moderate, red High. Burn scars drive it.'
+    : tool === 'biome' ? `${BIOMES[paintBiome].icon} Painting ${BIOMES[paintBiome].name}. Wetland biomes can go in shallow water too. Or fill the whole map by climate.`
     : tool === 'water' ? '💧 On flat ground water pools. On a slope it runs downhill as a stream, with waterfalls.' : '';
   compDirty = true;
 }));
@@ -3496,6 +3670,18 @@ document.getElementById('btn-report').addEventListener('click', showReport);
   box.addEventListener('click', e => { if (e.target === box) box.classList.add('hidden'); });
 })();
 document.getElementById('report-close').addEventListener('click', () => document.getElementById('reportbox').classList.add('hidden'));
+(() => { // biome palette
+  const list = document.getElementById('biome-list');
+  BIOMES.forEach((b, i) => { if (!b) return; const btn = document.createElement('button'); btn.className = 'tb' + (i === paintBiome ? ' on' : ''); btn.textContent = b.icon; btn.title = b.name; btn.dataset.b = i;
+    btn.addEventListener('click', () => { paintBiome = i; list.querySelectorAll('.tb').forEach(x => x.classList.toggle('on', +x.dataset.b === i)); document.getElementById('biome-name').textContent = b.name;
+      document.getElementById('st-hint').textContent = `${b.icon} Painting ${b.name}. Wetland biomes can go in shallow water too. Or fill the whole map by climate.`; });
+    list.appendChild(btn); });
+  document.getElementById('biome-name').textContent = BIOMES[paintBiome].name;
+  const sel = document.getElementById('auto-climate');
+  for (const [k, c] of Object.entries(CLIMATES)) { const o = document.createElement('option'); o.value = k; o.textContent = c.name; sel.appendChild(o); }
+  sel.value = 'mixed';
+  document.getElementById('btn-auto-biome').addEventListener('click', () => applyBiomesToMap(sel.value));
+})();
 document.getElementById('btn-rain').addEventListener('click', () => { startStorm(); selectTool('pan'); });
 // About panel. Set REPO_URL once the GitHub repo exists and the source link appears.
 const REPO_URL = '';
@@ -3547,6 +3733,7 @@ function updateStatus() {
       zt = `${zn} ${dens[t].toFixed(1)}` + (note ? ` (${note})` : ''); }
   }
   if (civ[t]) zt = `${CIVIC[civ[t]].icon} ${CIVIC[civ[t]].name} (reaches ${CIVIC[civ[t]].r} tiles)`;
+  if (biome[t]) zt = (zt === '-' ? '' : zt + ' · ') + `${BIOMES[biome[t]].icon} ${BIOMES[biome[t]].name}`;
   if (hazCls[t] && hazardView()) zt = (zt === '-' ? '' : zt + ' · ') + `🌧️ drainage likelihood ${hazP[t].toFixed(2)} (${HAZ_NAME[hazCls[t]]}) at ${i15} mm/hr`;
   if (layer === 'fire' || layer === 'police' || layer === 'hosp') { const n = (layer === 'fire' ? civFireN : layer === 'police' ? civPoliceN : civHospN)[t]; zt = (zt === '-' ? '' : zt + ' · ') + `${LAYERS[layer].icon} ${n ? n + ' reaching here' : 'not covered'}`; }
   if (layer === 'air') zt = (zt === '-' ? '' : zt + ' · ') + `🌫️ pollution ${poll[t].toFixed(1)}${poll[t] > 0.1 ? ` (${Math.round(pollRoad[t] / poll[t] * 100)}% from traffic)` : ''}`;
