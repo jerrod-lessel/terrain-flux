@@ -1,4 +1,4 @@
-# ⛰️ Terrain Flux
+# <img src="favicon.svg" width="28" alt=""> Terrain Flux
 
 **Someone has to grade this mess.**
 
@@ -13,6 +13,8 @@ Part of [Lessel Geospatial Labs](https://lesselgeospatial.com).
 **[Launch Terrain Flux](https://lesselgeospatial.com)** <!-- swap in the live URL -->
 
 It is one self-contained HTML file. No build step, no server, no install. Download `index.html` and open it, or host it anywhere static (GitHub Pages, Vercel, Cloudflare Pages).
+
+New here? A one-minute guided tour runs on your first visit: load Morro Bay, build a starter town, add a fire station, light a fire upwind, make it rain, and read your report card. Replay it anytime from About or Help.
 
 ## What you can do
 
@@ -40,6 +42,7 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 - 🔗 **Share a link to exactly what you see:** terrain, water, roads, buildings, scars, and your view, usually in 2 to 4 KB.
 - 📁 **Back up to a file** when you want a full copy, or for maps built from your own DEM.
 - 📱 **Pinch to zoom** and two-finger pan on touch screens.
+- 📸 **Take a snapshot** of the current view as a PNG, with an optional small credit.
 - 💾 **Quick-save** to your browser.
 
 ![A grown city](docs/city.png)
@@ -56,6 +59,7 @@ It is one self-contained HTML file. No build step, no server, no install. Downlo
 | Grid / contours / tint / retro pixels | `G` / `C` / `T` / `P` |
 | Day, cycle, night | `N` |
 | Map layers | `L` |
+| Snapshot | `K` |
 | Pause / slow / normal / fast | `Space` / `1` / `2` / `3` |
 | Cancel a road | `Esc` |
 
@@ -124,6 +128,8 @@ The notebook reproduces the shipped presets byte for byte, so you can rebuild th
 - [x] Hazard report card
 - [x] Transit that cleans the air
 - [x] Map layers for coverage and gaps
+- [x] Guided tour
+- [x] Snapshots
 
 ## Credits
 
