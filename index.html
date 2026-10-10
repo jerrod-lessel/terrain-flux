@@ -346,12 +346,16 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       <p>Real places start as 30 m elevation data exported from Google Earth Engine. The app crops it to a square, shrinks it to fit the grid, and softens any cliffs too steep for the one-step rule. A city then grows on top using simple rules about roads, neighbors, and demand.</p>
       <p>Debris flows after a fire use a simplified version of the USGS M1 likelihood model, the same one behind <a href="https://scar-threshold.pages.dev" target="_blank" rel="noopener">Scar Threshold</a>, my real post-fire hazard map. Here the burn severity comes from the game's own fires and soil is held constant, so it is a toy, not a forecast.</p>
       <h3>Credits</h3>
-      <p class="credit">Elevation: SRTM 30 m, NASA and USGS, via Google Earth Engine.<br>
+      <p>🔬 <a href="https://github.com/jerrod-lessel/terrain-flux/blob/main/METHODS.md" target="_blank" rel="noopener">The science behind it</a>: what each hazard model is based on, and where it stops being true.</p>
+      <p class="credit">Elevation: SRTM 30 m, NASA and USGS (Farr et al., 2007), via Google Earth Engine.<br>
+      Debris flow likelihood: USGS M1 model (Staley et al., 2017).<br>
+      Sea level scenarios: NOAA 2022 interagency report (Sweet et al., 2022).<br>
+      Biome sorting: after Whittaker (1975).<br>
       GeoTIFF reading: geotiff.js (MIT license).<br>
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
       <p>☕ Terrain Flux is free. If it made you smile, you can <a href="https://ko-fi.com/jerrodlessel" target="_blank" rel="noopener">buy me a cup of tea on Ko-fi</a>.</p>
-      <p class="credit">Version 5.14.2 · MIT license</p>
+      <p class="credit">Version 5.15 · MIT license</p>
       <div class="btns"><button class="txt" id="about-tour" style="text-align:center">▶ Take the tour</button><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -4430,7 +4434,7 @@ canvas.addEventListener('pointerdown', e => {
     touches.set(e.pointerId, p);
     if (touches.size === 2) { // second finger: cancel any one-finger action and start a pinch
       if (drag && drag.mode === 'paint') undo();
-      drag = null; roadGhost = []; clearInterval(holdTimer); holdTimer = null;
+      drag = null; roadGhost = []; clearTimeout(holdTimer); clearInterval(holdTimer); holdTimer = null;
       const i = pinchInfo(); pinch = { d0: i.d, x: i.x, y: i.y }; return;
     }
     if (touches.size > 2) return;
@@ -4446,7 +4450,7 @@ canvas.addEventListener('pointerdown', e => {
   if (tool === 'level') { const [wx, wy] = t2w(h.vx, h.vy), c = cornersW(wx, wy); levelTarget = Math.round((c[0] + c[1] + c[2] + c[3]) / 4); }
   drag = { mode: 'paint', last: h.vx + ',' + h.vy };
   applyTool(h); updateStatus();
-  if (tool === 'raise' || tool === 'lower') holdTimer = setInterval(() => { if (drag && drag.mode === 'paint' && hover) { applyTool(hover); updateStatus(); } }, 200);
+  if (tool === 'raise' || tool === 'lower') holdTimer = setTimeout(() => { holdTimer = setInterval(() => { if (drag && drag.mode === 'paint' && hover) { applyTool(hover); updateStatus(); } }, 350); }, 600);
 });
 canvas.addEventListener('pointermove', e => {
   const p = evPos(e);
@@ -4477,7 +4481,7 @@ function endDrag() {
   }
   if (drag && drag.mode === 'road' && roadGhost.length) commitRoad();
   if (drag && drag.mode === 'pan') { cacheDirty = true; canvas.style.cursor = tool === 'pan' ? 'grab' : 'crosshair'; }
-  drag = null; clearInterval(holdTimer); holdTimer = null; compDirty = true;
+  drag = null; clearTimeout(holdTimer); clearInterval(holdTimer); holdTimer = null; compDirty = true;
   if (pendingPan) { pendingPan = false; selectTool('pan'); } // disasters are one-shot: back to panning
 }
 function selectTool(name) { const b = document.querySelector(`.tb[data-tool="${name}"]`); if (b) b.click(); }
@@ -4488,10 +4492,17 @@ function pointerEnd(e) {
 canvas.addEventListener('pointerup', pointerEnd);
 canvas.addEventListener('pointercancel', pointerEnd);
 canvas.addEventListener('pointerleave', () => { if (!drag) { hover = null; compDirty = true; } }); // status keeps the last tile you pointed at
+let wheelAcc = 0, wheelLast = 0, wheelStep = 0;
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
-  const p = evPos(e);
-  setZoom(zi + (e.deltaY < 0 ? 1 : -1), p.x, p.y);
+  const now = performance.now(), p = evPos(e);
+  if (now - wheelLast > 250) wheelAcc = 0; // a pause starts a fresh gesture
+  wheelLast = now;
+  wheelAcc += e.deltaY * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1);
+  const need = e.ctrlKey ? 30 : 90; // trackpad pinch arrives as ctrl+wheel with small numbers
+  if (Math.abs(wheelAcc) < need || now - wheelStep < 220) return; // one level per notch, at most about 4 a second
+  setZoom(zi + (wheelAcc < 0 ? 1 : -1), p.x, p.y);
+  wheelAcc = 0; wheelStep = now;
 }, { passive: false });
 
 window.addEventListener('keydown', e => {
