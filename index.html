@@ -46,6 +46,13 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--accent);outlin
 .hud{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
 .lcd{background:var(--lcd);color:var(--lcd-ink);padding:1px 8px;font-size:19px;min-width:64px;text-align:center;border:2px solid;border-color:#000 #555 #555 #000;}
 .lcd b{font-weight:normal;color:#b9ffb0;opacity:.7;margin-right:4px;}
+.rci{display:flex;gap:3px;height:30px;padding:2px 4px;background:var(--lcd);border:2px solid;border-color:#000 #555 #555 #000;}
+.rbar{width:11px;position:relative;background:rgba(255,255,255,0.06);}
+.rbar::after{content:'';position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(255,255,255,0.35);}
+.rbar i{position:absolute;left:1px;right:1px;top:50%;height:0;transition:height .6s,top .6s;}
+#rci-1 i{background:#4cd060}#rci-2 i{background:#5a8cff}#rci-3 i{background:#f0a030}
+.rbar span{position:absolute;left:0;right:0;bottom:-1px;text-align:center;font-family:'Press Start 2P',monospace;font-size:6px;color:#cfd8cf;}
+@media (prefers-reduced-motion: reduce){ .rbar i{transition:none;} }
 #btn-about,#btn-report,.spd{min-width:34px;height:28px;font-size:16px;cursor:pointer;}
 .speeds{display:flex;gap:2px;padding:1px;}
 .spd{border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);background:var(--panel);padding:0 4px;}
@@ -145,6 +152,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
     <div class="lcd" id="hud-date">JAN 1900</div>
     <div class="lcd"><b>POP</b><span id="hud-pop">0</span></div>
     <div class="lcd"><b>JOBS</b><span id="hud-jobs">0</span></div>
+    <div class="rci" id="rci" title="Demand"><div class="rbar" id="rci-1"><i></i><span>R</span></div><div class="rbar" id="rci-2"><i></i><span>C</span></div><div class="rbar" id="rci-3"><i></i><span>I</span></div></div>
     <div class="speeds bev" title="Game speed">
       <button class="spd" data-s="0" title="Pause (Space)">⏸</button>
       <button class="spd" data-s="1" title="Slow: a month every 4 seconds (1)">🐢</button>
@@ -318,7 +326,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
       <p>☕ Terrain Flux is free. If it made you smile, you can <a href="https://ko-fi.com/jerrodlessel" target="_blank" rel="noopener">buy me a cup of tea on Ko-fi</a>.</p>
-      <p class="credit">Version 5.5 · MIT license</p>
+      <p class="credit">Version 5.6 · MIT license</p>
       <div class="btns"><button class="txt" id="about-tour" style="text-align:center">▶ Take the tour</button><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -403,6 +411,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       <p>The ground can only rise or fall one step from one tile to the next, so raising a spot drags the hillside up with it, just like the 1993 original.</p>
       <p>📊 The report card grades your city on wildfire, debris flow, earthquake, sea level rise, air quality, and services, by the share of residents exposed. Click a row to see it on the map.</p>
       <p>Factories, busy roads, and smoke pollute the air, and the wind carries it downwind. Homes grow slower in dirty air, so put industry downwind of town. Bus depots, EV charging, and bike share cut traffic pollution.</p>
+      <p>Growth takes balance. The R C I bars up top show demand: homes need about one job for every two residents, shops need customers, and industry needs workers. Level 2 needs fire or police coverage. Towers need fire and police, and homes also want a hospital and a park within 6 tiles. Hover any zone to see what it is waiting for.</p>
       <p>Zones only grow on flat tiles near a road. Use Level to make room. A lone zone stays small and rural. Taller buildings need a real neighborhood around them, and demand: homes need jobs nearby, and shops and factories need residents. Hover a zone to see what it is waiting for. Homes like water views and dislike dirty air.</p>
       <p>Traffic follows development. Busy neighborhoods fill their roads with cars, and a road to nowhere stays empty. Every building type comes in four styles.</p>
       <p>Civic buildings change the city around them. Parks make homes nicer, hospitals act like jobs, fire stations help factories, stadiums pack the shops and the roads, and every tower needs police coverage. Pick one to see its reach.</p>
@@ -2928,22 +2937,51 @@ function boxSum(S, x, y, r) {
   const x0 = Math.max(0, x - r), y0 = Math.max(0, y - r), x1 = Math.min(N - 1, x + r), y1 = Math.min(N - 1, y + r);
   return S[(y1 + 1) * M1 + x1 + 1] - S[y0 * M1 + x1 + 1] - S[(y1 + 1) * M1 + x0] + S[y0 * M1 + x0];
 }
+// What each zone tile can grow to, and the reason it can't go higher (shown when you hover it).
+// Level 1: a road. Level 2: neighbors, demand nearby, fire OR police, and air that isn't unhealthy.
+// Level 3: a dense neighborhood, strong demand, clean air for homes, fire AND police, and for homes
+// a hospital and a park within 6 tiles.
+function listJoin(a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + (a.length > 2 ? ',' : '') + ' and ' + a[a.length - 1]; }
 function tierCap(wx, wy, z) {
   const rn = near(wx, wy, 2, (X, Y) => road[Y * N + X] > 0);
   let nb = 0;
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if ((dx || dy) && inW(wx + dx, wy + dy) && zone[(wy + dy) * N + wx + dx] === z) nb++; }
   if (!rn) return nb >= 2 ? [1, 'no road, growing slowly', false] : [0, 'needs a road', false];
-  const t = wy * N + wx;
-  const demand = (z === 1 ? boxSum(SAT_J, wx, wy, 12) + civDemR[t] : boxSum(SAT_R, wx, wy, z === 3 ? 14 : 12) + (z === 2 ? civDemC[t] : 0));
-  const dn = z === 1 ? 'jobs' : 'residents';
-  if (z === 1 && poll[t] >= POLL_HIGH) return [1, 'air too dirty to grow', true];
+  const t = wy * N + wx, R = z === 1;
+  const demand = (R ? boxSum(SAT_J, wx, wy, 12) + civDemR[t] : boxSum(SAT_R, wx, wy, z === 3 ? 14 : 12) + (z === 2 ? civDemC[t] : 0));
+  const dn = R ? 'jobs' : 'residents';
+  if (R && poll[t] >= POLL_HIGH) return [1, 'air too dirty to grow', true];
   if (nb < 3 || boxSum(SAT_ALL, wx, wy, 4) + civDense[t] < 14) return [1, 'rural, needs more neighbors', true];
   if (demand < 6) return [1, 'needs ' + dn + ' nearby', true];
+  if (!civFireN[t] && !civPoliceN[t]) return [1, 'needs fire or police coverage to grow', true];
   if (nb < 5 || boxSum(SAT_ALL, wx, wy, 6) + civDense[t] < 60) return [2, 'needs a denser neighborhood', true];
-  if (z === 1 && poll[t] >= POLL_MOD) return [2, 'air too dirty for towers', true];
+  if (R && poll[t] >= POLL_MOD) return [2, 'air too dirty for towers', true];
   if (demand < 25) return [2, 'needs more ' + dn + ' nearby', true];
-  if (!civPolice[t]) return [2, 'towers need police coverage', true];
+  const miss = [];
+  if (!civFireN[t]) miss.push('fire coverage');
+  if (!civPoliceN[t]) miss.push('police coverage');
+  if (R && !civHospN[t]) miss.push('a hospital nearby');
+  if (R && !near(wx, wy, 6, (X, Y) => civ[Y * N + X] === 1)) miss.push('a park within 6 tiles');
+  if (miss.length) return [2, (R ? 'towers need ' : 'needs ') + listJoin(miss), true];
   return [3, 'maxed out', true];
+}
+// City-wide demand (the R C I bars): homes want about one job for every two residents,
+// shops want customers, industry wants workers and some business from the shops.
+// A new town starts with a little demand for everything so it can get going.
+const rciDemand = [0, 1, 1, 1];
+function updateDemand(pop, jc, ji) {
+  const cl = v => Math.max(-1, Math.min(1, v)), boot = 400;
+  rciDemand[1] = cl(((jc + ji) * 2 + boot - pop) / Math.max(300, pop * 0.25));
+  rciDemand[2] = cl((pop * 0.35 + boot * 0.3 - jc) / Math.max(150, jc * 0.25 + 100));
+  rciDemand[3] = cl((pop * 0.45 + jc * 0.3 + boot * 0.3 - ji) / Math.max(150, ji * 0.25 + 100));
+  const word = v => v > 0.5 ? 'strong' : v > 0.1 ? 'some' : v > -0.1 ? 'balanced' : v > -0.5 ? 'oversupplied' : 'way oversupplied';
+  for (let z = 1; z <= 3; z++) {
+    const v = rciDemand[z], el = document.querySelector(`#rci-${z} i`);
+    el.style.height = Math.abs(v) * 50 + '%';
+    el.style.top = v >= 0 ? (50 - v * 50) + '%' : '50%';
+    el.style.opacity = v >= 0 ? 1 : 0.55;
+  }
+  document.getElementById('rci').title = `Demand. Homes: ${word(rciDemand[1])} (${(jc + ji).toLocaleString()} jobs for ${pop.toLocaleString()} residents). Shops: ${word(rciDemand[2])}. Industry: ${word(rciDemand[3])}.`;
 }
 function simTick() {
   month++;
@@ -2951,7 +2989,7 @@ function simTick() {
   if (layer && (layer === 'air' || layer === 'transit')) { computeLayer(); cacheDirty = true; }
   recoverTick();
   buildSATs();
-  let changed = false, pop = 0, jobs = 0; const changedT = [];
+  let changed = false, pop = 0, jobs = 0, jobsC = 0, jobsI = 0; const changedT = [];
   for (let wy = 0; wy < N; wy++) for (let wx = 0; wx < N; wx++) {
     const t = wy * N + wx, z = zone[t];
     if (!z) continue;
@@ -2961,7 +2999,13 @@ function simTick() {
     const capD = cap === 0 ? 0.45 : cap === 3 ? 3 : cap + 0.45;
     let d = dens[t];
     if (d < capD) {
-      let g = (d < 0.5 ? 0.06 : d < 1.5 ? 0.045 : 0.035) * (rn ? 1 : 0.2) * civBoost[z][t];
+      // at Normal speed: level 1 in about 20 s, level 2 in about a minute, level 3 in about 3 minutes;
+      // every tile has its own pace and the top level jitters a lot, so towers don't all pop at once
+      const base = d < 0.5 ? 0.04 : d < 1.5 ? 0.027 : 0.009;
+      const pace = 0.55 + ((hash2(wx, wy) >>> 3) & 255) / 255 * 0.9;
+      const jitter = d >= 1.5 ? 0.3 + Math.random() * 1.4 : 0.6 + Math.random() * 0.8;
+      const dem = rciDemand[z], demF = dem > 0 ? 0.5 + 0.5 * dem : 0;
+      let g = base * pace * jitter * demF * (rn ? 1 : 0.2) * civBoost[z][t];
       if (z === 1) {
         if (near(wx, wy, 3, isWaterW)) g *= 1.3;
         g *= pollFactor(t); // dirty air slows homes down (replaces the old 'near a factory' rule)
@@ -2969,16 +3013,18 @@ function simTick() {
       if (z === 2) g *= Math.max(0.6, 1 - poll[t] / 30);
       d = Math.min(capD, d + g);
     } else if (d > capD) d = Math.max(capD, d - 0.01); // conditions lost: slowly shrink back
+    if (rciDemand[z] < -0.4 && d > 0.6) d -= 0.004; // way too much of this zone in the city: it slowly empties out
     dens[t] = d;
     const tier = d >= 2.5 ? 3 : d >= 1.5 ? 2 : d >= 0.5 ? 1 : 0;
     const b = BLD[z][tier];
     if (b !== bld[t]) { bld[t] = b; changed = true; changedT.push(t); }
-    if (z === 1) pop += POP[tier]; else jobs += JOBS[z][tier];
+    if (z === 1) pop += POP[tier]; else { jobs += JOBS[z][tier]; if (z === 2) jobsC += JOBS[2][tier]; else jobsI += JOBS[3][tier]; }
   }
   document.getElementById('hud-date').textContent = MONTHS[month % 12] + ' ' + (1900 + Math.floor(month / 12));
   document.getElementById('hud-pop').textContent = pop.toLocaleString();
   document.getElementById('hud-jobs').textContent = jobs.toLocaleString();
   lastPop = pop; lastJobs = jobs;
+  updateDemand(pop, jobsC, jobsI);
   computeTraffic();
   if (changed) {
     mmBaseDirty = true;
@@ -3490,7 +3536,9 @@ function updateStatus() {
   if (zone[t]) {
     if (mn !== mx) zt = zn + ' (needs flat ground)';
     else { const [cap, why] = tierCap(wx, wy, zone[t]); const tier = dens[t] >= 2.5 ? 3 : dens[t] >= 1.5 ? 2 : dens[t] >= 0.5 ? 1 : 0;
-      zt = `${zn} ${dens[t].toFixed(1)}` + (tier >= cap && cap < 3 ? ` (${why})` : ''); }
+      const dem = rciDemand[zone[t]], noDem = ['', 'no demand: the city needs more jobs', 'no demand: not enough shoppers', 'no demand: not enough workers'][zone[t]];
+      const note = tier >= cap && cap < 3 ? why : (tier < cap && dem <= 0 ? noDem : (tier < cap ? 'growing' : ''));
+      zt = `${zn} ${dens[t].toFixed(1)}` + (note ? ` (${note})` : ''); }
   }
   if (civ[t]) zt = `${CIVIC[civ[t]].icon} ${CIVIC[civ[t]].name} (reaches ${CIVIC[civ[t]].r} tiles)`;
   if (hazCls[t] && hazardView()) zt = (zt === '-' ? '' : zt + ' · ') + `🌧️ drainage likelihood ${hazP[t].toFixed(2)} (${HAZ_NAME[hazCls[t]]}) at ${i15} mm/hr`;
@@ -3791,7 +3839,8 @@ function buildTourTown() {
   tourTown = { x0, y0, S };
   dirtyAll(); demolishSloped();
   const v = w2v(x0 + S / 2, y0 + S / 2); setZoom(Math.max(zi, 2)); centerOn(v[0], v[1], h0);
-  setSpeed(3); toast('🏗️ Starter town zoned. Fast speed for a bit so it grows.');
+  placeTourCivic(4); placeTourCivic(2); placeTourCivic(1);
+  setSpeed(3); toast('🏗️ Starter town zoned, with police, a hospital and a park. Fast speed for a bit so it grows.');
 }
 function placeTourCivic(id) {
   if (!tourTown) return;
