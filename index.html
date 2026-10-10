@@ -312,6 +312,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
           <label><input type="checkbox" id="g-coast" checked>Coast</label>
           <label><input type="checkbox" id="g-river" checked>River</label>
         </div>
+        <div class="row" style="margin-top:2px"><label for="g-world">World</label><select id="g-world" style="flex:1;min-width:0;width:100%;font-family:inherit;font-size:16px;background:var(--well);color:var(--ink);border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)"><option value="earth">🌍 Earth</option><option value="moon">🌕 Moon</option><option value="mars">🔴 Mars</option></select></div>
         <div class="row" style="margin-top:2px"><label for="g-climate">Climate</label><select id="g-climate" style="flex:1;min-width:0;width:100%;font-family:inherit;font-size:16px;background:var(--well);color:var(--ink);border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)"><option value="classic">Classic (no biomes)</option><option value="temperate">Temperate</option><option value="arid">Arid</option><option value="tropical">Tropical</option><option value="cold">Cold</option><option value="mixed">Mixed</option></select>
         </div>
         <div class="row"><label for="seed">Seed</label><input id="seed" value="2000" inputmode="numeric"><button class="txt" id="g-dice" style="width:auto">🎲</button></div>
@@ -345,7 +346,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
       <p>☕ Terrain Flux is free. If it made you smile, you can <a href="https://ko-fi.com/jerrodlessel" target="_blank" rel="noopener">buy me a cup of tea on Ko-fi</a>.</p>
-      <p class="credit">Version 5.8 · MIT license</p>
+      <p class="credit">Version 5.9 · MIT license</p>
       <div class="btns"><button class="txt" id="about-tour" style="text-align:center">▶ Take the tour</button><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -444,6 +445,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       <p>🌍 Biomes paint the land: forest, prairie, desert, chaparral, rainforest, bayou, mangrove, savanna, boreal, tundra, and alpine. Each has its own ground and plants and burns differently: chaparral and prairie burn fast, deserts and wetlands barely burn. Mangroves and bayous can grow in shallow water. Pick a climate to fill a whole map, or choose one under New map.</p>
       <p>Biomes change how things behave: prairie, savanna, and alpine are windier, rainforests are calmer and get passing showers that put out fires, and deserts get dust devils. Desert towns grow slowly without water nearby, and cold biomes grow slowly too. Mangroves, bayous, and coral reefs hold back sea level rise for the land behind them, wetlands stop debris flows, and reefs bring tourists to nearby shops.</p>
       <p>🌋 Volcanoes: click to raise a cone and set it erupting. Lava runs downhill, buries what it meets, starts fires, cools into black lava rock over a few months, and builds new land where it reaches the sea.</p>
+      <p>🌕🔴 Pick World under New map to build on the Moon or Mars: craters, alien skies, ice instead of water, and glass domes over every building. No air means no fires and no rain, and the Moon has no wind at all. Mars has dust devils everywhere.</p>
       <p>Water pools on flat ground. Place it on a slope and it runs downhill as a stream, with waterfalls, until it reaches water or a low spot. The sea level buttons flood or drain the whole map.</p>
       <p>Wildfires run downwind and uphill. Forest burns long and hot, grass burns fast and light, and roads, water, beaches, and bare rock stop them. Fire stations slow fires inside their reach. Burned ground stays scarred by severity and heals over about five game years, and forests grow back.</p>
       <p>Load DEM takes a real GeoTIFF, crops the center square, and squeezes it into 128 by 128 tiles. Cliffs get softened into slopes because the engine refuses to do anything else.</p>
@@ -567,6 +569,7 @@ function hypso(level) {
 }
 function landColor(wx, wy, mn, avg) {
   const shore = sea > 0 && mn === sea && (isWaterW(wx - 1, wy) || isWaterW(wx + 1, wy) || isWaterW(wx, wy - 1) || isWaterW(wx, wy + 1));
+  if (planet !== 'earth') return planetColor(wy * N + wx, avg);
   const bt = biome[wy * N + wx];
   if (bt) return shore && !BIOMES[bt].wet && BIOMES[bt].key !== 'desert' ? SAND : biomeColor(wy * N + wx, avg);
   if (tint === 'hypso') {
@@ -653,14 +656,14 @@ function drawTile(g, vx, vy, lod) {
     if (!partialMode) {
       terrainDepth([Tx, Ty, Rx, Ry, Bx, By, Lx, Ly], vx + vy);
       const bk = biome[t] ? BIOMES[biome[t]].key : '';
-      if (bk === 'desert' || bk === 'savanna' || bk === 'prairie') dryVis.push(t); else if (bk === 'rainforest') wetVis.push(t);
+      if (planet === 'mars' || bk === 'desert' || bk === 'savanna' || bk === 'prairie') { if (planet !== 'moon') dryVis.push(t); } else if (bk === 'rainforest') wetVis.push(t);
       if (lava[t]) lavaVis.push(t);
     }
   } else {
     const sY = F - s * HS, depth = s - (ht + hr + hb + hl) / 4;
     if (s > hl || s > hb) poly(g, [Lx, sY + TH / 2, Bx, sY + TH, Bx, By, Lx, Ly], '#2a6fb4');
     if (s > hr || s > hb) poly(g, [Bx, sY + TH, Rx, sY + TH / 2, Rx, Ry, Bx, By], '#1f5a98');
-    poly(g, [Tx, sY, Rx, sY + TH / 2, Bx, sY + TH, Lx, sY + TH / 2], biome[t] === 6 ? 'rgb(72,96,76)' : biome[t] === 7 ? 'rgb(64,124,128)' : biome[t] === 12 ? 'rgb(70,192,198)' : waterCol(depth));
+    poly(g, [Tx, sY, Rx, sY + TH / 2, Bx, sY + TH, Lx, sY + TH / 2], planet !== 'earth' ? 'rgb(214,228,238)' : biome[t] === 6 ? 'rgb(72,96,76)' : biome[t] === 7 ? 'rgb(64,124,128)' : biome[t] === 12 ? 'rgb(70,192,198)' : waterCol(depth));
     if (!partialMode) terrainDepth([Tx, sY, Rx, sY + TH / 2, Bx, sY + TH, Lx, sY + TH / 2], vx + vy);
     if (showGrid && !lod) outlinePts(g, [Tx, sY, Rx, sY + TH / 2, Bx, sY + TH, Lx, sY + TH / 2], 'rgba(0,0,40,0.18)', px1);
     if (!partialMode) waterVis.push(Tx, sY + TH / 2, ((wx * 7919) ^ (wy * 104729)) & 1023);
@@ -676,7 +679,7 @@ function drawTile(g, vx, vy, lod) {
   }
 
   if (road[t]) { drawRoad(g, vx, vy, ht, hr, hb, hl, lod); if (!partialMode) roadVis.push(wx, wy); return; }
-  if (bld[t]) { drawBuilding(g, bld[t], Tx, Ty + TH / 2, lod, hash2(wx, wy)); if (!partialMode) { silhouette(Tx, Ty + TH / 2, bld[t], vx + vy); bldVis.push(t, Tx, Ty + TH / 2, bld[t], vx + vy); } return; }
+  if (bld[t]) { drawBuilding(g, bld[t], Tx, Ty + TH / 2, lod, hash2(wx, wy)); if (planet !== 'earth') drawDome(g, Tx, Ty + TH / 2, SIL_H[bld[t]] || 20); if (!partialMode) { silhouette(Tx, Ty + TH / 2, bld[t], vx + vy); bldVis.push(t, Tx, Ty + TH / 2, bld[t], vx + vy); } return; }
   if (civ[t] === 5 && isBigStadium(t)) { drawStadiumPart(g, vx, vy, t, Tx, Ty, lod); return; }
   if (civ[t]) { drawCivic(g, civ[t], Tx, Ty + TH / 2, lod, hash2(wx, wy)); if (!partialMode && civ[t] !== 1) silhouette(Tx, Ty + TH / 2, 0, vx + vy, CIVIC[civ[t]].sil); return; }
   if (zone[t]) {
@@ -1526,7 +1529,7 @@ function redrawRect(r) {
   cx.setTransform(1, 0, 0, 1, 0, 0);
   cx.beginPath(); cx.rect(x0, y0, x1 - x0, y1 - y0); cx.clip();
   const gr = cx.createLinearGradient(0, 0, 0, Hh); gr.addColorStop(0, '#0a0f18'); gr.addColorStop(1, '#1c2838');
-  cx.fillStyle = gr; cx.fillRect(x0, y0, x1 - x0, y1 - y0);
+  cx.fillStyle = gr; cx.fillRect(x0, y0, x1 - x0, y1 - y0); paintSky(cx, W, Hh);
   const z = cacheZoom;
   cx.setTransform(z, 0, 0, z, cacheCX, cacheCY); cx.lineWidth = 1 / z; cx.lineJoin = 'round';
   partialMode = true;
@@ -1553,12 +1556,12 @@ function windStep(ts) {
   if (ts - lastWindLabel > 1000) {
     lastWindLabel = ts;
     const deg = (Math.atan2(-ux, uy) * 180 / Math.PI + 360) % 360; // where the wind blows from (north = up)
-    document.getElementById('st-wind').textContent = `${COMPASS[Math.round(deg / 45) % 8]} ${Math.round(wind.spd)} km/h`;
+    document.getElementById('st-wind').textContent = planet === 'moon' ? 'none (no air)' : `${COMPASS[Math.round(deg / 45) % 8]} ${Math.round(wind.spd)} km/h`;
   }
   // Gusts are born just upwind of the view, so whatever you're looking at gets weather.
   const vcw = viewCenterWorld();
   const viewR = Math.max(6, Math.min(70, Math.hypot(canvas.width, canvas.height) / 2 / (zoom * TW / 2) / 1.3));
-  if (ts > nextGust && gusts.length < 4) {
+  if (ts > nextGust && gusts.length < 4 && planet !== 'moon') {
     const side = (Math.random() - 0.5) * viewR * 1.2, r = 4 + Math.random() * 3.5, back = viewR * 0.8 + r;
     gusts.push({ x: vcw[0] - ux * back - uy * side, y: vcw[1] - uy * back + ux * side, cx: vcw[0], cy: vcw[1], lim: back,
       r, str: 0.7 + Math.random() * 0.4, v: 3 + Math.random() * 3, prev: null });
@@ -1623,6 +1626,7 @@ function fuelOf(wx, wy) {
 const BURN_TICKS = [0, 2.5, 7, 8];
 const SPREAD = [0, 0.045, 0.075, 0.05];
 function ignite(wx, wy, quiet) {
+  if (planet !== 'earth') { if (!quiet) toast('No oxygen out here, so nothing burns.'); return false; }
   const f = fuelOf(wx, wy);
   if (!f) { if (!quiet) toast('Nothing here will burn.'); return false; }
   const t = wy * N + wx;
@@ -1833,6 +1837,7 @@ function refreshHazard() { computeHazard(); cacheDirty = true; }
 const STORM_S = [0, 9, 6, 4], FLOW_MS = [0, 260, 160, 80];
 function startStorm() {
   if (storm) return;
+  if (planet !== 'earth') { toast(planet === 'mars' ? 'Mars gets dust storms, not rain. No debris flows here.' : 'No weather on the Moon.'); return; }
   snapshot();
   const assessed = computeHazard();
   // rain puts out any fire still burning
@@ -2211,6 +2216,7 @@ function setGenControls(p) {
   document.getElementById('g-water').value = p.water; document.getElementById('g-trees').value = p.trees;
   document.getElementById('g-coast').checked = !!p.coast; document.getElementById('g-river').checked = !!p.river;
   document.getElementById('g-climate').value = p.climate || 'classic';
+  document.getElementById('g-world').value = p.world || 'earth';
 }
 function applyView(v, day) {
   if (!v || v.length < 4) return;
@@ -2626,7 +2632,7 @@ function biomeFx() {
   const ux = Math.cos(wind.a), uy = Math.sin(wind.a);
   if (dryVis.length && devils.length < 3 && Math.random() < dt * 0.3) {
     const t = dryVis[(Math.random() * dryVis.length) | 0];
-    if (BIOMES[biome[t]].key === 'desert' || Math.random() < 0.25) devils.push({ x: t % N + 0.5, y: ((t / N) | 0) + 0.5, age: 0, life: 4 + Math.random() * 3, ph: Math.random() * 6 });
+    if (planet === 'mars' || (BIOMES[biome[t]] && BIOMES[biome[t]].key === 'desert') || Math.random() < 0.25) devils.push({ x: t % N + 0.5, y: ((t / N) | 0) + 0.5, age: 0, life: 4 + Math.random() * 3, ph: Math.random() * 6 });
   }
   if (wetVis.length && showers.length < 1 && Math.random() < dt * 0.05) {
     const t = wetVis[(Math.random() * wetVis.length) | 0];
@@ -2671,7 +2677,6 @@ function biomeFx() {
 // whatever it meets, setting fires, and cooling into black lava rock. Lava that reaches the sea builds new land.
 const lava = new Uint8Array(N * N), lavaMonth = new Int32Array(N * N);
 let volcano = null;
-const LAVA_MS = [0, 220, 140, 70];
 function lavaK(t) { if (!lava[t]) return 0; const age = month - lavaMonth[t]; return Math.max(0, 1 - age / 8); } // glow fades over 8 months
 function lavaTint(c, t) {
   const k = lavaK(t); if (!lava[t]) return c;
@@ -2679,64 +2684,119 @@ function lavaTint(c, t) {
   return [cold[0] + (hot[0] - cold[0]) * mix, cold[1] + (hot[1] - cold[1]) * mix, cold[2] + (hot[2] - cold[2]) * mix];
 }
 function lavaRecover() { let ch = false; for (let t = 0; t < N * N; t++) if (lava[t] && month - lavaMonth[t] <= 9) ch = true; return ch; }
+// The eruption plays out in stages, in real time (even while paused, so you always get the show):
+//   rumble and rise (the cone grows out of the ground while the screen shakes)
+//   -> blast (lava fountain and a tall ash column) -> lava flows -> smoldering ash -> report
+const lavaBits = [];
+const FLOW_STEP_MS = [300, 320, 220, 130]; // per lava step at pause / slow / normal / fast
 function startVolcano(cx, cy) {
+  if (volcano) { toast('One volcano at a time.'); return; }
   snapshot();
-  const R = 7, base = HM[(cy) * NC + cx], top = Math.min(MAXH, base + 10), q = [];
+  const R = 7, base = HM[cy * NC + cx], top = Math.min(MAXH, base + 10), cone = [];
   for (let y = cy - R - 1; y <= cy + R + 2; y++) for (let x = cx - R - 1; x <= cx + R + 2; x++) {
     if (x < 0 || y < 0 || x >= NC || y >= NC) continue;
     const d = Math.hypot(x - cx - 0.5, y - cy - 0.5); if (d > R) continue;
-    const c = y * NC + x, target = d < 1.6 ? top - 2 : base + Math.round((top - base) * (1 - d / R));
-    if (target > HM[c] || d < 1.6) { HM[c] = Math.max(0, Math.min(MAXH, target)); q.push(c); }
+    const c = y * NC + x, target = Math.max(0, Math.min(MAXH, d < 1.6 ? top - 2 : base + Math.round((top - base) * (1 - d / R))));
+    if (target > HM[c] || d < 1.6) cone.push([c, HM[c], target]);
   }
-  propagate(q);
-  for (let y = cy - R; y <= cy + R; y++) for (let x = cx - R; x <= cx + R; x++) if (inW(x, y) && Math.hypot(x - cx, y - cy) <= R - 1) { const t = y * N + x; biome[t] = 13; tree[t] = 0; }
-  // lava paths: steepest way down from the crater rim, nudged a little at random
-  const paths = [];
+  for (let y = cy - R; y <= cy + R; y++) for (let x = cx - R; x <= cx + R; x++) if (inW(x, y) && Math.hypot(x - cx, y - cy) <= R - 1) { const t = y * N + x; tree[t] = 0; }
+  volcano = { cx, cy, R, cone, phase: 'rise', t0: performance.now(), riseStep: 0, paths: [], last: 0, buried: 0, land: 0, rock: 0 };
+  toast('🌋 The ground is rumbling...');
+}
+function buildLavaPaths(v) {
   const avgH = (x, y) => { const c = cornersW(x, y); return (c[0] + c[1] + c[2] + c[3]) / 4; };
-  for (let k = 0; k < 4 + Math.floor(Math.random() * 2); k++) {
-    const a = k / 4.5 * Math.PI * 2 + Math.random() * 0.8;
-    let x = Math.round(cx + Math.cos(a) * 2), y = Math.round(cy + Math.sin(a) * 2);
+  for (let k = 0; k < 5; k++) {
+    const a = k / 5 * Math.PI * 2 + Math.random() * 0.9;
+    let x = Math.round(v.cx + Math.cos(a) * 2), y = Math.round(v.cy + Math.sin(a) * 2), flat = 0;
     const path = [], seen = new Set();
-    for (let s = 0; s < 45 && inW(x, y); s++) {
+    for (let s = 0; s < 60 && inW(x, y); s++) {
       const t = y * N + x; if (seen.has(t)) break; seen.add(t); path.push(t);
       if (isWaterW(x, y)) break;
-      let best = null, bh = avgH(x, y) + 0.01;
+      let best = null, bh = avgH(x, y) + 0.01, eq = null;
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) {
         const X = x + dx, Y = y + dy; if (!inW(X, Y) || seen.has(Y * N + X)) continue;
-        const hh = avgH(X, Y) + Math.random() * 0.4; if (hh < bh) { bh = hh; best = [X, Y]; }
+        const hh = avgH(X, Y), jit = hh + Math.random() * 0.4;
+        if (jit < bh) { bh = jit; best = [X, Y]; }
+        else if (Math.abs(hh - avgH(x, y)) < 0.01 && (!eq || Math.random() < 0.4)) eq = [X, Y];
       }
-      if (!best) break; [x, y] = best;
+      if (!best) { if (!eq || ++flat > 8) break; best = eq; } else flat = 0; // lava keeps spreading a while on flat ground
+      [x, y] = best;
     }
-    paths.push({ path, i: 0 });
+    v.paths.push({ path, i: 0 });
   }
-  volcano = { cx, cy, paths, last: 0, buried: 0, land: 0, rock: 0, until: performance.now() + 9000 };
-  dirtyAll(); toast('🌋 Eruption!');
 }
 function lavaTile(t) {
   const x = t % N, y = (t / N) | 0;
   if (isWaterW(x, y)) { // lava meets the sea: steam, and a little new land
     const i = y * NC + x, q = [];
-    if (!lake[t] && volcano.land < 12) { for (const c of [i, i + 1, i + NC, i + NC + 1]) if (HM[c] < sea) { HM[c] = sea; q.push(c); } if (q.length) { propagate(q); volcano.land++; } }
-    for (let k = 0; k < 4 && smokeP.length < 500; k++) smokeP.push({ x: x + 0.5, y: y + 0.5, lift: 2, life: 0.8, r: 2 });
+    if (!lake[t] && volcano.land < 14) { for (const c of [i, i + 1, i + NC, i + NC + 1]) if (HM[c] < sea) { HM[c] = sea; q.push(c); } if (q.length) { propagate(q); volcano.land++; } }
+    for (let k = 0; k < 6 && smokeP.length < 600; k++) smokeP.push({ x: x + 0.5 + (Math.random() - 0.5), y: y + 0.5 + (Math.random() - 0.5), lift: 2, life: 0.9, r: 2 });
   }
   if (bld[t] || civ[t] || road[t]) volcano.buried++;
   bld[t] = 0; dens[t] = 0; road[t] = 0; tree[t] = 0; removeCivAt(t); burnT[t] = 0;
   lava[t] = 1; lavaMonth[t] = month; biome[t] = 13; volcano.rock++;
-  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && inW(x + dx, y + dy) && Math.random() < 0.35) ignite(x + dx, y + dy, true);
+  if (!lavaVis.includes(t)) lavaVis.push(t);
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && inW(x + dx, y + dy) && Math.random() < 0.4) ignite(x + dx, y + dy, true);
 }
 function volcanoStep(ts) {
-  if (!volcano || !simOn) return;
-  if (Math.random() < 0.5 && smokeP.length < 500) smokeP.push({ x: volcano.cx + 0.5 + (Math.random() - 0.5), y: volcano.cy + 0.5 + (Math.random() - 0.5), lift: 60, life: 1.2, r: 4 + Math.random() * 3 });
-  if (ts - volcano.last < LAVA_MS[speed]) return;
-  volcano.last = ts;
-  const changed = [];
-  for (const p of volcano.paths) if (p.i < p.path.length) { lavaTile(p.path[p.i]); changed.push(p.path[p.i]); p.i++; }
-  if (changed.length) { if (volcano.land) cacheDirty = true; else redrawTiles(changed); mmBaseDirty = true; }
-  if (volcano.paths.every(p => p.i >= p.path.length) && ts > volcano.until) {
-    const v = volcano; volcano = null;
+  const v = volcano; if (!v) return;
+  const age = (ts - v.t0) / 1000;
+  const craterY = () => ({ x: v.cx + 0.5, y: v.cy + 0.5 });
+  if (v.phase === 'rise') { // 5 growth steps over about 2.5 s
+    const want = Math.min(5, Math.floor(age / 0.5) + 1);
+    while (v.riseStep < want) {
+      v.riseStep++;
+      const f = v.riseStep / 5, q = [];
+      for (const [c, h0, h1] of v.cone) { const h = Math.round(h0 + (h1 - h0) * f); if (HM[c] !== h) { HM[c] = h; q.push(c); } }
+      propagate(q); dirtyAll();
+      for (let k = 0; k < 12 && smokeP.length < 600; k++) { const a = Math.random() * 6.28, r = Math.random() * v.R; smokeP.push({ x: v.cx + 0.5 + Math.cos(a) * r, y: v.cy + 0.5 + Math.sin(a) * r, lift: 1, life: 0.7, r: 2.5 }); }
+    }
+    if (v.riseStep >= 5 && age > 2.6) {
+      for (let y = v.cy - v.R; y <= v.cy + v.R; y++) for (let x = v.cx - v.R; x <= v.cx + v.R; x++) if (inW(x, y) && Math.hypot(x - v.cx, y - v.cy) <= v.R - 1) biome[y * N + x] = 13;
+      buildLavaPaths(v); v.phase = 'blast'; v.t0 = ts; dirtyAll(); toast('🌋 ERUPTION!');
+    }
+    return;
+  }
+  // ash column and lava fountain while it is active
+  const active = v.phase === 'blast' || v.phase === 'flow';
+  if (active || v.phase === 'smolder') {
+    const ashRate = v.phase === 'blast' ? 1 : v.phase === 'flow' ? 0.6 : 0.25;
+    for (let k = 0; k < 3; k++) if (Math.random() < ashRate && smokeP.length < 600) smokeP.push({ x: v.cx + 0.5 + (Math.random() - 0.5) * 1.5, y: v.cy + 0.5 + (Math.random() - 0.5) * 1.5, lift: 30 + Math.random() * 30, life: 1.4, r: 5 + Math.random() * 5 });
+  }
+  if (active && lavaBits.length < 220) for (let k = 0; k < (v.phase === 'blast' ? 6 : 2); k++) {
+    const a = Math.random() * 6.28, sp = 0.8 + Math.random() * 1.8;
+    lavaBits.push({ x: v.cx + 0.5, y: v.cy + 0.5, h: 6, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, vh: 60 + Math.random() * 70, life: 1 });
+  }
+  if (v.phase === 'blast') { if (ts - v.t0 > 2200) { v.phase = 'flow'; v.t0 = ts; } return; }
+  if (v.phase === 'flow') {
+    if (ts - v.last < FLOW_STEP_MS[speed]) return;
+    v.last = ts;
+    const changed = [];
+    for (const p of v.paths) if (p.i < p.path.length) { lavaTile(p.path[p.i]); changed.push(p.path[p.i]); p.i++; }
+    if (changed.length) { if (v.land) cacheDirty = true; else redrawTiles(changed); mmBaseDirty = true; }
+    if (v.paths.every(p => p.i >= p.path.length)) { v.phase = 'smolder'; v.t0 = ts; }
+    return;
+  }
+  if (v.phase === 'smolder' && ts - v.t0 > 6000) {
+    volcano = null;
     toast(`🌋 Eruption over: ${v.rock} tiles of new lava rock` + (v.buried ? `, ${v.buried} buildings or roads buried` : '') + (v.land ? `, ${v.land} tiles of brand new land` : '') + '.');
     dirtyAll();
   }
+}
+function drawLavaBits(dt) {
+  if (!lavaBits.length) return false;
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  for (let i = lavaBits.length - 1; i >= 0; i--) {
+    const b = lavaBits[i];
+    b.x += b.vx * dt; b.y += b.vy * dt; b.h += b.vh * dt; b.vh -= 160 * dt; b.life -= dt * 0.5;
+    const cx_ = Math.max(0, Math.min(N - 0.01, b.x)), cy_ = Math.max(0, Math.min(N - 0.01, b.y)), ground = hAtW(cx_, cy_) * HS;
+    if (b.h < 0 || b.life <= 0 || !inW(Math.floor(b.x), Math.floor(b.y))) { lavaBits.splice(i, 1); continue; }
+    const v = w2v(b.x, b.y), sx = ((v[0] - v[1]) * TW / 2) * zoom + camX, sy = ((v[0] + v[1]) * TH / 2 * 1) * zoom - (ground + b.h) * zoom + camY;
+    const s = Math.max(1.5, 2.5 * zoom);
+    ctx.fillStyle = b.vh > 0 ? '#fff2a0' : '#ff8a20'; ctx.fillRect(sx - s / 2, sy - s / 2, s, s);
+  }
+  ctx.restore();
+  return true;
 }
 function drawLavaGlow() {
   if (!lavaVis.length) return false;
@@ -2754,6 +2814,55 @@ function drawLavaGlow() {
   return any;
 }
 const lavaVis = [];
+
+// ===== Other worlds: the Moon and Mars =====
+// A reskin: cratered ground, alien skies, ice instead of water, glass domes over buildings,
+// no fire or rain (no breathable air), and on the Moon no wind at all.
+let planet = 'earth';
+const PLANETS = { earth: '🌍 Earth', moon: '🌕 Moon', mars: '🔴 Mars' };
+function planetColor(t, avg) {
+  const e = Math.max(0, Math.min(1, (avg - sea) / Math.max(6, MAXH - sea))), p = patch[t];
+  if (planet === 'moon') {
+    const g = 118 + e * 70, k = smoothstep(0.52, 0.72, p) * 0.7; // dark maria patches
+    return [g + (82 - g) * k, g + (82 - g) * k, g + 4 + (90 - g) * k];
+  }
+  const k = smoothstep(0.55, 0.75, p) * 0.6, base = [176 + e * 30, 96 + e * 30, 58 + e * 22]; // rust, with dark basalt patches
+  return [base[0] + (112 - base[0]) * k, base[1] + (64 - base[1]) * k, base[2] + (48 - base[2]) * k];
+}
+function paintSky(g, W, Hh) {
+  if (planet === 'moon') {
+    g.fillStyle = '#020306'; g.fillRect(0, 0, W, Hh);
+    for (let i = 0; i < 160; i++) { const h = hash2(i, 31), x = (h & 0xffff) / 65536 * W, y = ((h >>> 16) & 0xffff) / 65536 * Hh, a = 0.35 + ((h >>> 5) & 7) / 12; g.fillStyle = `rgba(255,255,255,${a.toFixed(2)})`; g.fillRect(x, y, (h & 32) ? 2 : 1, (h & 32) ? 2 : 1); }
+    const ex = W - 70, ey = 60, r = 20; // Earth over the horizon
+    g.fillStyle = '#2a6ac8'; g.beginPath(); g.arc(ex, ey, r, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#3aa050'; g.fillRect(ex - 9, ey - 6, 8, 6); g.fillRect(ex + 3, ey + 2, 7, 5);
+    g.fillStyle = 'rgba(255,255,255,0.7)'; g.fillRect(ex - 14, ey - 12, 12, 3); g.fillRect(ex + 2, ey + 9, 10, 2);
+    g.fillStyle = 'rgba(0,0,0,0.55)'; g.beginPath(); g.arc(ex + 7, ey, r, -Math.PI / 2, Math.PI / 2); g.fill();
+    return true;
+  }
+  if (planet === 'mars') {
+    const gr = g.createLinearGradient(0, 0, 0, Hh); gr.addColorStop(0, '#e3bd92'); gr.addColorStop(1, '#9a6646');
+    g.fillStyle = gr; g.fillRect(0, 0, W, Hh); return true;
+  }
+  return false;
+}
+function drawDome(g, x, y, H) {
+  g.fillStyle = 'rgba(190,226,255,0.2)'; g.beginPath(); g.ellipse(x, y, 15, H + 8, 0, Math.PI, Math.PI * 2); g.ellipse(x, y, 15, 7.5, 0, 0, Math.PI); g.fill();
+  g.strokeStyle = 'rgba(225,242,255,0.6)'; g.lineWidth = 0.8; g.beginPath(); g.ellipse(x, y, 15, H + 8, 0, Math.PI, Math.PI * 2); g.stroke();
+  g.strokeStyle = 'rgba(255,255,255,0.5)'; g.beginPath(); g.ellipse(x - 5, y - H * 0.6, 3, H * 0.35, -0.3, Math.PI * 1.1, Math.PI * 1.6); g.stroke(); g.lineWidth = px1;
+}
+// craters: a bowl with a raised rim, smaller ones more common
+function addCraters(hc, rand, count) {
+  for (let k = 0; k < count; k++) {
+    const r = 2 + Math.pow(rand(), 2.2) * 20, cx_ = rand() * NC, cy_ = rand() * NC, D = 0.06 + r / 22 * 0.28;
+    const R = Math.ceil(r * 1.6);
+    for (let y = Math.max(0, Math.floor(cy_ - R)); y < Math.min(NC, cy_ + R); y++) for (let x = Math.max(0, Math.floor(cx_ - R)); x < Math.min(NC, cx_ + R); x++) {
+      const d = Math.hypot(x - cx_, y - cy_) / r, i = y * NC + x;
+      if (d < 1) hc[i] -= D * (1 - d * d);
+      else if (d < 1.6) hc[i] += D * 0.5 * Math.pow(1 - (d - 1) / 0.6, 2);
+    }
+  }
+}
 
 // ===== Traffic & cars =====
 const BTIER = { 4: 1, 7: 2, 8: 3, 9: 1, 5: 2, 10: 3, 11: 1, 6: 2, 12: 3 };
@@ -2871,7 +2980,7 @@ function buildCache() {
   cx.setTransform(1, 0, 0, 1, 0, 0);
   const gr = cx.createLinearGradient(0, 0, 0, Hh);
   gr.addColorStop(0, '#0a0f18'); gr.addColorStop(1, '#1c2838');
-  cx.fillStyle = gr; cx.fillRect(0, 0, W, Hh);
+  cx.fillStyle = gr; cx.fillRect(0, 0, W, Hh); paintSky(cx, W, Hh);
   seamStroke = zoom >= 0.5; terrainDepthOn = zoom >= 0.5;
   const DW = Math.ceil(W / 2), DH = Math.ceil(Hh / 2);
   if (dcan.width !== DW || dcan.height !== DH) { dcan.width = DW; dcan.height = DH; }
@@ -2923,7 +3032,9 @@ function brushTiles(vx, vy) {
 function composite() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = '#0b1018'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-  const shake = quakeShake(); camX += shake[0]; camY += shake[1];
+  const shake = quakeShake();
+  if (volcano && (volcano.phase === 'rise' || volcano.phase === 'blast') && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) { const s2 = performance.now() / 1000, amp = volcano.phase === 'rise' ? 1.5 : 2.5; shake[0] += Math.round(Math.sin(s2 * 41) * amp); shake[1] += Math.round(Math.sin(s2 * 33 + 1) * amp * 0.6); }
+  camX += shake[0]; camY += shake[1];
   ctx.drawImage(cache, Math.round(camX - cacheCX), Math.round(camY - cacheCY));
   ctx.setTransform(zoom, 0, 0, zoom, camX, camY);
   const lw = 1 / zoom;
@@ -2938,7 +3049,7 @@ function composite() {
   carsLive = drawCars() > 0;
   if (spotOn) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(spotCan, Math.round(camX - cacheCX), Math.round(camY - cacheCY)); ctx.restore(); }
   drawNight();
-  { const now = performance.now(); drawStormFX(Math.min(0.1, (now - (composite.last || now)) / 1000)); drawFire(Math.min(0.1, (now - (composite.last || now)) / 1000)); composite.last = now; fxLive = biomeFx() | drawLavaGlow(); }
+  { const now = performance.now(); drawStormFX(Math.min(0.1, (now - (composite.last || now)) / 1000)); drawFire(Math.min(0.1, (now - (composite.last || now)) / 1000)); composite.last = now; fxLive = biomeFx() | drawLavaGlow() | drawLavaBits(Math.min(0.1, (now - (drawLavaBits.last || now)) / 1000)); drawLavaBits.last = now; }
   // road ghost
   if (roadGhost.length) {
     const a = 0.45 + 0.25 * Math.sin(frame * 0.6);
@@ -3422,12 +3533,15 @@ function makeNoise(rand) {
 function norm(a) { let mn = Infinity, mx = -Infinity; for (const v of a) { if (v < mn) mn = v; if (v > mx) mx = v; } const r = mx - mn || 1; for (let i = 0; i < a.length; i++) a[i] = (a[i] - mn) / r; }
 const smoothstep = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
-function generate({ hills, water, trees, coast, river, seed, climate = 'classic' }) {
+function generate({ hills, water, trees, coast, river, seed, climate = 'classic', world = 'earth' }) {
   const rand = mulberry32(seed), fbm = makeNoise(rand);
+  const params = { hills, water, trees, coast, river, seed, climate, world };
+  if (world !== 'earth') { water = 0; trees = 0; coast = false; river = false; climate = 'classic'; }
   const hc = new Float32Array(NC * NC);
   const pers = 0.42 + hills / 100 * 0.16, sc = 1 / (46 - hills * 0.16);
   for (let y = 0; y < NC; y++) for (let x = 0; x < NC; x++) hc[y * NC + x] = fbm(x * sc, y * sc, 5, pers);
   norm(hc);
+  if (world !== 'earth') { for (let i = 0; i < hc.length; i++) hc[i] *= world === 'moon' ? 0.45 : 0.7; addCraters(hc, rand, world === 'moon' ? 42 : 24); norm(hc); }
   if (coast) {
     const side = Math.floor(rand() * 4);
     for (let y = 0; y < NC; y++) for (let x = 0; x < NC; x++) {
@@ -3481,13 +3595,14 @@ function generate({ hills, water, trees, coast, river, seed, climate = 'classic'
   }
   let bio = null, tr2 = tr;
   if (climate !== 'classic') { const r = classifyBiomes(A, seaL, climate, seed, false); bio = r.bio; tr2 = r.tr; }
-  return { A, sea: seaL, tr: tr2, bio, seed, params: { hills, water, trees, coast, river, seed, climate } };
+  return { A, sea: seaL, tr: tr2, bio, seed, params };
 }
 
 let recipe = null; // what a share link can rebuild: a generated map or a real place
 function applyGen(g, keepUndo) {
   recipe = { kind: 'gen', p: g.params };
   if (keepUndo) snapshot();
+  planet = g.params.world || 'earth';
   HM.set(g.A); sea = g.sea; tree.set(g.tr); biome.fill(0); if (g.bio) biome.set(g.bio); makePatches(g.seed); snapBase();
   lake.fill(0); road.fill(0); zone.fill(0); bld.fill(0); dens.fill(0); civ.fill(0);
   burnSev.fill(0); treeWas.fill(0); burning.forEach(t => burnT[t] = 0); burning = []; smokeP = []; fireStats = null;
@@ -3506,7 +3621,7 @@ function genParams() {
     hills: +document.getElementById('g-hills').value, water: +document.getElementById('g-water').value,
     trees: +document.getElementById('g-trees').value, coast: document.getElementById('g-coast').checked,
     river: document.getElementById('g-river').checked, seed: parseInt(document.getElementById('seed').value, 10) || 1,
-    climate: document.getElementById('g-climate').value,
+    climate: document.getElementById('g-climate').value, world: document.getElementById('g-world').value,
   };
 }
 function previewGen() {
@@ -3530,7 +3645,7 @@ function previewGen() {
 }
 let pvPending = false;
 function schedulePreview() { if (pvPending) return; pvPending = true; requestAnimationFrame(() => { pvPending = false; previewGen(); }); }
-['g-hills', 'g-water', 'g-trees', 'g-coast', 'g-river', 'seed', 'g-climate'].forEach(id => document.getElementById(id).addEventListener('input', schedulePreview));
+['g-hills', 'g-water', 'g-trees', 'g-coast', 'g-river', 'seed', 'g-climate', 'g-world'].forEach(id => document.getElementById(id).addEventListener('input', schedulePreview));
 document.getElementById('g-dice').addEventListener('click', () => { document.getElementById('seed').value = Math.floor(Math.random() * 999999); schedulePreview(); });
 const genModal = document.getElementById('genmodal');
 document.getElementById('btn-new').addEventListener('click', () => { genModal.classList.remove('hidden'); previewGen(); });
@@ -3597,6 +3712,7 @@ function decodePreset(b64) {
 }
 function loadPreset(id) {
   const p = PRESETS.find(x => x.id === id); if (!p) return;
+  planet = 'earth';
   const a = Float32Array.from(decodePreset(p.data));
   document.getElementById('relief').value = p.relief;
   recipe = { kind: 'place', id };
@@ -3614,7 +3730,7 @@ async function loadDEM(file) {
     const w = img.getWidth(), h = img.getHeight(), s = Math.min(w, h);
     const x0 = Math.floor((w - s) / 2), y0 = Math.floor((h - s) / 2);
     const r = await img.readRasters({ window: [x0, y0, x0 + s, y0 + s], width: NC, height: NC, samples: [0], resampleMethod: 'nearest' });
-    recipe = null; hasBase = false;
+    recipe = null; hasBase = false; planet = 'earth';
     const { mn, mx } = applyElevation(r[0], img.getGDALNoData(), { relief: +document.getElementById('relief').value, name: file.name });
     st.textContent = `✓ ${file.name}: ${Math.round(mn)} to ${Math.round(mx)} m, ${w}×${h} px cropped to the middle square`;
     toast('Real terrain loaded. Now ruin it.');
@@ -3690,7 +3806,7 @@ function serialize() {
     HM: Array.from(HM), lake: Array.from(lake), tree: Array.from(tree), road: Array.from(road), zone: Array.from(zone), bld: Array.from(bld), civ: Array.from(civ), civA: Array.from(civA),
     dens: Array.from(dens, x => Math.round(x * 100) / 100),
     demM: hasDemM ? Array.from(demM, x => Math.round(x * 10) / 10) : null, HMload: hasDemM ? Array.from(HMload) : null, slr,
-    burnSev: Array.from(burnSev), scarMonth: Array.from(scarMonth), treeWas: Array.from(treeWas), mud: Array.from(mud), mudMonth: Array.from(mudMonth), rubble: Array.from(rubble), rubbleMonth: Array.from(rubbleMonth), biome: Array.from(biome), lava: Array.from(lava), lavaMonth: Array.from(lavaMonth), recipe });
+    burnSev: Array.from(burnSev), scarMonth: Array.from(scarMonth), treeWas: Array.from(treeWas), mud: Array.from(mud), mudMonth: Array.from(mudMonth), rubble: Array.from(rubble), rubbleMonth: Array.from(rubbleMonth), planet, biome: Array.from(biome), lava: Array.from(lava), lavaMonth: Array.from(lavaMonth), recipe });
 }
 function deserialize(txt) {
   const o = JSON.parse(txt);
@@ -3705,7 +3821,7 @@ function deserialize(txt) {
   burnSev.fill(0); scarMonth.fill(0); treeWas.fill(0); if (o.burnSev) { burnSev.set(o.burnSev); scarMonth.set(o.scarMonth); treeWas.set(o.treeWas); }
   mud.fill(0); mudMonth.fill(0); if (o.mud) { mud.set(o.mud); mudMonth.set(o.mudMonth); }
   rubble.fill(0); rubbleMonth.fill(0); if (o.rubble) { rubble.set(o.rubble); rubbleMonth.set(o.rubbleMonth); }
-  biome.fill(0); if (o.biome) biome.set(o.biome);
+  biome.fill(0); if (o.biome) biome.set(o.biome); planet = o.planet || 'earth';
   lava.fill(0); lavaMonth.fill(0); if (o.lava) { lava.set(o.lava); lavaMonth.set(o.lavaMonth); } volcano = null; storm = null; flows = []; rainDrops = [];
   burning.forEach(t => burnT[t] = 0); burning = []; smokeP = []; fireStats = null;
   if (o.rot !== rot) { rot = o.rot || 0; document.getElementById('viewlbl').textContent = 'View ' + ['N', 'E', 'S', 'W'][rot]; }
@@ -4054,7 +4170,7 @@ function loop(ts) {
   if (simOn && ts - lastSim > MONTH_MS[speed]) { lastSim = ts; simTick(); }
   if (ts - lastAnim > 110) { lastAnim = ts; frame++; compDirty = true; }
   fireStep(ts); stormStep(ts); volcanoStep(ts);
-  if (carsLive || burning.length || smokeP.length || storm || quake || volcano || fxLive || dryVis.length || wetVis.length) compDirty = true;
+  if (carsLive || burning.length || smokeP.length || storm || quake || volcano || lavaBits.length || fxLive || dryVis.length || wetVis.length) compDirty = true;
   if (compDirty) { composite(); compDirty = false; }
   if ((mmBaseDirty || mmViewDirty) && ts - lastMM > 150) {
     lastMM = ts;
