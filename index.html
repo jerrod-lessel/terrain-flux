@@ -202,8 +202,8 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       <button class="tb" data-tool="civ7" title="EV charging: cleaner cars">🔌</button>
       <button class="tb" data-tool="civ8" title="Bike share: fewer cars, cleaner air">🚲</button>
     </div>
-    <div class="sect">Biomes</div>
-    <div class="grid2">
+    <div class="sect" id="sect-biome">Biomes</div>
+    <div class="grid2" id="grid-biome">
       <button class="tb" data-tool="biome" title="Paint biomes: desert, prairie, rainforest and more">🌍</button>
     </div>
     <div id="biome-panel" style="display:none;flex-direction:column;gap:4px">
@@ -346,7 +346,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
       <p>☕ Terrain Flux is free. If it made you smile, you can <a href="https://ko-fi.com/jerrodlessel" target="_blank" rel="noopener">buy me a cup of tea on Ko-fi</a>.</p>
-      <p class="credit">Version 5.9 · MIT license</p>
+      <p class="credit">Version 5.10 · MIT license</p>
       <div class="btns"><button class="txt" id="about-tour" style="text-align:center">▶ Take the tour</button><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -445,7 +445,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       <p>🌍 Biomes paint the land: forest, prairie, desert, chaparral, rainforest, bayou, mangrove, savanna, boreal, tundra, and alpine. Each has its own ground and plants and burns differently: chaparral and prairie burn fast, deserts and wetlands barely burn. Mangroves and bayous can grow in shallow water. Pick a climate to fill a whole map, or choose one under New map.</p>
       <p>Biomes change how things behave: prairie, savanna, and alpine are windier, rainforests are calmer and get passing showers that put out fires, and deserts get dust devils. Desert towns grow slowly without water nearby, and cold biomes grow slowly too. Mangroves, bayous, and coral reefs hold back sea level rise for the land behind them, wetlands stop debris flows, and reefs bring tourists to nearby shops.</p>
       <p>🌋 Volcanoes: click to raise a cone and set it erupting. Lava runs downhill, buries what it meets, starts fires, cools into black lava rock over a few months, and builds new land where it reaches the sea.</p>
-      <p>🌕🔴 Pick World under New map to build on the Moon or Mars: craters, alien skies, ice instead of water, and glass domes over every building. No air means no fires and no rain, and the Moon has no wind at all. Mars has dust devils everywhere.</p>
+      <p>🌕🔴 Pick World under New map to build on the Moon or Mars: craters, alien skies, ice instead of water, and glass domes over every building. No air means no fires, no rain, no biomes, and no sea to raise. The Moon has no wind at all; Mars has dust devils everywhere. Plant 🌲 and you get Moon fungus or Martian lichen and greenhouse pods instead of trees.</p>
       <p>Water pools on flat ground. Place it on a slope and it runs downhill as a stream, with waterfalls, until it reaches water or a low spot. The sea level buttons flood or drain the whole map.</p>
       <p>Wildfires run downwind and uphill. Forest burns long and hot, grass burns fast and light, and roads, water, beaches, and bare rock stop them. Fire stations slow fires inside their reach. Burned ground stays scarred by severity and heals over about five game years, and forests grow back.</p>
       <p>Load DEM takes a real GeoTIFF, crops the center square, and squeezes it into 128 by 128 tiles. Cliffs get softened into slopes because the engine refuses to do anything else.</p>
@@ -681,7 +681,7 @@ function drawTile(g, vx, vy, lod) {
   if (road[t]) { drawRoad(g, vx, vy, ht, hr, hb, hl, lod); if (!partialMode) roadVis.push(wx, wy); return; }
   if (bld[t]) { drawBuilding(g, bld[t], Tx, Ty + TH / 2, lod, hash2(wx, wy)); if (planet !== 'earth') drawDome(g, Tx, Ty + TH / 2, SIL_H[bld[t]] || 20); if (!partialMode) { silhouette(Tx, Ty + TH / 2, bld[t], vx + vy); bldVis.push(t, Tx, Ty + TH / 2, bld[t], vx + vy); } return; }
   if (civ[t] === 5 && isBigStadium(t)) { drawStadiumPart(g, vx, vy, t, Tx, Ty, lod); return; }
-  if (civ[t]) { drawCivic(g, civ[t], Tx, Ty + TH / 2, lod, hash2(wx, wy)); if (!partialMode && civ[t] !== 1) silhouette(Tx, Ty + TH / 2, 0, vx + vy, CIVIC[civ[t]].sil); return; }
+  if (civ[t]) { drawCivic(g, civ[t], Tx, Ty + TH / 2, lod, hash2(wx, wy)); if (planet !== 'earth') drawDome(g, Tx, Ty + TH / 2, Math.max(10, CIVIC[civ[t]].sil)); if (!partialMode && civ[t] !== 1) silhouette(Tx, Ty + TH / 2, 0, vx + vy, CIVIC[civ[t]].sil); return; }
   if (zone[t]) {
     const zc = ['', 'rgba(70,200,70,0.30)', 'rgba(70,110,255,0.30)', 'rgba(255,140,50,0.32)'][zone[t]];
     polyNoStroke(g, [Tx, Ty, Rx, Ry, Bx, By, Lx, Ly], zc);
@@ -710,10 +710,11 @@ function cliff(g, ax, ay, ha, bx, by, hb, ay0, by0, left) {
 const TREE_SPOTS = [[], [[0.5, 0.5]], [[0.33, 0.4], [0.64, 0.63]], [[0.3, 0.32], [0.7, 0.42], [0.47, 0.72]]];
 function drawTrees(g, vx, vy, ht, hr, hb, hl, n, hash, lod, sw, bio) {
   sw = sw || 0;
-  const spots = TREE_SPOTS[n], flora = bio ? BIOMES[bio].flora : 'forest';
+  const spots = TREE_SPOTS[n], flora = planet === 'moon' ? 'moonfungus' : planet === 'mars' ? 'marslife' : bio ? BIOMES[bio].flora : 'forest';
   for (let i = 0; i < spots.length; i++) {
     const [u, v] = spots[i];
     const [x, y] = sp(vx, vy, ht, hr, hb, hl, u, v);
+    if (lod && planet !== 'earth') { g.fillStyle = planet === 'moon' ? '#a89ad0' : '#6a8a3a'; g.fillRect(x - 2, y - 3, 4, 3); continue; }
     if (lod) { g.fillStyle = bio ? dk('#' + BIOMES[bio].col.map(c => c.toString(16).padStart(2, '0')).join(''), 0.55) : '#1f5a22'; g.fillRect(x - 3, y - 7, 6, 7); continue; }
     if (flora !== 'forest' && drawFlora(g, flora, x, y, hash, sw, i)) continue;
     if (((hash >> i) & 1) === 0) {
@@ -1268,7 +1269,7 @@ function drawStadiumPart(g, vx, vy, t, Tx, Ty, lod) {
   if (bv[0] !== vx || bv[1] !== vy) return;
   const c = w2v(ax + 1, ay + 1), h = HM[(ay + 1) * NC + ax + 1];
   const x = (c[0] - c[1]) * TW / 2, y = (c[0] + c[1]) * TH / 2 - h * HS;
-  g.save(); g.translate(x, y); g.scale(2, 2); drawCivic(g, 5, 0, 0, lod, hash2(ax, ay)); g.restore();
+  g.save(); g.translate(x, y); g.scale(2, 2); drawCivic(g, 5, 0, 0, lod, hash2(ax, ay)); if (planet !== 'earth') drawDome(g, 0, 0, 14); g.restore();
   if (!partialMode) {
     dctx.fillStyle = `rgb(${vx + vy + 1},0,0)`; dctx.beginPath();
     const SH = [12, 26, 30, 12, 15][hash2(ax, ay) % 5]; // real height of each stadium style
@@ -2517,6 +2518,24 @@ function drawFlora(g, kind, x, y, h, sw, i) {
     case 'coral':
       for (let k = 0; k < 3; k++) { const ox = ((h >> (i + k)) & 3) * 1.6 - 2.4, oy = k * 0.8; g.fillStyle = ['rgba(255,120,150,0.85)', 'rgba(255,170,70,0.85)', 'rgba(170,110,230,0.85)', 'rgba(250,230,120,0.85)'][(h + k + i) & 3]; g.fillRect(x + ox, y - 1.5 + oy, 2, 1.4); g.fillRect(x + ox + 0.5, y - 2.5 + oy, 1, 1); }
       break;
+    case 'moonfungus': // pale fungus clusters with faintly glowing spots
+      for (let k = 0; k < 3; k++) {
+        const ox = (k - 1) * 3.2, hh = 2.5 + ((h >> (k + i)) & 3) * 1.1;
+        g.fillStyle = '#d8d4e0'; g.fillRect(x + ox - 0.5, y - hh, 1, hh);
+        g.fillStyle = ['#9a8ad0', '#7ac0c8', '#c8a0d8', '#a8b8e8'][(h + k + i) & 3]; g.beginPath(); g.ellipse(x + ox, y - hh, 2.4, 1.3, 0, Math.PI, Math.PI * 2); g.fill();
+        g.fillStyle = '#c8fbff'; g.fillRect(x + ox - 1, y - hh - 0.6, 0.7, 0.5); g.fillRect(x + ox + 0.6, y - hh - 0.4, 0.6, 0.5);
+      }
+      break;
+    case 'marslife': // what could really make it: lichen on rocks, and greenhouse pods
+      if ((h >> i) & 4) {
+        g.fillStyle = '#4a8a3a'; g.fillRect(x - 3, y - 2.5, 6, 2.5); g.fillStyle = '#6ab04a'; g.fillRect(x - 2, y - 4, 1.4, 1.5); g.fillRect(x + 0.5, y - 3.5, 1.4, 1);
+        g.fillStyle = 'rgba(205,235,255,0.35)'; g.beginPath(); g.ellipse(x, y - 0.5, 4.2, 4.5, 0, Math.PI, Math.PI * 2); g.fill();
+        g.strokeStyle = 'rgba(240,250,255,0.75)'; g.lineWidth = 0.5; g.stroke(); g.lineWidth = px1;
+      } else {
+        g.fillStyle = '#6a3a28'; g.fillRect(x - 3.5, y - 3, 7, 3); g.fillStyle = '#8a4e34'; g.fillRect(x - 2.5, y - 4, 5, 1.5);
+        g.fillStyle = '#a8a848'; g.fillRect(x - 2, y - 3.2, 1, 0.8); g.fillRect(x + 1, y - 2.2, 1.2, 0.8); g.fillStyle = '#d0b050'; g.fillRect(x - 0.5, y - 4, 0.8, 0.6);
+      }
+      break;
     case 'grass':
       g.strokeStyle = '#8a8a3a'; g.lineWidth = 0.6; g.beginPath();
       for (const dx of [-3, -1.5, 0, 1.5, 3]) { g.moveTo(x + dx, y); g.lineTo(x + dx + b * 1.5 + dx * 0.2, y - 4 - Math.abs(dx) * 0.3); } g.stroke(); g.lineWidth = px1;
@@ -2568,6 +2587,7 @@ function classifyBiomes(H, seaL, climate, seed, onlyFree) {
   return { bio, tr };
 }
 function applyBiomesToMap(climate) {
+  if (planet !== 'earth') return;
   snapshot();
   const r = classifyBiomes(HM, sea, climate, (hash2(month, 77) & 0xffff) + 1, true);
   for (let t = 0; t < N * N; t++) {
@@ -2579,6 +2599,7 @@ function applyBiomesToMap(climate) {
   dirtyAll(); toast(`🌍 ${CLIMATES[climate].name} biomes spread across the map`);
 }
 function paintBiomeAt(t) {
+  if (planet !== 'earth') return;
   const x = t % N, y = (t / N) | 0, b = BIOMES[paintBiome], wet = isWaterW(x, y);
   if (road[t] || bld[t] || civ[t]) return;
   if (wet) { // only wetland biomes go on water, and only in the shallows
@@ -3257,7 +3278,7 @@ function demolishSloped() {
 }
 function applyTool(h) {
   if (tool === 'fire') { const [wx, wy] = t2w(h.vx, h.vy); if (ignite(wx, wy, false)) pendingPan = true; return; }
-  if (tool === 'volcano') { if (drag && drag.erupted) return; const [wx, wy] = t2w(h.vx, h.vy); if (isWaterW(wx, wy)) { toast('Volcanoes start on land.'); return; } startVolcano(wx, wy); if (drag) drag.erupted = true; pendingPan = true; return; }
+  if (tool === 'volcano') { if (drag && drag.erupted) return; const [wx, wy] = t2w(h.vx, h.vy); startVolcano(wx, wy); if (drag) drag.erupted = true; pendingPan = true; return; }
   if (tool === 'biome') { for (const [vx, vy] of brushTiles(h.vx, h.vy)) { const [wx, wy] = t2w(vx, vy); paintBiomeAt(wy * N + wx); } dirtyAll(); return; }
   if (tool === 'quake') { if (drag && drag.quaked) return; const [wx, wy] = t2w(h.vx, h.vy); startQuake(wx, wy); if (drag) drag.quaked = true; pendingPan = true; return; }
   if (tool === 'water') { const [wx, wy] = t2w(h.vx, h.vy), [mn, mx] = tMinMax(wx, wy); if (mn !== mx && !isWaterW(wx, wy)) { traceStream(wx, wy); dirtyAll(); return; } }
@@ -3386,7 +3407,16 @@ function undo() {
   burning.forEach(t => burnT[t] = 0); burning = []; smokeP = []; fireStats = null;
   dirtyAll();
 }
-function dirtyAll() { routeDirty = true; if (typeof layer !== 'undefined' && layer) computeLayer(); if (showContours) setContourInterval(); cacheDirty = true; mmBaseDirty = true; mmViewDirty = true; recomputeCivic(); computeTraffic();
+// Off Earth: no biomes, no fire, no rain, no sea to raise or lower
+function updatePlanetUI() {
+  const earth = planet === 'earth', show = (el, on) => { if (el) el.style.display = on ? '' : 'none'; };
+  show(document.getElementById('sect-biome'), earth); show(document.getElementById('grid-biome'), earth);
+  show(document.getElementById('sea-up'), earth); show(document.getElementById('sea-dn'), earth);
+  show(document.querySelector('.tb[data-tool="fire"]'), earth); show(document.querySelector('.tb[data-tool="storm"]'), earth);
+  if (!earth && ['biome', 'fire', 'storm'].includes(tool)) selectTool('pan');
+  const cl = document.getElementById('g-climate'); if (cl) cl.disabled = document.getElementById('g-world').value !== 'earth';
+}
+function dirtyAll() { updatePlanetUI(); routeDirty = true; if (typeof layer !== 'undefined' && layer) computeLayer(); if (showContours) setContourInterval(); cacheDirty = true; mmBaseDirty = true; mmViewDirty = true; recomputeCivic(); computeTraffic();
   document.getElementById('slr').value = slr; document.getElementById('slr-v').textContent = (slr ? '+' : '') + slr.toFixed(1) + ' m'; computeFlood(); }
 
 // ===== Simulation =====
@@ -3645,6 +3675,7 @@ function previewGen() {
 }
 let pvPending = false;
 function schedulePreview() { if (pvPending) return; pvPending = true; requestAnimationFrame(() => { pvPending = false; previewGen(); }); }
+document.getElementById('g-world').addEventListener('change', updatePlanetUI);
 ['g-hills', 'g-water', 'g-trees', 'g-coast', 'g-river', 'seed', 'g-climate', 'g-world'].forEach(id => document.getElementById(id).addEventListener('input', schedulePreview));
 document.getElementById('g-dice').addEventListener('click', () => { document.getElementById('seed').value = Math.floor(Math.random() * 999999); schedulePreview(); });
 const genModal = document.getElementById('genmodal');
@@ -3873,7 +3904,7 @@ document.querySelectorAll('.tb[data-tool]').forEach(b => b.addEventListener('cli
   canvas.style.cursor = tool === 'pan' ? 'grab' : 'crosshair';
   document.getElementById('st-hint').textContent = tool.startsWith('civ') ? CIVIC[+tool[3]].icon + ' ' + CIVIC[+tool[3]].effect
     : tool === 'fire' ? '🔥 Click to start a fire. It runs downwind and uphill, and roads, water, and fire stations slow it down.'
-    : tool === 'volcano' ? '🌋 Click to raise a volcano and set it erupting. Lava runs downhill, buries what it meets, starts fires, and builds new land at the sea.'
+    : tool === 'volcano' ? '🌋 Click to raise a volcano and set it erupting, on land or out at sea (hello, Hawaii). Lava runs downhill, buries what it meets, starts fires, and builds new land at the sea.'
     : tool === 'quake' ? '🌎 Click to set the epicenter. Towers and heavy industry are most fragile, steep slopes slide, and low ground by water can liquefy.'
     : tool === 'storm' ? '🌧️ Colors show how likely each drainage is to send a debris flow at this rain rate: green Low, orange Moderate, red High. Burn scars drive it.'
     : tool === 'biome' ? `${BIOMES[paintBiome].icon} Painting ${BIOMES[paintBiome].name}. Wetland biomes can go in shallow water too. Or fill the whole map by climate.`
