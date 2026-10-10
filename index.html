@@ -346,7 +346,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
       <p>☕ Terrain Flux is free. If it made you smile, you can <a href="https://ko-fi.com/jerrodlessel" target="_blank" rel="noopener">buy me a cup of tea on Ko-fi</a>.</p>
-      <p class="credit">Version 5.10 · MIT license</p>
+      <p class="credit">Version 5.11 · MIT license</p>
       <div class="btns"><button class="txt" id="about-tour" style="text-align:center">▶ Take the tour</button><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -747,11 +747,17 @@ function drawRoad(g, vx, vy, ht, hr, hb, hl, lod) {
   if (m1) quadUV(a, b, b, 1);
   if (lod) return;
   const C = P(0.5, 0.5);
-  g.strokeStyle = 'rgba(245,232,160,0.9)'; g.lineWidth = 0.8; g.setLineDash([2, 2]);
-  g.beginPath();
   const arm = (u, v) => { const E = P(u, v); g.moveTo(C[0], C[1]); g.lineTo(E[0], E[1]); };
-  if (n0) arm(0, 0.5); if (n1) arm(1, 0.5); if (m0) arm(0.5, 0); if (m1) arm(0.5, 1);
-  g.stroke(); g.setLineDash([]); g.lineWidth = px1;
+  roadLine(g, () => { if (n0) arm(0, 0.5); if (n1) arm(1, 0.5); if (m0) arm(0.5, 0); if (m1) arm(0.5, 1); });
+}
+// center line: painted dashes on Earth, glowing guide strips on the Moon (blue) and Mars (red)
+function roadLine(g, trace) {
+  if (planet === 'earth') { g.strokeStyle = 'rgba(245,232,160,0.9)'; g.lineWidth = 0.8; g.setLineDash([2, 2]); g.beginPath(); trace(); g.stroke(); g.setLineDash([]); g.lineWidth = px1; return; }
+  const glow = planet === 'moon' ? ['rgba(80,200,255,0.28)', '#8ae6ff'] : ['rgba(255,80,60,0.3)', '#ff8a6a'];
+  g.lineCap = 'round';
+  g.strokeStyle = glow[0]; g.lineWidth = 3; g.beginPath(); trace(); g.stroke();
+  g.strokeStyle = glow[1]; g.lineWidth = 0.9; g.beginPath(); trace(); g.stroke();
+  g.lineCap = 'butt'; g.lineWidth = px1;
 }
 
 // ===== Bridges =====
@@ -797,10 +803,8 @@ function drawBridge(g, vx, vy, s, lod) {
   if (n0 || n1) { rail(n0 ? 0 : a, a, n1 ? 1 : b, a); rail(n0 ? 0 : a, b, n1 ? 1 : b, b); }
   if (m0 || m1) { rail(a, m0 ? 0 : a, a, m1 ? 1 : b); rail(b, m0 ? 0 : a, b, m1 ? 1 : b); }
   g.stroke();
-  g.strokeStyle = 'rgba(245,232,160,0.9)'; g.lineWidth = 0.8; g.setLineDash([2, 2]); g.beginPath();
   const arm = (u, v) => { const E = P(u, v); g.moveTo(C[0], C[1]); g.lineTo(E[0], E[1]); };
-  if (n0) arm(0, 0.5); if (n1) arm(1, 0.5); if (m0) arm(0.5, 0); if (m1) arm(0.5, 1);
-  g.stroke(); g.setLineDash([]); g.lineWidth = px1;
+  roadLine(g, () => { if (n0) arm(0, 0.5); if (n1) arm(1, 0.5); if (m0) arm(0.5, 0); if (m1) arm(0.5, 1); });
 }
 
 // ===== Extra styles: two more per building type, one more per civic building =====
@@ -2863,7 +2867,10 @@ function paintSky(g, W, Hh) {
   }
   if (planet === 'mars') {
     const gr = g.createLinearGradient(0, 0, 0, Hh); gr.addColorStop(0, '#e3bd92'); gr.addColorStop(1, '#9a6646');
-    g.fillStyle = gr; g.fillRect(0, 0, W, Hh); return true;
+    g.fillStyle = gr; g.fillRect(0, 0, W, Hh);
+    g.fillStyle = 'rgba(110,90,80,0.8)'; g.beginPath(); g.ellipse(W - 80, 46, 6, 4.5, 0.4, 0, Math.PI * 2); g.fill(); // Phobos
+    g.fillStyle = 'rgba(120,100,90,0.7)'; g.beginPath(); g.arc(W - 140, 30, 2.2, 0, Math.PI * 2); g.fill(); // Deimos
+    return true;
   }
   return false;
 }
@@ -2923,6 +2930,7 @@ function hAtW(px, py) {
   const fx = px - x0, fy = py - y0, i = y0 * NC + x0;
   return HM[i] * (1 - fx) * (1 - fy) + HM[i + 1] * fx * (1 - fy) + HM[i + NC + 1] * fx * fy + HM[i + NC] * (1 - fx) * fy;
 }
+const ROVER_COLS = { moon: ['#f2f2f4', '#c8ccd2', '#e0e4ea'], mars: ['#f2efe6', '#d8c8a8', '#e8dcc4'] };
 const CAR_COLS = ['#e84a3a', '#f2d040', '#3a7ae8', '#f4f4f4', '#3cc060', '#262626', '#ee8a2a', '#9a5ad8'];
 // Smooth traffic: cars ride a fixed set of slots on every lane, so they never jump.
 // Each slot has its own random "patience"; a car shows when local traffic beats it,
@@ -2948,7 +2956,8 @@ function drawCar(px, py, hsh, alpha, cw, ch) {
   const X = Math.round(sx * zoom + camX - cw / 2), Y = Math.round(sy * zoom + camY - ch);
   ctx.globalAlpha = alpha;
   ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(X + 1, Y + 1, cw, ch);
-  ctx.fillStyle = CAR_COLS[hsh % CAR_COLS.length]; ctx.fillRect(X, Y, cw, ch);
+  ctx.fillStyle = planet === 'earth' ? CAR_COLS[hsh % CAR_COLS.length] : ROVER_COLS[planet][hsh % 3]; ctx.fillRect(X, Y, cw, ch);
+  if (planet !== 'earth') { ctx.fillStyle = planet === 'moon' ? '#8ae6ff' : '#ff8a6a'; ctx.fillRect(X, Y, 1, 1); }
   if (nightK > 0.3) headlights.push(X + cw - 1, Y);
   return 1;
 }
