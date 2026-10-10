@@ -115,12 +115,25 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
 #helpbox .body{display:block;font-size:17px;line-height:1.3;}
 #helpbox .body p{margin:0 0 8px;}
 
-@media (max-width:640px){
-  #toolbar{width:96px;padding:4px;}
-  #mm{width:110px;height:110px;}
+#btn-tools{display:none;}
+@media (max-width:700px){
+  #main{position:relative;}
+  #toolbar{position:absolute;left:0;top:0;bottom:0;z-index:40;width:132px;padding:5px;transform:translateX(-105%);transition:transform .18s ease-out;box-shadow:4px 0 14px rgba(0,0,0,.35);}
+  #toolbar.open{transform:none;}
+  #btn-tools{display:block;position:absolute;left:8px;top:8px;z-index:30;font-size:17px;padding:4px 10px;cursor:pointer;}
+  #viewctl{left:auto;right:6px;top:6px;flex-wrap:wrap;justify-content:flex-end;max-width:calc(100% - 96px);}
+  #viewctl .tb{width:30px;font-size:15px;}
+  #viewlbl{display:none;}
+  #mm{width:96px;height:96px;}
+  #top{gap:8px;padding:5px 8px;}
   #top .tag{display:none;}
+  .lcd{font-size:16px;min-width:0;padding:1px 5px;}
+  .spd{min-width:28px;padding:0 2px;}
+  #status{font-size:14px;height:42px;padding:2px 8px;}
   #status .help{display:none;}
+  #tour{bottom:52px;}
 }
+@media (prefers-reduced-motion: reduce){ #toolbar{transition:none;} }
 </style>
 </head>
 <body>
@@ -218,9 +231,11 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
     <input type="file" id="file-dem" accept=".tif,.tiff" hidden>
     <div class="row" title="How many height steps the DEM gets">Relief<input type="range" id="relief" min="8" max="30" value="22"></div>
     <div class="small" id="dem-status">Any GeoTIFF works. <a href="https://apps.nationalmap.gov/downloader/" target="_blank" rel="noopener" style="color:inherit">USGS downloader</a></div>
+    <div id="donation-card" class="small" style="margin-top:6px;padding:6px;border-top:1px solid var(--lo)">☕ This tool is free. <a href="https://ko-fi.com/jerrodlessel" target="_blank" rel="noopener" style="color:inherit">Support its development</a></div>
   </aside>
 
   <div id="wrap">
+    <button id="btn-tools" class="bev" aria-controls="toolbar" aria-expanded="false">☰ Tools</button>
     <canvas id="c"></canvas>
     <div id="viewctl" class="bev">
       <button class="tb" id="rot-l" title="Rotate view (Q)">⟲</button>
@@ -302,7 +317,8 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       GeoTIFF reading: geotiff.js (MIT license).<br>
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
-      <p class="credit">Version 5.4 · MIT license</p>
+      <p>☕ Terrain Flux is free. If it made you smile, you can <a href="https://ko-fi.com/jerrodlessel" target="_blank" rel="noopener">buy me a cup of tea on Ko-fi</a>.</p>
+      <p class="credit">Version 5.5 · MIT license</p>
       <div class="btns"><button class="txt" id="about-tour" style="text-align:center">▶ Take the tour</button><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -446,9 +462,15 @@ const dctx = dcan.getContext('2d', { willReadFrequently: true });
 // Terrain depth: every tile top painted with its draw-order diagonal, so things behind a ridge can hide too
 const tcan = document.createElement('canvas'), tctx = tcan.getContext('2d', { willReadFrequently: true });
 let tdepthData = null;
-function terrainDepth(p, d) { tctx.fillStyle = `rgb(0,${d + 1},0)`; tctx.beginPath(); tctx.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) tctx.lineTo(p[i], p[i + 1]); tctx.closePath(); tctx.fill(); }
+let terrainDepthOn = true;
+function terrainDepth(p, d) {
+  if (!terrainDepthOn) return; tctx.fillStyle = `rgb(0,${d + 1},0)`; tctx.beginPath(); tctx.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) tctx.lineTo(p[i], p[i + 1]); tctx.closePath(); tctx.fill(); }
 // true if a hill (2+ diagonals in front) or a building in front covers this cache pixel
+let depthPending = false;
+function readDepth() { depthPending = false; depthData = dctx.getImageData(0, 0, depthW, depthH).data; tdepthData = terrainDepthOn ? tctx.getImageData(0, 0, depthW, depthH).data : null; }
 function hiddenAt(X, Y, d) {
+  if (depthPending) readDepth();
+  X >>= 1; Y >>= 1; // depth buffers are half resolution
   if (!depthData || X < 0 || Y < 0 || X >= depthW || Y >= depthH) return false;
   const i = (Y * depthW + X) * 4;
   return depthData[i] - 1 > d || (tdepthData && tdepthData[i + 1] - 1 > d + 1);
@@ -475,7 +497,13 @@ function t2w(vx, vy) { // tile view -> world
 }
 function hv(vx, vy) { const c = c2w(vx, vy); return HM[c[1] * NC + c[0]]; }
 function cornersW(wx, wy) { const i = wy * NC + wx; return [HM[i], HM[i + 1], HM[i + NC + 1], HM[i + NC]]; }
-function tMinMax(wx, wy) { const c = cornersW(wx, wy); return [Math.min(c[0], c[1], c[2], c[3]), Math.max(c[0], c[1], c[2], c[3])]; }
+const MM = [0, 0]; // shared result: callers destructure it right away
+function tMinMax(wx, wy) {
+  const i = wy * NC + wx, a = HM[i], b = HM[i + 1], c = HM[i + NC + 1], d = HM[i + NC];
+  MM[0] = a < b ? (a < c ? (a < d ? a : d) : (c < d ? c : d)) : (b < c ? (b < d ? b : d) : (c < d ? c : d));
+  MM[1] = a > b ? (a > c ? (a > d ? a : d) : (c > d ? c : d)) : (b > c ? (b > d ? b : d) : (c > d ? c : d));
+  return MM;
+}
 function inW(wx, wy) { return wx >= 0 && wy >= 0 && wx < N && wy < N; }
 function isWaterW(wx, wy) { if (!inW(wx, wy)) return false; return lake[wy * N + wx] === 1 || tMinMax(wx, wy)[0] < sea; }
 
@@ -520,7 +548,12 @@ function landColor(wx, wy, mn, avg) {
   const t = Math.min(1, Math.max(0, (avg - sea) / Math.max(1, MAXH - sea)));
   return [GL[0] + (GH[0] - GL[0]) * t, GL[1] + (GH[1] - GL[1]) * t, GL[2] + (GH[2] - GL[2]) * t];
 }
-function shadeCol(c, b) { return `rgb(${Math.min(255, c[0] * b) | 0},${Math.min(255, c[1] * b) | 0},${Math.min(255, c[2] * b) | 0})`; }
+const colCache = new Map();
+function shadeCol(c, b) {
+  const r = Math.min(255, c[0] * b) | 0, g = Math.min(255, c[1] * b) | 0, bl = Math.min(255, c[2] * b) | 0, k = (r << 16) | (g << 8) | bl;
+  let v = colCache.get(k); if (v === undefined) { v = `rgb(${r},${g},${bl})`; if (colCache.size < 50000) colCache.set(k, v); }
+  return v;
+}
 function waterCol(depth) {
   const t = Math.min(1, Math.max(0, depth / 4));
   return `rgb(${(78 - 54 * t) | 0},${(156 - 84 * t) | 0},${(214 - 70 * t) | 0})`;
@@ -538,7 +571,7 @@ function lit(ax, ay, ah, bx, by, bh, qx, qy, qh) {
 function poly(g, p, col) {
   g.beginPath(); g.moveTo(p[0], p[1]);
   for (let i = 2; i < p.length; i += 2) g.lineTo(p[i], p[i + 1]);
-  g.closePath(); g.fillStyle = col; g.fill(); g.strokeStyle = col; g.stroke();
+  g.closePath(); g.fillStyle = col; g.fill(); if (seamStroke) { g.strokeStyle = col; g.stroke(); }
 }
 function polyNoStroke(g, p, col) {
   g.beginPath(); g.moveTo(p[0], p[1]);
@@ -557,6 +590,7 @@ function sp(vx, vy, ht, hr, hb, hl, u, v) {
   return [(X - Y) * TW / 2, (X + Y) * TH / 2 - h * HS];
 }
 
+let seamStroke = true, staleDepth = false, lastFullBuild = 0;
 // ===== Tile renderer =====
 function drawTile(g, vx, vy, lod) {
   const w = t2w(vx, vy), wx = w[0], wy = w[1], t = wy * N + wx;
@@ -721,6 +755,157 @@ function drawBridge(g, vx, vy, s, lod) {
   g.stroke(); g.setLineDash([]); g.lineWidth = px1;
 }
 
+// ===== Extra styles: two more per building type, one more per civic building =====
+function drawBuildingExtra(g, id, x, y, D, v, W, Rf, h) {
+  const alt = v === 5;
+  switch (id) {
+    case 4: // homes
+      if (!alt) { // A-frame cabin
+        box(g, x, y, 7, 3, '#8a5a34', '#6a4426', null);
+        gable(g, x, y, 7, 3, 12, '#4e3a2a', '#6e5238', '#a87a4a', 1);
+        if (D) { g.fillStyle = '#ffe2a0'; g.fillRect(x - 2.5, y - 8, 2, 3); }
+      } else { // Spanish-style home with a flat roof and tile trim
+        box(g, x, y, 9, 7, '#f2e6d0', '#d0c2a8', '#e4d6bc');
+        box(g, x - 4, y - 7, 3.5, 2, '#c8643c', '#9a4a2a', '#d8744a');
+        if (D) { face(g, true, x, y, 9, 7, f => { f.fillStyle = '#6a4a2a'; f.fillRect(3.5, 3, 2, 4); f.fillStyle = '#8ec4e8'; f.fillRect(1, 2, 1.6, 2); f.fillRect(6.5, 2, 1.6, 2); }); tinyTree(g, x + 9, y + 2); }
+      }
+      break;
+    case 7: // apartments
+      if (!alt) { // U-shaped courtyard building
+        box(g, x + 5, y - 2.5, 6, 16, '#e8d8b8', '#c2b090', '#f2e4c8'); box(g, x - 5, y - 2.5, 6, 16, '#e8d8b8', '#c2b090', '#f2e4c8');
+        box(g, x, y + 3, 5, 12, '#e8d8b8', '#c2b090', '#f2e4c8');
+        if (D) { face(g, true, x - 5, y - 2.5, 6, 16, f => wins(f, 6, 16, 4, 2, 1.6, 2, '#9cc8e8')); face(g, false, x + 5, y - 2.5, 6, 16, f => wins(f, 6, 16, 4, 2, 1.6, 2, '#6a98b8')); }
+      } else { // mixed use: shops below, flats above
+        box(g, x, y, 11, 6, '#c0d8c8', '#98b0a0', null); box(g, x, y - 6, 11, 14, '#e8b4a8', '#c0928a', '#f2c8bc');
+        if (D) { face(g, true, x, y, 11, 6, f => { f.fillStyle = '#e0f4ff'; f.fillRect(1, 1.5, 9, 3.5); f.fillStyle = '#2e8a4a'; f.fillRect(0, 0, 11, 1.2); });
+          face(g, true, x, y - 6, 11, 14, f => wins(f, 11, 14, 3, 3, 2, 2, '#fff2c8')); face(g, false, x, y - 6, 11, 14, f => wins(f, 11, 14, 3, 3, 2, 2, '#c8b080')); }
+      }
+      break;
+    case 8: // residential towers
+      if (!alt) { // staggered balconies
+        box(g, x, y, 9, 42, '#e4e0d8', '#bcb6aa', '#f0ece4');
+        if (D) { const fn = c => f => { for (let r = 0; r < 10; r++) { f.fillStyle = r % 2 ? '#8ec4e8' : c; f.fillRect(r % 2 ? 1 : 3, 2 + r * 4, 5, 2.2); } };
+          face(g, true, x, y, 9, 42, fn('#f2d088')); face(g, false, x, y, 9, 42, fn('#c8a860')); }
+      } else { // tower with a rooftop garden
+        box(g, x, y, 10, 40, '#b8c8d8', '#8a9cae', '#5aa84a');
+        if (D) { face(g, true, x, y, 10, 40, f => bands(f, 10, 40, 10, '#e0f0fa')); face(g, false, x, y, 10, 40, f => bands(f, 10, 40, 10, '#5a7a94')); tinyTree(g, x - 3, y - 40); tinyTree(g, x + 3, y - 39); }
+      }
+      break;
+    case 9: // shops
+      if (!alt) { // cafe with umbrellas
+        box(g, x + 3, y - 1.5, 7, 7, '#f0e2c8', '#c8b898', '#8a5a34');
+        if (D) { face(g, true, x + 3, y - 1.5, 7, 7, f => { f.fillStyle = '#2e6a4a'; f.fillRect(0, 1, 7, 1.5); f.fillStyle = '#e0f4ff'; f.fillRect(1, 3, 5, 3); });
+          for (const [ux, uy, c] of [[x - 7, y + 1, '#e84a3a'], [x - 3, y + 4, '#f2d040']]) { g.fillStyle = '#888'; g.fillRect(ux - 0.3, uy - 5, 0.6, 5); g.fillStyle = c; g.beginPath(); g.ellipse(ux, uy - 5, 3, 1.5, 0, 0, 7); g.fill(); } }
+      } else { // strip mall with three storefronts
+        box(g, x, y, 12, 6, '#d8d0c0', '#b0a898', '#c8c0b0');
+        if (D) face(g, true, x, y, 12, 6, f => { ['#d83a3a', '#3a7ae8', '#3cc060'].forEach((c, i) => { f.fillStyle = c; f.fillRect(i * 4, 0.5, 3.6, 1.2); f.fillStyle = '#e0f4ff'; f.fillRect(i * 4 + 0.5, 2.2, 2.6, 3); }); });
+      }
+      break;
+    case 5: // offices
+      if (!alt) { // mirrored glass with a pointed cap
+        box(g, x, y, 10, 26, '#6ab4c8', '#3a8498', '#8ad0e0');
+        hip(g, x, y, 10, 26, 6, '#9ad8e8', '#5aa0b4');
+        if (D) { face(g, true, x, y, 10, 26, f => bands(f, 10, 26, 7, '#c8f0fa')); }
+      } else { // hotel with a sign and a rooftop pool
+        box(g, x, y, 11, 24, '#f0e8d8', '#c8bca8', '#e0d8c8');
+        if (D) { face(g, true, x, y, 11, 24, f => wins(f, 11, 24, 6, 3, 2, 2, '#9cc8e8')); face(g, false, x, y, 11, 24, f => wins(f, 11, 24, 6, 3, 2, 2, '#6a98b8'));
+          ground(g, x + 1, y - 24, 5, '#4ac4ea'); g.fillStyle = '#c03030'; g.fillRect(x - 10, y - 20, 2, 10); g.fillStyle = '#fff'; g.fillRect(x - 9.6, y - 19, 1.2, 8); }
+      }
+      break;
+    case 10: // commercial towers
+      if (!alt) { // pyramid tower (a San Francisco nod)
+        const H = 56;
+        polyNoStroke(g, [x - 9, y, x, y + 4.5, x, y - H], '#e8e6e0'); polyNoStroke(g, [x, y + 4.5, x + 9, y, x, y - H], '#b8b4ac');
+        if (D) { g.fillStyle = 'rgba(80,110,150,0.55)'; for (let r = 1; r < 12; r++) { const yy = y - r * 4.2, w = 9 * (1 - r * 4.2 / H); g.fillRect(x - w + 1, yy, w - 1.5, 1); g.fillRect(x + 0.5, yy, w - 1.5, 1); } }
+        box(g, x, y + 2, 4, 3, '#d8d6d0', '#a8a6a0', null);
+      } else { // tower with a sky garden and a mast
+        box(g, x, y, 10, 24, '#9ab4cc', '#6a849c', '#5aa84a'); box(g, x, y - 24, 9, 22, '#9ab4cc', '#6a849c', '#c8d8e8');
+        if (D) { face(g, true, x, y, 10, 24, f => bands(f, 10, 24, 6, '#d0e4f2')); face(g, true, x, y - 24, 9, 22, f => bands(f, 9, 22, 5, '#d0e4f2'));
+          tinyTree(g, x - 6, y - 24); tinyTree(g, x + 6, y - 23); g.fillStyle = '#ccc'; g.fillRect(x - 0.5, y - 56, 1, 10); }
+      }
+      break;
+    case 11: // small industry
+      if (!alt) { // greenhouse
+        box(g, x, y, 11, 5, 'rgba(200,236,220,0.85)', 'rgba(150,200,180,0.85)', null);
+        gable(g, x, y, 11, 5, 4, 'rgba(170,220,200,0.85)', 'rgba(210,244,230,0.9)', 'rgba(160,210,190,0.85)', h & 1);
+        if (D) { g.fillStyle = '#3a8a3a'; for (let k = -6; k <= 6; k += 3) g.fillRect(x + k, y - 2, 1.5, 1.5); }
+      } else { // solar farm
+        for (let r = -1; r <= 1; r++) for (let c = -1; c <= 1; c++) { const px = x + (c - r) * 5, py = y + (c + r) * 2.5;
+          g.fillStyle = '#777'; g.fillRect(px - 0.4, py - 2, 0.8, 2); polyNoStroke(g, [px - 4, py - 2, px, py - 4, px + 4, py - 3, px, py - 1], '#24324e'); }
+      }
+      break;
+    case 6: // factories
+      if (!alt) { // brewery with copper tanks
+        box(g, x - 3, y + 1, 8, 10, '#a85c44', '#844634', '#946050');
+        cyl(g, x + 6, y - 3, 2.5, 10, '#e0a060', '#b07840', '#f0c080'); cyl(g, x + 2, y - 5, 2.5, 9, '#e0a060', '#b07840', '#f0c080');
+        if (D) face(g, true, x - 3, y + 1, 8, 10, f => wins(f, 8, 10, 2, 2, 1.8, 2, '#f2e2c0'));
+      } else { // data center
+        box(g, x, y, 12, 9, '#eef0f2', '#c8ccd0', '#dfe3e6');
+        if (D) { for (const [ux, uy] of [[x - 5, y - 9], [x, y - 11], [x + 5, y - 9]]) box(g, ux, uy, 2, 1.6, '#9aa4ac', '#7a848c', '#b4bec6');
+          face(g, false, x, y, 12, 9, f => { f.fillStyle = '#3a9aff'; for (let k = 0; k < 4; k++) f.fillRect(1 + k * 2.8, 3, 1.4, 0.8); }); }
+      }
+      break;
+    case 12: // heavy industry
+      if (!alt) { // container yard with a crane
+        const cc = ['#d83a3a', '#3a7ae8', '#f2c230', '#3cc060', '#ee8a2a'];
+        for (let k = 0; k < 6; k++) { const px = x - 8 + (k % 3) * 6, py = y - 2 + Math.floor(k / 3) * 4 + (k % 3) * 1; box(g, px, py, 2.6, 2.2, cc[(k + h) % 5], dk(cc[(k + h) % 5]), dk(cc[(k + h) % 5], 1.1)); }
+        g.fillStyle = '#e8902a'; g.fillRect(x + 7, y - 26, 1.4, 24); g.fillRect(x - 6, y - 26, 14, 1.6); g.fillRect(x - 6, y - 26, 1, 10);
+      } else { // cement plant with silos
+        cyl(g, x + 5, y - 3, 3, 20, '#d8d4cc', '#aaa49a', '#c8c4bc'); cyl(g, x, y - 5, 3, 22, '#d8d4cc', '#aaa49a', '#c8c4bc');
+        box(g, x - 5, y + 3, 6, 9, '#bab4aa', '#948e84', '#a8a298');
+        if (D) { g.strokeStyle = '#6a645a'; g.lineWidth = 1; g.beginPath(); g.moveTo(x - 5, y - 6); g.lineTo(x + 4, y - 25); g.stroke(); g.lineWidth = px1; smoke(g, x - 5, y - 8); }
+      }
+      break;
+  }
+}
+// one more style for each civic building (used for its last style number)
+const CIVIC_EXTRA_V = { 1: 5, 2: 4, 3: 4, 4: 4, 5: 4, 6: 3, 7: 3, 8: 3 };
+function drawCivicExtra(g, id, x, y, D) {
+  switch (id) {
+    case 1: // community garden
+      ground(g, x, y, 15, '#5aa84a');
+      for (let r = -1; r <= 1; r++) { const py = y + r * 3.5; ground(g, x - 2 + r * 3, py, 4, '#7a5030'); if (D) { g.fillStyle = '#3cc060'; g.fillRect(x - 3 + r * 3, py - 1.5, 2, 1.2); g.fillStyle = '#e84a3a'; g.fillRect(x - 1 + r * 3, py - 1, 1, 1); } }
+      box(g, x + 8, y - 1, 2.5, 3.5, '#a87a4a', '#8a5a34', '#6a4426');
+      break;
+    case 2: // medical campus with an ambulance
+      box(g, x - 1, y - 0.5, 11, 16, '#f4f6f8', '#c8ccd2', '#dfe4ea');
+      if (D) { face(g, true, x - 1, y - 0.5, 11, 16, f => { f.fillStyle = '#3a7ae8'; f.fillRect(0, 3, 11, 1.4); wins(f, 11, 16, 3, 3, 2, 2, '#9cc8e8', 6); }); redCross(g, x - 1, y - 16.5, 1.3); }
+      box(g, x + 9, y + 4, 2.6, 2.2, '#f4f4f4', '#d0d0d0', '#f8f8f8'); if (D) { g.fillStyle = '#d82020'; g.fillRect(x + 8, y + 0.5, 1.6, 0.8); }
+      break;
+    case 3: // wildland fire station with an engine
+      box(g, x - 2, y - 1, 10, 9, '#d8c49a', '#b0a074', null); hip(g, x - 2, y - 1, 10, 9, 4, '#a83a26', '#7c2c1c');
+      if (D) face(g, false, x - 2, y - 1, 10, 9, f => { f.fillStyle = '#3a2c24'; f.fillRect(2, 3, 6, 6); });
+      box(g, x + 8, y + 4, 3.4, 2.6, '#e02a1c', '#b0201a', '#f0f0f0');
+      break;
+    case 4: // highway patrol office with cruisers
+      box(g, x - 2, y - 1, 10, 9, '#d8cfb8', '#b0a690', '#c8bea8');
+      if (D) face(g, true, x - 2, y - 1, 10, 9, f => { f.fillStyle = '#c8a030'; f.fillRect(0, 1.5, 10, 1.4); f.fillStyle = '#9cc8e8'; f.fillRect(1.5, 4, 7, 2.5); });
+      box(g, x + 8, y + 3, 2.6, 1.8, '#f4f4f4', '#202020', '#f8f8f8'); box(g, x + 3, y + 6, 2.6, 1.8, '#f4f4f4', '#202020', '#f8f8f8');
+      break;
+    case 5: // indoor arena
+      box(g, x, y, 14, 8, '#b8c0c8', '#8e969e', null);
+      polyNoStroke(g, [x - 14, y - 8, x, y - 15, x + 14, y - 8, x, y - 1], '#d8e0e8');
+      if (D) { g.strokeStyle = 'rgba(110,120,130,0.6)'; g.lineWidth = 0.5; g.beginPath(); for (let k = -10; k <= 10; k += 5) { g.moveTo(x + k, y - 8 - (7 - Math.abs(k) / 2) * 0.9); g.lineTo(x + k + 3, y - 8 + (7 - Math.abs(k) / 2) * 0.5); } g.stroke(); g.lineWidth = px1;
+        face(g, true, x, y, 14, 8, f => { f.fillStyle = '#3a7ae8'; f.fillRect(0, 2, 14, 1.4); }); }
+      break;
+    case 6: // light rail stop
+      ground(g, x, y, 14, '#c8c4b8');
+      g.strokeStyle = '#6a6a6a'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(x - 12, y - 2); g.lineTo(x + 6, y + 7); g.moveTo(x - 9, y - 4); g.lineTo(x + 9, y + 5); g.stroke(); g.lineWidth = px1;
+      box(g, x - 2, y + 1, 6, 3, '#f2f2f2', '#c8c8c8', '#d83a3a');
+      if (D) face(g, true, x - 2, y + 1, 6, 3, f => { f.fillStyle = '#9cc8e8'; f.fillRect(0.6, 0.6, 4.8, 1.4); });
+      break;
+    case 7: // charging garage
+      box(g, x, y, 11, 12, '#c8ccd0', '#a0a4a8', '#3cc060');
+      if (D) { face(g, true, x, y, 11, 12, f => { f.fillStyle = '#2a2e32'; f.fillRect(0, 3, 11, 2); f.fillRect(0, 8, 11, 2); f.fillStyle = '#3cc060'; for (let k = 0; k < 4; k++) f.fillRect(1 + k * 2.6, 3.5, 1, 1); }); }
+      break;
+    case 8: // bike repair kiosk and lockers
+      ground(g, x, y, 13, '#c8c4b8');
+      box(g, x - 4, y - 1, 4, 6, '#3a7ae8', '#2858b0', '#e8e8e8');
+      for (let k = 0; k < 3; k++) box(g, x + 3 + k * 2.4, y + 1 + k * 1.2, 1.1, 4, '#3cc060', '#2a9048', '#5ad87c');
+      break;
+  }
+}
+
 // ===== Buildings: 9 types, 4 styles each, style picked per tile =====
 function hash2(x, y) { let h = (Math.imul(x, 374761393) + Math.imul(y, 668265263)) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return (h ^ (h >>> 16)) >>> 0; }
 function dk(hex, f) { const n = parseInt(hex.slice(1), 16); f = f || 0.78; return `rgb(${((n >> 16) & 255) * f | 0},${((n >> 8) & 255) * f | 0},${(n & 255) * f | 0})`; }
@@ -785,7 +970,8 @@ const ROOFS = [['#c05436', '#8a3420'], ['#5e6878', '#3e4654'], ['#44804a', '#2b5
 const PASTEL = ['#e8b4a8', '#b4d0e8', '#e8dca8', '#c4e0b8', '#d8c0e0'];
 
 function drawBuilding(g, id, x, y, lod, h) {
-  const v = h % 4, D = !lod;
+  const v = h % 6, D = !lod;
+  if (v >= 4) { drawBuildingExtra(g, id, x, y, D, v, WALLS[(h >>> 4) % WALLS.length], ROOFS[(h >>> 8) % ROOFS.length], h); return; }
   const W = WALLS[(h >>> 4) % WALLS.length], Rf = ROOFS[(h >>> 8) % ROOFS.length];
   switch (id) {
     case 4: bHouse(g, x, y, D, v, W, Rf, h); break;
@@ -994,21 +1180,21 @@ function bHeavy(g, x, y, D, v) {
 // ===== Civic buildings: parks, hospitals, fire, police, stadiums =====
 // Each one changes how the city around it grows. Effects reach a radius in tiles.
 const CIVIC = [null,
-  { key: 'park',     name: 'Park',           icon: '🌳', r: 4,  styles: 5, sil: 9,  w: 1, color: [96, 190, 86],
+  { key: 'park',     name: 'Park',           icon: '🌳', r: 4,  styles: 6, sil: 9,  w: 1, color: [96, 190, 86],
     effect: 'Homes within 4 tiles grow 40% faster and count it as a nicer neighborhood.' },
-  { key: 'hospital', name: 'Hospital',       icon: '🏥', r: 9,  styles: 4, sil: 34, w: 4, color: [240, 240, 236],
+  { key: 'hospital', name: 'Hospital',       icon: '🏥', r: 9,  styles: 5, sil: 34, w: 4, color: [240, 240, 236],
     effect: 'Within 9 tiles, counts as jobs for nearby homes, and homes grow 20% faster.' },
-  { key: 'fire',     name: 'Fire station',   icon: '🚒', r: 10, styles: 4, sil: 22, w: 3, color: [200, 60, 44],
+  { key: 'fire',     name: 'Fire station',   icon: '🚒', r: 10, styles: 5, sil: 22, w: 3, color: [200, 60, 44],
     effect: 'Factories within 10 tiles grow 30% faster. Slows wildfires inside its reach and puts them out sooner.' },
-  { key: 'police',   name: 'Police station', icon: '🚓', r: 10, styles: 4, sil: 18, w: 3, color: [70, 100, 170],
+  { key: 'police',   name: 'Police station', icon: '🚓', r: 10, styles: 5, sil: 18, w: 3, color: [70, 100, 170],
     effect: 'Everything within 10 tiles grows 20% faster, and towers (tier 3) need police coverage.' },
-  { key: 'stadium',  name: 'Stadium',        icon: '🏟️', r: 9,  styles: 4, sil: 16, w: 2, color: [170, 170, 170],
+  { key: 'stadium',  name: 'Stadium',        icon: '🏟️', r: 9,  styles: 5, sil: 16, w: 2, color: [170, 170, 170],
     effect: 'Takes a flat 2 by 2 lot. Shops within 9 tiles grow 50% faster and get extra customers. Draws big crowds on the roads.' },
-  { key: 'bus',      name: 'Bus depot',      icon: '🚌', r: 10, styles: 3, sil: 10, w: 1, color: [242, 194, 48],
+  { key: 'bus',      name: 'Bus depot',      icon: '🚌', r: 10, styles: 4, sil: 10, w: 1, color: [242, 194, 48],
     effect: 'Within 10 tiles, takes a quarter of the cars off the road and cuts traffic pollution by a third.' },
-  { key: 'ev',       name: 'EV charging',    icon: '🔌', r: 7,  styles: 3, sil: 10, w: 1, color: [60, 192, 96],
+  { key: 'ev',       name: 'EV charging',    icon: '🔌', r: 7,  styles: 4, sil: 10, w: 1, color: [60, 192, 96],
     effect: 'Within 7 tiles, cars switch to electric: same traffic, 30% less tailpipe pollution.' },
-  { key: 'bike',     name: 'Bike share',     icon: '🚲', r: 5,  styles: 3, sil: 6,  w: 1, color: [58, 122, 232],
+  { key: 'bike',     name: 'Bike share',     icon: '🚲', r: 5,  styles: 4, sil: 6,  w: 1, color: [58, 122, 232],
     effect: 'Within 5 tiles, a fifth of trips go by bike: fewer cars and 20% less traffic pollution.' },
 ];
 const civ = new Uint8Array(N * N);
@@ -1038,7 +1224,7 @@ function drawStadiumPart(g, vx, vy, t, Tx, Ty, lod) {
   g.save(); g.translate(x, y); g.scale(2, 2); drawCivic(g, 5, 0, 0, lod, hash2(ax, ay)); g.restore();
   if (!partialMode) {
     dctx.fillStyle = `rgb(${vx + vy + 1},0,0)`; dctx.beginPath();
-    const SH = [12, 26, 30, 12][hash2(ax, ay) % 4]; // real height of each stadium style
+    const SH = [12, 26, 30, 12, 15][hash2(ax, ay) % 5]; // real height of each stadium style
     dctx.moveTo(x - 28, y); dctx.lineTo(x, y + 14); dctx.lineTo(x + 28, y); dctx.lineTo(x + 28, y - SH); dctx.lineTo(x, y - SH - 14); dctx.lineTo(x - 28, y - SH);
     dctx.closePath(); dctx.fill();
   }
@@ -1080,6 +1266,7 @@ function redCross(g, x, y, s) { g.fillStyle = '#d82020'; g.fillRect(x - s / 2, y
 
 function drawCivic(g, id, x, y, lod, h) {
   const v = h % CIVIC[id].styles, D = !lod;
+  if (v === CIVIC_EXTRA_V[id]) { drawCivicExtra(g, id, x, y, D); return; }
   switch (id) {
     case 1: { // parks
       ground(g, x, y, 15, '#5aa84a');
@@ -2250,7 +2437,7 @@ function drawCar(px, py, hsh, alpha, cw, ch) {
   const bx = Math.max(0, Math.min(N - 1, Math.floor(px))), by = Math.max(0, Math.min(N - 1, Math.floor(py)));
   const h = (road[by * N + bx] && isWaterW(bx, by)) ? bridgeLevel(bx, by, px, py) : hAtW(px, py), v = w2v(px, py);
   const sx = (v[0] - v[1]) * TW / 2, sy = (v[0] + v[1]) * TH / 2 - h * HS;
-  if (depthData) { // hide the car if a building in front of its tile covers this pixel
+  if (depthData || depthPending) { // hide the car if a building in front of its tile covers this pixel
     const X = Math.round(sx * zoom + cacheCX), Y = Math.round((sy - 1) * zoom + cacheCY);
     if (hiddenAt(X, Y, Math.floor(v[0]) + Math.floor(v[1]))) return 0;
   }
@@ -2311,11 +2498,13 @@ function buildCache() {
   const gr = cx.createLinearGradient(0, 0, 0, Hh);
   gr.addColorStop(0, '#0a0f18'); gr.addColorStop(1, '#1c2838');
   cx.fillStyle = gr; cx.fillRect(0, 0, W, Hh);
-  if (dcan.width !== W || dcan.height !== Hh) { dcan.width = W; dcan.height = Hh; }
-  dctx.setTransform(1, 0, 0, 1, 0, 0); dctx.clearRect(0, 0, W, Hh);
-  if (tcan.width !== W || tcan.height !== Hh) { tcan.width = W; tcan.height = Hh; }
-  tctx.setTransform(1, 0, 0, 1, 0, 0); tctx.clearRect(0, 0, W, Hh); tctx.setTransform(zoom, 0, 0, zoom, camX, camY);
-  dctx.setTransform(zoom, 0, 0, zoom, camX, camY);
+  seamStroke = zoom >= 0.5; terrainDepthOn = zoom >= 0.5;
+  const DW = Math.ceil(W / 2), DH = Math.ceil(Hh / 2);
+  if (dcan.width !== DW || dcan.height !== DH) { dcan.width = DW; dcan.height = DH; }
+  dctx.setTransform(1, 0, 0, 1, 0, 0); dctx.clearRect(0, 0, DW, DH);
+  if (tcan.width !== DW || tcan.height !== DH) { tcan.width = DW; tcan.height = DH; }
+  tctx.setTransform(1, 0, 0, 1, 0, 0); tctx.clearRect(0, 0, DW, DH); tctx.setTransform(zoom / 2, 0, 0, zoom / 2, camX / 2, camY / 2);
+  dctx.setTransform(zoom / 2, 0, 0, zoom / 2, camX / 2, camY / 2);
   cx.setTransform(zoom, 0, 0, zoom, camX, camY);
   px1 = 1 / zoom; cx.lineWidth = px1; cx.lineJoin = 'round';
   waterVis.length = 0; roadVis.length = 0; bldVis.length = 0;
@@ -2333,8 +2522,7 @@ function buildCache() {
     }
   }
   cacheCX = camX; cacheCY = camY; cacheZoom = zoom;
-  depthData = dctx.getImageData(0, 0, W, Hh).data; depthW = W; depthH = Hh;
-  tdepthData = tctx.getImageData(0, 0, W, Hh).data;
+  depthData = null; depthPending = true; depthW = DW; depthH = DH; staleDepth = false; lastFullBuild = performance.now();
   for (const q of gusts) q.prev = zoom >= 0.3 ? gustRect(q) : null;
   buildSpot();
 }
@@ -2763,12 +2951,12 @@ function simTick() {
   if (layer && (layer === 'air' || layer === 'transit')) { computeLayer(); cacheDirty = true; }
   recoverTick();
   buildSATs();
-  let changed = false, pop = 0, jobs = 0;
+  let changed = false, pop = 0, jobs = 0; const changedT = [];
   for (let wy = 0; wy < N; wy++) for (let wx = 0; wx < N; wx++) {
     const t = wy * N + wx, z = zone[t];
     if (!z) continue;
     const [mn, mx] = tMinMax(wx, wy);
-    if (mn !== mx || mn < sea || lake[t]) { if (bld[t] || dens[t]) { bld[t] = 0; dens[t] = 0; changed = true; } continue; }
+    if (mn !== mx || mn < sea || lake[t]) { if (bld[t] || dens[t]) { bld[t] = 0; dens[t] = 0; changed = true; changedT.push(t); } continue; }
     const [cap, , rn] = tierCap(wx, wy, z);
     const capD = cap === 0 ? 0.45 : cap === 3 ? 3 : cap + 0.45;
     let d = dens[t];
@@ -2784,14 +2972,19 @@ function simTick() {
     dens[t] = d;
     const tier = d >= 2.5 ? 3 : d >= 1.5 ? 2 : d >= 0.5 ? 1 : 0;
     const b = BLD[z][tier];
-    if (b !== bld[t]) { bld[t] = b; changed = true; }
+    if (b !== bld[t]) { bld[t] = b; changed = true; changedT.push(t); }
     if (z === 1) pop += POP[tier]; else jobs += JOBS[z][tier];
   }
   document.getElementById('hud-date').textContent = MONTHS[month % 12] + ' ' + (1900 + Math.floor(month / 12));
   document.getElementById('hud-pop').textContent = pop.toLocaleString();
   document.getElementById('hud-jobs').textContent = jobs.toLocaleString();
   lastPop = pop; lastJobs = jobs;
-  if (changed) dirtyAll(); else computeTraffic();
+  computeTraffic();
+  if (changed) {
+    mmBaseDirty = true;
+    if (layer) { computeLayer(); cacheDirty = true; }
+    else { redrawTiles(changedT); staleDepth = true; } // new buildings show now; their depth outline catches up in the next full rebuild
+  }
 }
 
 
@@ -3413,6 +3606,7 @@ window.addEventListener('keydown', e => {
 let lastAnim = 0, lastMM = 0;
 function loop(ts) {
   requestAnimationFrame(loop);
+  if (staleDepth && !cacheDirty && ts - lastFullBuild > 6000) cacheDirty = true;
   if (cacheDirty) { buildCache(); cacheDirty = false; compDirty = true; }
   windStep(ts); dayStep(ts);
   if (simOn && ts - lastSim > MONTH_MS[speed]) { lastSim = ts; simTick(); }
@@ -3463,6 +3657,15 @@ function openFromHash() {
     return true;
   } catch (e) { console.error(e); return false; }
 }
+
+// ===== Mobile tools drawer =====
+// On narrow screens the toolbar slides in from the left; picking a tool or touching the map closes it.
+const toolbarEl = document.getElementById('toolbar'), toolsBtn = document.getElementById('btn-tools');
+const isNarrow = () => window.matchMedia('(max-width: 700px)').matches;
+function setDrawer(open) { toolbarEl.classList.toggle('open', open); toolsBtn.setAttribute('aria-expanded', open); toolsBtn.textContent = open ? '✕ Close' : '☰ Tools'; }
+toolsBtn.addEventListener('click', () => setDrawer(!toolbarEl.classList.contains('open')));
+document.querySelectorAll('.tb[data-tool]').forEach(b => b.addEventListener('click', () => { if (isNarrow() && !['storm', 'quake'].includes(b.dataset.tool)) setDrawer(false); }));
+canvas.addEventListener('pointerdown', () => { if (isNarrow() && toolbarEl.classList.contains('open')) setDrawer(false); }, true);
 
 // ===== Snapshot =====
 // Captures exactly what is on screen (no cursor), at full resolution, with an optional small credit.
@@ -3548,6 +3751,7 @@ function tourGo(i) {
   document.getElementById('tour-back').style.visibility = i > 0 ? 'visible' : 'hidden';
   document.getElementById('tour-next').textContent = i === TOUR.length - 1 ? 'Finish' : 'Next ▸';
   const el = st.target && st.target();
+  if (isNarrow()) setDrawer(!!(el && toolbarEl.contains(el)));
   if (el) { el.classList.add('tour-hl'); el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
   box.classList.remove('hidden');
 }
