@@ -351,7 +351,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
       <p>☕ Terrain Flux is free. If it made you smile, you can <a href="https://ko-fi.com/jerrodlessel" target="_blank" rel="noopener">buy me a cup of tea on Ko-fi</a>.</p>
-      <p class="credit">Version 5.14.1 · MIT license</p>
+      <p class="credit">Version 5.14.2 · MIT license</p>
       <div class="btns"><button class="txt" id="about-tour" style="text-align:center">▶ Take the tour</button><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -3084,6 +3084,7 @@ async function saveCurrentWorld() {
 }
 async function goToWorld(w, byRocket) {
   if (w === planet) return;
+  const now = month; // one calendar for every world: the date carries over
   const saved = await saveCurrentWorld();
   if (!saved && !byRocket) toast('This map came from your own DEM file, so it can\'t be kept here. Use 📁 File to save a copy first.');
   if (w !== 'earth') markReached(w);
@@ -3093,6 +3094,8 @@ async function goToWorld(w, byRocket) {
       toast(w === 'earth' ? '🌍 Back to your Earth city!' : w === 'moon' ? '🌕 Back to your Moon colony!' : '🔴 Back to your Mars colony!'); }
     catch (e) { console.error(e); fresh(); }
   } else fresh();
+  if (month < now) { month = now; dirtyAll(); }
+  document.getElementById('hud-date').textContent = MONTHS[month % 12] + ' ' + (1900 + Math.floor(month / 12));
   refreshWorldBadges();
   function fresh() {
     document.getElementById('g-world').value = w;
