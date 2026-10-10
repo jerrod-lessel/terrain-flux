@@ -351,7 +351,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
       <p>☕ Terrain Flux is free. If it made you smile, you can <a href="https://ko-fi.com/jerrodlessel" target="_blank" rel="noopener">buy me a cup of tea on Ko-fi</a>.</p>
-      <p class="credit">Version 5.14 · MIT license</p>
+      <p class="credit">Version 5.14.1 · MIT license</p>
       <div class="btns"><button class="txt" id="about-tour" style="text-align:center">▶ Take the tour</button><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -377,6 +377,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       <div class="btns" style="flex-direction:column">
         <button class="txt" id="btn-export">⤓ Download this map</button>
         <button class="txt" id="btn-import">⤒ Open a map file</button>
+        <button class="txt" id="btn-reset-worlds" title="Lock the Moon and Mars again and forget the saved city on each world">↺ Reset rocket progress</button>
         <button class="txt" id="file-close" style="text-align:center">Close</button>
       </div>
     </div>
@@ -3050,7 +3051,9 @@ function drawSpaceBuilding(g, id, x, y, lod, h) {
 const SPACEPORT_POP = 7000;
 const BIG_CIVIC = new Set([5, 9]);
 let launch = null;
-const REACHED_KEY = 'terrain-flux-reached';
+// v2: unlocks from before the Moon and Mars were locked don't count
+const REACHED_KEY = 'terrain-flux-reached-v2';
+try { localStorage.removeItem('terrain-flux-reached'); } catch (e) { }
 function reached() { try { return JSON.parse(localStorage.getItem(REACHED_KEY) || '{}'); } catch (e) { return {}; } }
 function markReached(w) { try { const r = reached(); r[w] = 1; localStorage.setItem(REACHED_KEY, JSON.stringify(r)); } catch (e) { } }
 // The Moon and Mars show greyed out until you launch there from a Spaceport (unlocks stick in this browser).
@@ -3067,6 +3070,12 @@ function refreshWorldBadges() {
 }
 // ===== One saved city per world =====
 const WORLDS_KEY = 'terrain-flux-worlds';
+document.getElementById('btn-reset-worlds').addEventListener('click', () => {
+  if (!confirm('Lock the Moon and Mars again and forget your saved city on each world? Your current map stays put.')) return;
+  try { localStorage.removeItem(REACHED_KEY); localStorage.removeItem(WORLDS_KEY); } catch (e) { }
+  document.getElementById('filebox').classList.add('hidden');
+  refreshWorldBadges(); toast('↺ Rocket progress reset. The Moon and Mars are locked again.');
+});
 function worldStore() { try { return JSON.parse(localStorage.getItem(WORLDS_KEY) || '{}'); } catch (e) { return {}; } }
 async function saveCurrentWorld() {
   let code = null; try { code = await encodeShare(); } catch (e) { }
