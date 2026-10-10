@@ -346,7 +346,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
       <p>☕ Terrain Flux is free. If it made you smile, you can <a href="https://ko-fi.com/jerrodlessel" target="_blank" rel="noopener">buy me a cup of tea on Ko-fi</a>.</p>
-      <p class="credit">Version 5.11 · MIT license</p>
+      <p class="credit">Version 5.12 · MIT license</p>
       <div class="btns"><button class="txt" id="about-tour" style="text-align:center">▶ Take the tour</button><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -445,7 +445,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       <p>🌍 Biomes paint the land: forest, prairie, desert, chaparral, rainforest, bayou, mangrove, savanna, boreal, tundra, and alpine. Each has its own ground and plants and burns differently: chaparral and prairie burn fast, deserts and wetlands barely burn. Mangroves and bayous can grow in shallow water. Pick a climate to fill a whole map, or choose one under New map.</p>
       <p>Biomes change how things behave: prairie, savanna, and alpine are windier, rainforests are calmer and get passing showers that put out fires, and deserts get dust devils. Desert towns grow slowly without water nearby, and cold biomes grow slowly too. Mangroves, bayous, and coral reefs hold back sea level rise for the land behind them, wetlands stop debris flows, and reefs bring tourists to nearby shops.</p>
       <p>🌋 Volcanoes: click to raise a cone and set it erupting. Lava runs downhill, buries what it meets, starts fires, cools into black lava rock over a few months, and builds new land where it reaches the sea.</p>
-      <p>🌕🔴 Pick World under New map to build on the Moon or Mars: craters, alien skies, ice instead of water, and glass domes over every building. No air means no fires, no rain, no biomes, and no sea to raise. The Moon has no wind at all; Mars has dust devils everywhere. Plant 🌲 and you get Moon fungus or Martian lichen and greenhouse pods instead of trees.</p>
+      <p>🌕🔴 Pick World under New map to build on the Moon or Mars: craters, alien skies, ice instead of water, and sealed colony habitats (inflatable pods, habitat towers, 3D-printed domes, ice drills, and even a rocket pad) with glass domes over civic buildings. Instead of air pollution you track dust contamination from mining and rover traffic. No air means no fires, no rain, no biomes, and no sea to raise. The Moon has no wind at all; Mars has dust devils everywhere. Plant 🌲 and you get Moon fungus or Martian lichen and greenhouse pods instead of trees.</p>
       <p>Water pools on flat ground. Place it on a slope and it runs downhill as a stream, with waterfalls, until it reaches water or a low spot. The sea level buttons flood or drain the whole map.</p>
       <p>Wildfires run downwind and uphill. Forest burns long and hot, grass burns fast and light, and roads, water, beaches, and bare rock stop them. Fire stations slow fires inside their reach. Burned ground stays scarred by severity and heals over about five game years, and forests grow back.</p>
       <p>Load DEM takes a real GeoTIFF, crops the center square, and squeezes it into 128 by 128 tiles. Cliffs get softened into slopes because the engine refuses to do anything else.</p>
@@ -679,7 +679,7 @@ function drawTile(g, vx, vy, lod) {
   }
 
   if (road[t]) { drawRoad(g, vx, vy, ht, hr, hb, hl, lod); if (!partialMode) roadVis.push(wx, wy); return; }
-  if (bld[t]) { drawBuilding(g, bld[t], Tx, Ty + TH / 2, lod, hash2(wx, wy)); if (planet !== 'earth') drawDome(g, Tx, Ty + TH / 2, SIL_H[bld[t]] || 20); if (!partialMode) { silhouette(Tx, Ty + TH / 2, bld[t], vx + vy); bldVis.push(t, Tx, Ty + TH / 2, bld[t], vx + vy); } return; }
+  if (bld[t]) { if (planet === 'earth') drawBuilding(g, bld[t], Tx, Ty + TH / 2, lod, hash2(wx, wy)); else drawSpaceBuilding(g, bld[t], Tx, Ty + TH / 2, lod, hash2(wx, wy)); if (!partialMode) { silhouette(Tx, Ty + TH / 2, bld[t], vx + vy); bldVis.push(t, Tx, Ty + TH / 2, bld[t], vx + vy); } return; }
   if (civ[t] === 5 && isBigStadium(t)) { drawStadiumPart(g, vx, vy, t, Tx, Ty, lod); return; }
   if (civ[t]) { drawCivic(g, civ[t], Tx, Ty + TH / 2, lod, hash2(wx, wy)); if (planet !== 'earth') drawDome(g, Tx, Ty + TH / 2, Math.max(10, CIVIC[civ[t]].sil)); if (!partialMode && civ[t] !== 1) silhouette(Tx, Ty + TH / 2, 0, vx + vy, CIVIC[civ[t]].sil); return; }
   if (zone[t]) {
@@ -1309,6 +1309,7 @@ function recomputeCivic() {
 }
 
 function tinyTree(g, x, y) {
+  if (planet !== 'earth') { drawFlora(g, planet === 'moon' ? 'moonfungus' : 'marslife', x, y, (x * 7 + y * 13) & 255, 0, 0); return; }
   g.fillStyle = '#4a2c14'; g.fillRect(x - 0.6, y - 3, 1.2, 3);
   g.fillStyle = '#1f5a22'; g.fillRect(x - 3, y - 8, 6, 5); g.fillRect(x - 2, y - 9, 4, 7);
   g.fillStyle = '#3a8a32'; g.fillRect(x - 2, y - 8, 3, 2);
@@ -2307,8 +2308,8 @@ function buildReport() {
   // air quality
   let air = 0, fromRoad = 0;
   for (let t = 0; t < N * N; t++) { const h = homesAt(t); if (h && poll[t] >= POLL_MOD) { air += h; fromRoad += h * pollRoad[t] / poll[t]; } }
-  const blame = air ? (fromRoad / air > 0.5 ? 'mostly traffic: try 🚌 🔌 🚲' : 'mostly industry: move it downwind') : 'clean air';
-  rows.push({ key: 'air', icon: '🌫️', name: 'Air quality', note: `homes in moderate or worse air · ${blame}`, exposed: air });
+  const AW = airWords(), blame = air ? (fromRoad / air > 0.5 ? AW.road : AW.ind) : AW.clean;
+  rows.push({ key: 'air', icon: planet === 'earth' ? '🌫️' : '🟤', name: AW.row, note: `${AW.who} in moderate or worse ${AW.noun} · ${blame}`, exposed: air });
   // services
   const cf = sum(t => civFire[t]), cp = sum(t => civPolice[t]), ch = sum(t => civHosp[t]);
   const cov = (cf + cp + ch) / 3;
@@ -2439,7 +2440,7 @@ function setLayer(k) {
   if (k === 'air') computePollution();
   computeLayer(); cacheDirty = true;
   document.getElementById('tg-layer').classList.toggle('on', !!k);
-  document.getElementById('st-hint').textContent = k ? `${LAYERS[k].icon} ${LAYERS[k].name}: ${LAYERS[k].legend}` : '';
+  document.getElementById('st-hint').textContent = k ? `${LAYERS[k].icon} ${k === 'air' ? airWords().layer : LAYERS[k].name}: ${LAYERS[k].legend}` : '';
   document.querySelectorAll('#layerbox [data-l]').forEach(b => b.classList.toggle('on', b.dataset.l === (k || '')));
 }
 const REPORT_LAYER = { fire: 'wui', debris: 'debris', quake: 'quake', slr: 'slr', air: 'air', svc: 'gaps' };
@@ -2844,6 +2845,11 @@ const lavaVis = [];
 // A reskin: cratered ground, alien skies, ice instead of water, glass domes over buildings,
 // no fire or rain (no breathable air), and on the Moon no wind at all.
 let planet = 'earth';
+function airWords() {
+  return planet === 'earth'
+    ? { layer: 'Air pollution', row: 'Air quality', noun: 'air', who: 'homes', mod: '🌫️ moderate air', bad: '🌫️ unhealthy air', grow: 'air too dirty to grow', tower: 'air too dirty for towers', clean: 'clean air', road: 'mostly traffic: try 🚌 🔌 🚲', ind: 'mostly industry: move it downwind', word: 'pollution' }
+    : { layer: 'Dust contamination', row: 'Dust contamination', noun: 'dust', who: 'habitats', mod: '🟤 dusty', bad: '🟤 heavy dust', grow: 'too much dust to grow', tower: 'too much dust for towers', clean: 'dust under control', road: 'mostly rover traffic: try 🚌 🔌 🚲', ind: 'mostly mining: move it downwind', word: 'dust' };
+}
 const PLANETS = { earth: '🌍 Earth', moon: '🌕 Moon', mars: '🔴 Mars' };
 function planetColor(t, avg) {
   const e = Math.max(0, Math.min(1, (avg - sea) / Math.max(6, MAXH - sea))), p = patch[t];
@@ -2889,6 +2895,128 @@ function addCraters(hc, rand, count) {
       if (d < 1) hc[i] -= D * (1 - d * d);
       else if (d < 1.6) hc[i] += D * 0.5 * Math.pow(1 - (d - 1) / 0.6, 2);
     }
+  }
+}
+
+// ===== Space colony buildings (Moon and Mars) =====
+// One shared set based on real habitat concepts, colored per world: Apollo white, silver and gold on
+// the Moon; dusty tan and terracotta with red dust streaks on Mars. Sealed habitats, so no domes needed.
+function spacePal() {
+  return planet === 'moon'
+    ? { w: '#eceef2', w2: '#c2c7cf', top: '#f7f8fa', acc: '#d8a838', dark: '#5a6270', glass: '#8ad0f0', ground: '#9a9aa2' }
+    : { w: '#e4cba6', w2: '#b8946e', top: '#eed9b8', acc: '#c0562e', dark: '#6a4a38', glass: '#9ad0e0', ground: '#8a5a40' };
+}
+function dust(g, x, y, w, h) { if (planet !== 'mars') return; g.fillStyle = 'rgba(170,86,46,0.28)'; g.fillRect(x - w, y - h, w * 2, h); }
+function halfDome(g, x, y, rx, ry, c1, c2) {
+  const gr = g.createLinearGradient(x - rx, 0, x + rx, 0); gr.addColorStop(0, c1); gr.addColorStop(1, c2);
+  g.fillStyle = gr; g.beginPath(); g.ellipse(x, y, rx, ry, 0, Math.PI, Math.PI * 2); g.ellipse(x, y, rx, rx / 2, 0, 0, Math.PI); g.fill();
+}
+function drawSpaceBuilding(g, id, x, y, lod, h) {
+  const P = spacePal(), v = h % 2, D = !lod;
+  switch (id) {
+    case 4: // homes
+      if (!v) { // inflatable pod
+        halfDome(g, x, y, 9, 9, P.w, P.w2);
+        if (D) { g.strokeStyle = P.acc; g.lineWidth = 0.8; g.beginPath(); g.ellipse(x, y - 3, 8.4, 3.2, 0, Math.PI, Math.PI * 2); g.stroke(); g.lineWidth = px1; g.fillStyle = P.glass; g.fillRect(x - 3, y - 6, 2.5, 1.6); }
+      } else { // regolith-covered bunker
+        halfDome(g, x, y, 10, 6, P.ground, P.dark);
+        box(g, x + 5, y + 1, 2.2, 3, P.w, P.w2, P.top);
+        if (D) { g.fillStyle = '#ccc'; g.fillRect(x - 3, y - 12, 0.7, 6); g.fillStyle = P.acc; g.fillRect(x - 4, y - 13, 2.6, 1.2); }
+      }
+      dust(g, x, y, 9, 2);
+      break;
+    case 7: // apartments
+      if (!v) { // stacked habitat cylinders
+        cyl(g, x - 4, y - 1, 4, 9, P.w, P.w2, P.top); cyl(g, x + 4, y + 1, 4, 9, P.w, P.w2, P.top); cyl(g, x, y - 9, 4, 8, P.w, P.w2, P.top);
+        if (D) { g.fillStyle = P.glass; for (const [wx, wy] of [[x - 6, y - 6], [x + 2, y - 4], [x - 2, y - 14]]) g.fillRect(wx, wy, 3, 1.4); g.fillStyle = P.acc; g.fillRect(x - 4, y - 9.5, 8, 0.8); }
+      } else { // half-buried dome with an airlock
+        halfDome(g, x, y, 12, 13, P.w, P.w2);
+        if (D) { g.fillStyle = P.glass; for (let k = -2; k <= 2; k++) g.fillRect(x + k * 4 - 1, y - 7 + Math.abs(k), 2, 1.6); }
+        box(g, x + 9, y + 3, 2.4, 3.4, P.w2, P.dark, P.top);
+      }
+      dust(g, x, y, 11, 3);
+      break;
+    case 8: // towers
+      if (!v) { // habitat tower
+        cyl(g, x, y, 6, 38, P.w, P.w2, P.top);
+        if (D) { g.fillStyle = P.glass; for (let r = 0; r < 8; r++) g.fillRect(x - 5, y - 6 - r * 4.4, 4, 1.4); g.fillStyle = P.acc; g.fillRect(x - 6, y - 20, 12, 1); }
+        halfDome(g, x, y - 38, 6, 5, P.glass, P.w2);
+      } else { // 3D-printed beehive dome
+        for (let k = 0; k < 9; k++) { const r = 12 - k * 1.2; g.fillStyle = k % 2 ? P.w2 : P.w; g.beginPath(); g.ellipse(x, y - k * 4, r, r / 2, 0, 0, Math.PI * 2); g.fill(); }
+        if (D) { g.fillStyle = P.glass; g.fillRect(x - 2, y - 10, 4, 3); g.fillRect(x - 1.5, y - 22, 3, 2); }
+      }
+      dust(g, x, y, 10, 4);
+      break;
+    case 9: // shops
+      if (!v) { // supply depot with crates
+        box(g, x - 2, y - 1, 7, 7, P.w, P.w2, P.top);
+        box(g, x + 7, y + 3, 2, 2, P.acc, P.dark, P.acc); box(g, x + 5, y + 5, 2, 2, P.acc, P.dark, P.acc);
+        if (D) face(g, true, x - 2, y - 1, 7, 7, f => { f.fillStyle = P.acc; f.fillRect(0, 1, 7, 1); f.fillStyle = P.glass; f.fillRect(1, 3, 5, 2); });
+      } else { // landing pad kiosk
+        g.fillStyle = P.dark; g.beginPath(); g.ellipse(x - 2, y + 1, 9, 4.5, 0, 0, Math.PI * 2); g.fill();
+        if (D) { g.strokeStyle = P.acc; g.lineWidth = 0.7; g.beginPath(); g.ellipse(x - 2, y + 1, 7, 3.5, 0, 0, Math.PI * 2); g.stroke(); g.lineWidth = px1; }
+        box(g, x + 7, y - 1, 3, 4, P.w, P.w2, P.top);
+      }
+      dust(g, x, y, 9, 2);
+      break;
+    case 5: // offices
+      if (!v) { // hub module with a dish
+        cyl(g, x, y, 9, 14, P.w, P.w2, P.top);
+        if (D) { g.fillStyle = P.glass; for (let k = -2; k <= 2; k++) g.fillRect(x + k * 3.4 - 1, y - 9, 2, 3); g.fillStyle = '#aaa'; g.fillRect(x - 0.4, y - 22, 0.8, 8);
+          g.fillStyle = P.w; g.beginPath(); g.ellipse(x + 2, y - 23, 4, 2, -0.5, 0, Math.PI * 2); g.fill(); }
+      } else { // greenhouse tunnel
+        g.fillStyle = 'rgba(200,236,255,0.45)'; g.beginPath(); g.ellipse(x, y, 13, 7, 0.46, Math.PI, Math.PI * 2); g.fill();
+        g.fillStyle = 'rgba(80,170,80,0.85)'; g.beginPath(); g.ellipse(x, y - 1, 10, 4, 0.46, 0, Math.PI * 2); g.fill();
+        if (D) { g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = 0.5; g.beginPath(); g.ellipse(x, y, 13, 7, 0.46, Math.PI, Math.PI * 2); g.stroke(); g.lineWidth = px1; }
+      }
+      dust(g, x, y, 10, 2);
+      break;
+    case 10: // commercial towers
+      if (!v) { // spaceport control tower
+        cyl(g, x, y, 4, 36, P.w, P.w2, P.top); box(g, x, y - 36, 7, 6, P.glass, P.dark, P.top);
+        if (D) { g.fillStyle = P.acc; g.fillRect(x - 4, y - 18, 8, 1); g.fillStyle = '#f04040'; g.fillRect(x - 0.5, y - 48, 1, 4); }
+      } else { // comms hub with a lattice mast
+        box(g, x, y, 9, 10, P.w, P.w2, P.top);
+        if (D) { g.strokeStyle = '#b0b0b0'; g.lineWidth = 0.6; g.beginPath(); g.moveTo(x - 3, y - 10); g.lineTo(x, y - 52); g.lineTo(x + 3, y - 10); for (let k = 1; k < 8; k++) { const yy = y - 10 - k * 5.2, w = 3 * (1 - k / 8); g.moveTo(x - w, yy); g.lineTo(x + w, yy); } g.stroke(); g.lineWidth = px1;
+          g.fillStyle = P.w; g.beginPath(); g.ellipse(x + 3, y - 40, 4, 2.2, -0.4, 0, Math.PI * 2); g.fill(); g.fillStyle = '#f04040'; g.fillRect(x - 0.5, y - 54, 1, 2); }
+      }
+      dust(g, x, y, 9, 3);
+      break;
+    case 11: // light industry
+      if (!v) { // solar array field
+        for (let r = -1; r <= 1; r++) for (let c = -1; c <= 1; c++) { const px = x + (c - r) * 5, py = y + (c + r) * 2.5; g.fillStyle = '#888'; g.fillRect(px - 0.4, py - 3, 0.8, 3); polyNoStroke(g, [px - 4, py - 3, px, py - 5.5, px + 4, py - 4, px, py - 1.5], '#1e2a48'); if (D) { g.fillStyle = 'rgba(140,180,255,0.35)'; g.fillRect(px - 1, py - 4, 2, 0.6); } }
+      } else { // ice drill
+        cyl(g, x + 5, y - 1, 3, 5, P.w, P.w2, P.top);
+        g.strokeStyle = P.acc; g.lineWidth = 0.9; g.beginPath(); g.moveTo(x - 6, y + 2); g.lineTo(x - 2, y - 16); g.lineTo(x + 2, y + 2); g.moveTo(x - 4.6, y - 6); g.lineTo(x + 0.6, y - 6); g.stroke(); g.lineWidth = px1;
+        if (D) { g.fillStyle = '#c8e8ff'; g.fillRect(x - 3, y, 2, 1); }
+      }
+      dust(g, x, y, 8, 2);
+      break;
+    case 6: // factories
+      if (!v) { // regolith processor with a hopper
+        box(g, x + 2, y + 1, 8, 9, P.w2, P.dark, P.top);
+        polyNoStroke(g, [x - 10, y - 14, x - 2, y - 14, x - 4, y - 6, x - 8, y - 6], P.ground);
+        if (D) { g.strokeStyle = '#777'; g.lineWidth = 1; g.beginPath(); g.moveTo(x - 6, y - 6); g.lineTo(x - 1, y - 7); g.stroke(); g.lineWidth = px1; }
+      } else { // fuel plant with spherical tanks
+        for (const [tx, ty] of [[x - 5, y - 1], [x + 4, y + 2]]) { cyl(g, tx, ty, 3.5, 2, P.dark, P.dark, P.w2); halfDome(g, tx, ty - 2, 3.5, 5, P.w, P.w2); }
+        if (D) { g.strokeStyle = P.acc; g.lineWidth = 0.8; g.beginPath(); g.moveTo(x - 5, y - 4); g.lineTo(x + 4, y - 1); g.stroke(); g.lineWidth = px1; }
+      }
+      dust(g, x, y, 10, 3);
+      break;
+    case 12: // heavy industry
+      if (!v) { // mining rig with a boom
+        box(g, x - 2, y, 8, 10, P.acc, dk(P.acc), P.w2);
+        g.strokeStyle = P.dark; g.lineWidth = 1.6; g.beginPath(); g.moveTo(x + 2, y - 10); g.lineTo(x + 12, y - 20); g.lineTo(x + 13, y - 4); g.stroke(); g.lineWidth = px1;
+        g.fillStyle = P.dark; g.fillRect(x + 11, y - 5, 4, 2.5);
+      } else { // rocket on its launch pad
+        g.fillStyle = P.dark; g.beginPath(); g.ellipse(x, y + 1, 11, 5.5, 0, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#9a9a9a'; g.fillRect(x + 5, y - 30, 1.2, 30); for (let k = 0; k < 6; k++) g.fillRect(x + 1.5, y - 5 - k * 5, 4, 0.6);
+        cyl(g, x, y - 1, 2.6, 26, '#f6f6f8', '#c8ccd2', '#f6f6f8');
+        polyNoStroke(g, [x - 2.6, y - 27, x, y - 34, x + 2.6, y - 27], '#e04030');
+        polyNoStroke(g, [x - 2.6, y - 3, x - 4.5, y + 1, x - 2.6, y - 1], '#e04030'); polyNoStroke(g, [x + 2.6, y - 3, x + 4.5, y + 1, x + 2.6, y - 1], '#b03020');
+      }
+      dust(g, x, y, 11, 3);
+      break;
   }
 }
 
@@ -3468,12 +3596,12 @@ function tierCap(wx, wy, z) {
   const t = wy * N + wx, R = z === 1;
   const demand = (R ? boxSum(SAT_J, wx, wy, 12) + civDemR[t] : boxSum(SAT_R, wx, wy, z === 3 ? 14 : 12) + (z === 2 ? civDemC[t] : 0));
   const dn = R ? 'jobs' : 'residents';
-  if (R && poll[t] >= POLL_HIGH) return [1, 'air too dirty to grow', true];
+  if (R && poll[t] >= POLL_HIGH) return [1, airWords().grow, true];
   if (nb < 3 || boxSum(SAT_ALL, wx, wy, 4) + civDense[t] < 14) return [1, 'rural, needs more neighbors', true];
   if (demand < 6) return [1, 'needs ' + dn + ' nearby', true];
   if (!civFireN[t] && !civPoliceN[t]) return [1, 'needs fire or police coverage to grow', true];
   if (nb < 5 || boxSum(SAT_ALL, wx, wy, 6) + civDense[t] < 60) return [2, 'needs a denser neighborhood', true];
-  if (R && poll[t] >= POLL_MOD) return [2, 'air too dirty for towers', true];
+  if (R && poll[t] >= POLL_MOD) return [2, airWords().tower, true];
   if (demand < 25) return [2, 'needs more ' + dn + ' nearby', true];
   const miss = [];
   if (!civFireN[t]) miss.push('fire coverage');
@@ -4019,6 +4147,7 @@ document.getElementById('btn-report').addEventListener('click', showReport);
   add('', '✖ No layer');
   for (const [k, L] of Object.entries(LAYERS)) add(k, `${L.icon} ${L.name}`);
   document.getElementById('tg-layer').addEventListener('click', () => {
+    list.querySelector('[data-l="air"]').textContent = (planet === 'earth' ? '🌫️ ' : '🟤 ') + airWords().layer;
     list.querySelector('[data-l="slr"]').style.display = dem && dem.ocean ? '' : 'none';
     box.classList.remove('hidden');
   });
@@ -4092,8 +4221,8 @@ function updateStatus() {
   if (biome[t]) zt = (zt === '-' ? '' : zt + ' · ') + `${BIOMES[biome[t]].icon} ${BIOMES[biome[t]].name}`;
   if (hazCls[t] && hazardView()) zt = (zt === '-' ? '' : zt + ' · ') + `🌧️ drainage likelihood ${hazP[t].toFixed(2)} (${HAZ_NAME[hazCls[t]]}) at ${i15} mm/hr`;
   if (layer === 'fire' || layer === 'police' || layer === 'hosp') { const n = (layer === 'fire' ? civFireN : layer === 'police' ? civPoliceN : civHospN)[t]; zt = (zt === '-' ? '' : zt + ' · ') + `${LAYERS[layer].icon} ${n ? n + ' reaching here' : 'not covered'}`; }
-  if (layer === 'air') zt = (zt === '-' ? '' : zt + ' · ') + `🌫️ pollution ${poll[t].toFixed(1)}${poll[t] > 0.1 ? ` (${Math.round(pollRoad[t] / poll[t] * 100)}% from traffic)` : ''}`;
-  if (poll[t] >= POLL_MOD && layer !== 'air') zt = (zt === '-' ? '' : zt + ' · ') + (poll[t] >= POLL_HIGH ? '🌫️ unhealthy air' : '🌫️ moderate air');
+  if (layer === 'air') zt = (zt === '-' ? '' : zt + ' · ') + `${planet === 'earth' ? '🌫️' : '🟤'} ${airWords().word} ${poll[t].toFixed(1)}${poll[t] > 0.1 ? ` (${Math.round(pollRoad[t] / poll[t] * 100)}% from traffic)` : ''}`;
+  if (poll[t] >= POLL_MOD && layer !== 'air') zt = (zt === '-' ? '' : zt + ' · ') + (poll[t] >= POLL_HIGH ? airWords().bad : airWords().mod);
   if (lava[t]) zt = (zt === '-' ? '' : zt + ' · ') + (lavaK(t) > 0.05 ? '🌋 fresh lava, still cooling' : '🌑 lava rock');
   if (rubbleK(t) > 0) zt = (zt === '-' ? '' : zt + ' · ') + ['', '🏚️ earthquake rubble', '⛰️ landslide scar', '💧 liquefaction (sand boils)'][rubble[t]];
   if (mudK(t) > 0) zt = (zt === '-' ? '' : zt + ' · ') + '🟫 debris flow deposit';
