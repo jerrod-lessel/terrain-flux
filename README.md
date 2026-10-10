@@ -89,7 +89,14 @@ X1 is the share of the drainage that is steep (23 degrees or more) and burned at
 
 **Share links.** A link stores the recipe for the starting map (a seed or a real place) plus only what changed since, packed into a byte array, compressed with deflate, and base64url encoded after the `#`. Opening it regenerates the base map and replays the changes, which reproduces the city exactly. Tree planting on real places is seeded so the base is identical every time.
 
-**Growth.** Any zone next to a road can become a small building. Bigger buildings need a real neighborhood around them and demand nearby: homes need jobs, while shops and factories need residents. Lone zones stay rural forever. Buildings shrink if their demand disappears. Hover a zone to see what it is waiting for.
+**Growth.** Any zone next to a road can become a small building, so lone rural zones stay rural forever. Climbing higher takes a balanced, well-served city:
+
+- **City-wide demand** (the R C I bars in the top bar): homes want about one job for every two residents, shops want customers, and industry wants workers plus some business from the shops. A brand new town starts with a little demand for everything. Zones with no demand stop growing, and badly oversupplied ones slowly empty out.
+- **Level 2** needs neighbors, demand nearby, and fire or police coverage, and homes need air that isn't unhealthy.
+- **Level 3** needs a dense neighborhood, strong demand, fire and police coverage, and for homes clean air, a hospital, and a park within 6 tiles.
+- **Pace:** at Normal speed a zone reaches level 1 in about 20 seconds, level 2 in about a minute, and level 3 in about three minutes. Every tile has its own pace and the top level has extra randomness, so towers rise one at a time instead of all at once.
+
+Hover any zone to see exactly what it is waiting for.
 
 **Civic buildings.** Each one reaches a radius of tiles. Parks speed up nearby homes and count as a nicer neighborhood. Hospitals count as jobs for homes. Fire stations speed up factories. Police stations speed up everything, and towers need police coverage. Stadiums take a 2 by 2 lot, boost shops, and pull crowds onto the roads.
 
@@ -132,6 +139,7 @@ The notebook reproduces the shipped presets byte for byte, so you can rebuild th
 - [x] Snapshots
 - [x] Mobile layout and a performance pass
 - [x] More building styles
+- [x] Demand bars and service requirements for growth
 
 ## Credits
 
