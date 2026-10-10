@@ -129,6 +129,8 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
 #helpbox .body p{margin:0 0 8px;}
 
 #btn-tools{display:none;}
+#countdown{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);font-family:'Press Start 2P',monospace;font-size:44px;color:#fff;text-shadow:0 0 12px rgba(255,140,40,.9),0 3px 0 #000;pointer-events:none;z-index:20;}
+#countdown.hidden{display:none;}
 @media (max-width:700px){
   #main{position:relative;}
   #toolbar{position:absolute;left:0;top:0;bottom:0;z-index:40;width:132px;padding:5px;transform:translateX(-105%);transition:transform .18s ease-out;box-shadow:4px 0 14px rgba(0,0,0,.35);}
@@ -201,6 +203,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       <button class="tb" data-tool="civ6" title="Bus depot: fewer cars, cleaner air">🚌</button>
       <button class="tb" data-tool="civ7" title="EV charging: cleaner cars">🔌</button>
       <button class="tb" data-tool="civ8" title="Bike share: fewer cars, cleaner air">🚲</button>
+      <button class="tb" data-tool="civ9" title="Spaceport: needs 7,000 people and a hospital">🚀</button>
     </div>
     <div class="sect" id="sect-biome">Biomes</div>
     <div class="grid2" id="grid-biome">
@@ -281,6 +284,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       <canvas id="mm" width="256" height="256" class="sunk"></canvas>
     </div>
     <div id="toast" class="bev"></div>
+    <div id="countdown" class="hidden" aria-live="assertive">3</div>
   </div>
 </div>
 
@@ -346,7 +350,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
       <p>☕ Terrain Flux is free. If it made you smile, you can <a href="https://ko-fi.com/jerrodlessel" target="_blank" rel="noopener">buy me a cup of tea on Ko-fi</a>.</p>
-      <p class="credit">Version 5.12 · MIT license</p>
+      <p class="credit">Version 5.13 · MIT license</p>
       <div class="btns"><button class="txt" id="about-tour" style="text-align:center">▶ Take the tour</button><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -424,6 +428,16 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
   </div>
 </div>
 
+<div class="modal hidden" id="missionbox">
+  <div class="win bev" style="width:380px">
+    <div class="tbar">MISSION SUCCESS</div>
+    <div class="body" style="display:block">
+      <p style="margin:0 0 10px;font-size:19px">🚀 The rocket made it! Where to next?</p>
+      <div class="btns" id="mission-btns" style="flex-direction:column"></div>
+    </div>
+  </div>
+</div>
+
 <div class="modal hidden" id="helpbox">
   <div class="win bev">
     <div class="tbar">HOW THIS WORKS</div>
@@ -441,6 +455,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       <p>The ☀️ button switches between always day, a slow day and night cycle (one day is five real minutes, so nothing flashes), and always night. At night windows, streetlights, and headlights come on one by one.</p>
       <p>Earthquakes (🌎): pick a magnitude and click an epicenter. Shaking fades with distance. Tall towers and heavy industry are the most fragile, steep slopes slide, low ground next to water can liquefy, bridges can drop, and collapsed buildings can start fires.</p>
       <p>🔗 Share copies a link to exactly what you see, city and all. 📁 File saves or opens a full backup copy.</p>
+      <p>🚀 Grow a city of 7,000 people with a hospital and you can build a Spaceport (a 2 by 2 lot). Click it with ✋ Pan to launch: countdown, liftoff, and then you can follow the rocket to build on the Moon or Mars. Worlds you reach by rocket get a 🏅 in New map. The Moon and Mars are always open in New map too.</p>
       <p>Drag a road across water to build a bridge. Bridges need land on both ends and can span up to 16 tiles.</p>
       <p>🌍 Biomes paint the land: forest, prairie, desert, chaparral, rainforest, bayou, mangrove, savanna, boreal, tundra, and alpine. Each has its own ground and plants and burns differently: chaparral and prairie burn fast, deserts and wetlands barely burn. Mangroves and bayous can grow in shallow water. Pick a climate to fill a whole map, or choose one under New map.</p>
       <p>Biomes change how things behave: prairie, savanna, and alpine are windier, rainforests are calmer and get passing showers that put out fires, and deserts get dust devils. Desert towns grow slowly without water nearby, and cold biomes grow slowly too. Mangroves, bayous, and coral reefs hold back sea level rise for the land behind them, wetlands stop debris flows, and reefs bring tourists to nearby shops.</p>
@@ -680,7 +695,7 @@ function drawTile(g, vx, vy, lod) {
 
   if (road[t]) { drawRoad(g, vx, vy, ht, hr, hb, hl, lod); if (!partialMode) roadVis.push(wx, wy); return; }
   if (bld[t]) { if (planet === 'earth') drawBuilding(g, bld[t], Tx, Ty + TH / 2, lod, hash2(wx, wy)); else drawSpaceBuilding(g, bld[t], Tx, Ty + TH / 2, lod, hash2(wx, wy)); if (!partialMode) { silhouette(Tx, Ty + TH / 2, bld[t], vx + vy); bldVis.push(t, Tx, Ty + TH / 2, bld[t], vx + vy); } return; }
-  if (civ[t] === 5 && isBigStadium(t)) { drawStadiumPart(g, vx, vy, t, Tx, Ty, lod); return; }
+  if (BIG_CIVIC.has(civ[t]) && isBigStadium(t)) { drawStadiumPart(g, vx, vy, t, Tx, Ty, lod); return; }
   if (civ[t]) { drawCivic(g, civ[t], Tx, Ty + TH / 2, lod, hash2(wx, wy)); if (planet !== 'earth') drawDome(g, Tx, Ty + TH / 2, Math.max(10, CIVIC[civ[t]].sil)); if (!partialMode && civ[t] !== 1) silhouette(Tx, Ty + TH / 2, 0, vx + vy, CIVIC[civ[t]].sil); return; }
   if (zone[t]) {
     const zc = ['', 'rgba(70,200,70,0.30)', 'rgba(70,110,255,0.30)', 'rgba(255,140,50,0.32)'][zone[t]];
@@ -1248,20 +1263,23 @@ const CIVIC = [null,
     effect: 'Within 7 tiles, cars switch to electric: same traffic, 30% less tailpipe pollution.' },
   { key: 'bike',     name: 'Bike share',     icon: '🚲', r: 5,  styles: 4, sil: 6,  w: 1, color: [58, 122, 232],
     effect: 'Within 5 tiles, a fifth of trips go by bike: fewer cars and 20% less traffic pollution.' },
+  { key: 'spaceport', name: 'Spaceport',     icon: '🚀', r: 10, styles: 1, sil: 40, w: 3, color: [230, 230, 236],
+    effect: 'Takes a flat 2 by 2 lot and needs 7,000 people plus a hospital. Industry within 10 tiles grows 30% faster. Click it with ✋ Pan to launch a rocket.' },
 ];
 const civ = new Uint8Array(N * N);
 const civFireN = new Uint8Array(N * N), civPoliceN = new Uint8Array(N * N), civHospN = new Uint8Array(N * N);
 const civCars = new Float32Array(N * N), civEmit = new Float32Array(N * N); // transit: share of cars left, share of road pollution left
 const civA = new Int32Array(N * N); // anchor tile of each civic footprint (stadiums cover 2 by 2)
 function w2vt(wx, wy) { const v = w2v(wx + 0.5, wy + 0.5); return [Math.floor(v[0]), Math.floor(v[1])]; }
-function isBigStadium(t) { const a = civA[t]; return civ[t] === 5 && a % N < N - 1 && civ[a + 1] === 5 && civA[a + 1] === a; }
+function isBigStadium(t) { const a = civA[t]; return BIG_CIVIC.has(civ[t]) && a % N < N - 1 && civ[a + 1] === civ[t] && civA[a + 1] === a; }
 function removeCivAt(t) {
   if (!civ[t]) return;
-  if (civ[t] !== 5) { civ[t] = 0; return; }
+  if (!BIG_CIVIC.has(civ[t])) { civ[t] = 0; return; }
+  const id0 = civ[t];
   const a = civA[t], ax = a % N, ay = (a / N) | 0;
   for (let dy = 0; dy <= 1; dy++) for (let dx = 0; dx <= 1; dx++) {
     const X = ax + dx, Y = ay + dy, i = Y * N + X;
-    if (inW(X, Y) && civ[i] === 5 && civA[i] === a) civ[i] = 0;
+    if (inW(X, Y) && civ[i] === id0 && civA[i] === a) civ[i] = 0;
   }
 }
 // Stadium footprint tiles: paved lot on each, and the big sprite on whichever tile draws last in this view.
@@ -1273,10 +1291,13 @@ function drawStadiumPart(g, vx, vy, t, Tx, Ty, lod) {
   if (bv[0] !== vx || bv[1] !== vy) return;
   const c = w2v(ax + 1, ay + 1), h = HM[(ay + 1) * NC + ax + 1];
   const x = (c[0] - c[1]) * TW / 2, y = (c[0] + c[1]) * TH / 2 - h * HS;
-  g.save(); g.translate(x, y); g.scale(2, 2); drawCivic(g, 5, 0, 0, lod, hash2(ax, ay)); if (planet !== 'earth') drawDome(g, 0, 0, 14); g.restore();
+  const bid = civ[t];
+  g.save(); g.translate(x, y); g.scale(2, 2);
+  if (bid === 9) drawSpaceportSprite(g, 0, 0, !lod, !(launch && launch.a === a)); else { drawCivic(g, 5, 0, 0, lod, hash2(ax, ay)); if (planet !== 'earth') drawDome(g, 0, 0, 14); }
+  g.restore();
   if (!partialMode) {
     dctx.fillStyle = `rgb(${vx + vy + 1},0,0)`; dctx.beginPath();
-    const SH = [12, 26, 30, 12, 15][hash2(ax, ay) % 5]; // real height of each stadium style
+    const SH = bid === 9 ? 40 : [12, 26, 30, 12, 15][hash2(ax, ay) % 5]; // real height of each style
     dctx.moveTo(x - 28, y); dctx.lineTo(x, y + 14); dctx.lineTo(x + 28, y); dctx.lineTo(x + 28, y - SH); dctx.lineTo(x, y - SH - 14); dctx.lineTo(x - 28, y - SH);
     dctx.closePath(); dctx.fill();
   }
@@ -1289,7 +1310,7 @@ function recomputeCivic() {
   civDense.fill(0); civDemR.fill(0); civDemC.fill(0); civPolice.fill(0); civFire.fill(0); civHosp.fill(0); civCars.fill(1); civEmit.fill(1); civFireN.fill(0); civPoliceN.fill(0); civHospN.fill(0);
   for (let wy = 0; wy < N; wy++) for (let wx = 0; wx < N; wx++) {
     const id = civ[wy * N + wx]; if (!id) continue;
-    if (id === 5 && civA[wy * N + wx] !== wy * N + wx) continue; // count each stadium once, from its anchor
+    if (BIG_CIVIC.has(id) && civA[wy * N + wx] !== wy * N + wx) continue; // count each 2 by 2 building once, from its anchor
     const r = CIVIC[id].r;
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
       if (dx * dx + dy * dy > r * r) continue;
@@ -1300,6 +1321,7 @@ function recomputeCivic() {
       else if (id === 3) { civBoost[3][t] *= 1.3; civFire[t] = 1; civFireN[t]++; }
       else if (id === 4) { civBoost[1][t] *= 1.2; civBoost[2][t] *= 1.2; civBoost[3][t] *= 1.2; civPolice[t] = 1; civPoliceN[t]++; }
       else if (id === 5) { civBoost[2][t] *= 1.5; civDemC[t] += 20; }
+      else if (id === 9) { civBoost[3][t] *= 1.3; }
       else if (id === 6) { civCars[t] *= 0.75; civEmit[t] *= 0.67; }
       else if (id === 7) { civEmit[t] *= 0.7; }
       else if (id === 8) { civCars[t] *= 0.8; civEmit[t] *= 0.8; }
@@ -1457,6 +1479,7 @@ function drawCivic(g, id, x, y, lod, h) {
       else { box(g, x - 3, y - 2, 6, 6, '#f0e2c8', '#c8b898', '#c05436'); rack(x + 2, y + 1, 4); if (D) face(g, true, x - 3, y - 2, 6, 6, f => { f.fillStyle = '#bfe4ff'; f.fillRect(1, 2, 4, 2.5); }); }
       break;
     }
+    case 9: drawSpaceportSprite(g, x, y, D, true); break;
     case 5: { // stadiums: drawn inside the footprint diamond so neighbors never overlap them
       if (v === 0 || v === 3) { // open bowl (3 adds light towers)
         box(g, x, y, 14, 6, '#8e8e8e', '#6c6c6c', null);
@@ -2416,7 +2439,7 @@ function buildSpot() {
     // each station's reach: a soft fill and a solid ring, so you can see where coverage ends
     const ids = RING_IDS[layer] || {};
     for (let t = 0; t < N * N; t++) {
-      const id = civ[t]; if (!ids[id] || (id === 5 && civA[t] !== t)) continue;
+      const id = civ[t]; if (!ids[id] || (BIG_CIVIC.has(id) && civA[t] !== t)) continue;
       const cxw = t % N + 0.5, cyw = ((t / N) | 0) + 0.5, r = CIVIC[id].r;
       spx.beginPath();
       for (let k = 0; k <= 96; k++) {
@@ -3020,6 +3043,110 @@ function drawSpaceBuilding(g, id, x, y, lod, h) {
   }
 }
 
+// ===== Spaceport and rocket launches =====
+// A 2 by 2 civic building that needs a real city first. Click it (with the Pan tool) to launch:
+// countdown, liftoff, the rocket climbs off the top of the screen, then you can follow it to the Moon or Mars.
+const SPACEPORT_POP = 7000;
+const BIG_CIVIC = new Set([5, 9]);
+let launch = null;
+const REACHED_KEY = 'terrain-flux-reached';
+function reached() { try { return JSON.parse(localStorage.getItem(REACHED_KEY) || '{}'); } catch (e) { return {}; } }
+function markReached(w) { try { const r = reached(); r[w] = 1; localStorage.setItem(REACHED_KEY, JSON.stringify(r)); } catch (e) { } }
+function refreshWorldBadges() {
+  const r = reached(), sel = document.getElementById('g-world');
+  for (const o of sel.options) { const base = PLANETS[o.value]; o.textContent = base + (r[o.value] && o.value !== 'earth' ? ' 🏅 reached by rocket' : ''); }
+}
+function spaceportReady() {
+  const hosp = [...civ].some(c => c === 2);
+  if (lastPop < SPACEPORT_POP || !hosp) {
+    toast(`🚀 Spaceports need ${SPACEPORT_POP.toLocaleString()} people and a hospital. You have ${lastPop.toLocaleString()} people${hosp ? '' : ' and no hospital'}.`);
+    return false;
+  }
+  return true;
+}
+function drawSpaceportSprite(g, x, y, D, rocketHome) {
+  const pad = planet === 'earth' ? '#8a8a86' : planet === 'moon' ? '#7a7a82' : '#7a4a34';
+  g.fillStyle = pad; g.beginPath(); g.ellipse(x + 3, y + 1, 10, 5, 0, 0, Math.PI * 2); g.fill();
+  if (D) { g.strokeStyle = '#f2c230'; g.lineWidth = 0.4; g.beginPath(); g.ellipse(x + 3, y + 1, 8, 4, 0, 0, Math.PI * 2); g.stroke(); g.lineWidth = px1; }
+  box(g, x - 9, y + 2, 4, 5, '#e8e8ec', '#bcc0c8', '#cfd4dc'); // control building
+  if (D) face(g, true, x - 9, y + 2, 4, 5, f => { f.fillStyle = '#8ad0f0'; f.fillRect(0.5, 1, 3, 1.5); });
+  g.strokeStyle = '#b06a2a'; g.lineWidth = 0.7; g.beginPath(); // launch tower lattice
+  g.moveTo(x + 8, y - 1); g.lineTo(x + 8, y - 30); g.moveTo(x + 11, y + 0.5); g.lineTo(x + 11, y - 28.5);
+  for (let k = 0; k < 9; k++) { const yy = y - 1 - k * 3.2; g.moveTo(x + 8, yy); g.lineTo(x + 11, yy + 1.5); g.moveTo(x + 8, yy); g.lineTo(x + 11, yy - 1.5); }
+  g.moveTo(x + 8, y - 22); g.lineTo(x + 5, y - 22); g.stroke(); g.lineWidth = px1;
+  if (rocketHome) drawRocket(g, x + 3, y, 1);
+}
+function drawRocket(g, x, y, s) {
+  const w = 2.6 * s, h = 26 * s;
+  cyl(g, x, y - 1 * s, w, h, '#f6f6f8', '#c8ccd2', '#f6f6f8');
+  g.fillStyle = '#1e3a78'; g.fillRect(x - w, y - h * 0.45, w * 2, 1.4 * s);
+  polyNoStroke(g, [x - w, y - h - 1 * s, x, y - h - 8 * s, x + w, y - h - 1 * s], '#e04030');
+  polyNoStroke(g, [x - w, y - 3 * s, x - w - 2 * s, y + 1 * s, x - w, y - 1 * s], '#e04030');
+  polyNoStroke(g, [x + w, y - 3 * s, x + w + 2 * s, y + 1 * s, x + w, y - 1 * s], '#b03020');
+}
+function startLaunch(anchor) {
+  if (launch) return;
+  launch = { a: anchor, t0: performance.now(), phase: 'count', smoke: [] };
+  cacheDirty = true; // the rocket leaves the pad sprite and becomes an overlay
+  document.getElementById('countdown').classList.remove('hidden');
+}
+function launchStep(ts) {
+  if (!launch) return false;
+  const el = (ts - launch.t0) / 1000, cd = document.getElementById('countdown');
+  if (launch.phase === 'count') {
+    cd.textContent = el < 1 ? '3' : el < 2 ? '2' : el < 3 ? '1' : 'LIFTOFF!';
+    if (el > 3) { launch.phase = 'fly'; launch.tf = ts; }
+  } else if (launch.phase === 'fly' && (ts - launch.tf) / 1000 > 1.2) cd.classList.add('hidden');
+  return true;
+}
+function drawLaunch() {
+  if (!launch) return;
+  const a = launch.a, ax = a % N, ay = (a / N) | 0, c = w2v(ax + 1, ay + 1), h = HM[(ay + 1) * NC + ax + 1];
+  const px = ((c[0] - c[1]) * TW / 2 + 6) * zoom + camX, py = ((c[0] + c[1]) * TH / 2 - h * HS) * zoom + camY;
+  const now = performance.now(), fly = launch.phase === 'fly' ? (now - launch.tf) / 1000 : 0, alt = fly > 0 ? 18 * fly * fly * zoom * 8 : 0;
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  // smoke billows from the pad, and trails the rocket
+  if ((launch.phase === 'count' && launch.t0 + 2000 < now || fly > 0) && py - alt > -40) for (let k = 0; k < 3; k++) launch.smoke.push({ x: px + (Math.random() - 0.5) * 18 * zoom, y: py - Math.min(alt, 60 * zoom) * Math.random(), r: (4 + Math.random() * 6) * zoom, life: 1 });
+  for (let i = launch.smoke.length - 1; i >= 0; i--) {
+    const s = launch.smoke[i]; s.life -= 0.012; s.r += 0.25 * zoom; s.x += (Math.random() - 0.5) * zoom;
+    if (s.life <= 0) { launch.smoke.splice(i, 1); continue; }
+    ctx.fillStyle = `rgba(230,230,226,${(0.55 * s.life).toFixed(3)})`; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+  }
+  const ry = py - alt;
+  if (fly > 0 || launch.phase === 'count') {
+    if (fly > 0 || now - launch.t0 > 2600) { // engine flame
+      const fl = 0.7 + 0.3 * Math.sin(now / 30);
+      ctx.fillStyle = '#ffd24a'; ctx.beginPath(); ctx.ellipse(px, ry + 4 * zoom, 3 * zoom, 9 * zoom * fl, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ff7a20'; ctx.beginPath(); ctx.ellipse(px, ry + 7 * zoom, 2 * zoom, 6 * zoom * fl, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.save(); ctx.translate(px, ry); ctx.scale(zoom * 2, zoom * 2); drawRocket(ctx, 0, 0, 1); ctx.restore();
+  }
+  ctx.restore();
+  if (fly > 0 && ry < -80 && (launch.smoke.length < 4 || fly > 9)) { // gone: mission card
+    launch = null; cacheDirty = true;
+    document.getElementById('countdown').classList.add('hidden');
+    showMission();
+  }
+}
+function showMission() {
+  const box = document.getElementById('missionbox'), btns = document.getElementById('mission-btns');
+  btns.innerHTML = '';
+  const go = (w, label) => { const b = document.createElement('button'); b.className = 'txt'; b.style.textAlign = 'center'; b.textContent = label;
+    b.addEventListener('click', () => { box.classList.add('hidden'); if (w) flyTo(w); }); btns.appendChild(b); };
+  if (planet !== 'moon') go('moon', '🌕 Build on the Moon');
+  if (planet !== 'mars') go('mars', '🔴 Build on Mars');
+  if (planet !== 'earth') go('earth', '🌍 Head back to Earth');
+  go(null, planet === 'earth' ? 'Stay on Earth' : 'Stay here');
+  box.classList.remove('hidden');
+}
+function flyTo(w) {
+  markReached(w); refreshWorldBadges();
+  document.getElementById('g-world').value = w;
+  document.getElementById('seed').value = Math.floor(Math.random() * 999999);
+  previewGen(); applyGen(lastGen, true);
+  toast(w === 'moon' ? '🌕 Welcome to the Moon! Build your first colony.' : w === 'mars' ? '🔴 Welcome to Mars! Build your first colony.' : '🌍 Welcome home!');
+}
+
 // ===== Traffic & cars =====
 const BTIER = { 4: 1, 7: 2, 8: 3, 9: 1, 5: 2, 10: 3, 11: 1, 6: 2, 12: 3 };
 const TWT = [0, 1, 2.5, 5];
@@ -3207,7 +3334,7 @@ function composite() {
   carsLive = drawCars() > 0;
   if (spotOn) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(spotCan, Math.round(camX - cacheCX), Math.round(camY - cacheCY)); ctx.restore(); }
   drawNight();
-  { const now = performance.now(); drawStormFX(Math.min(0.1, (now - (composite.last || now)) / 1000)); drawFire(Math.min(0.1, (now - (composite.last || now)) / 1000)); composite.last = now; fxLive = biomeFx() | drawLavaGlow() | drawLavaBits(Math.min(0.1, (now - (drawLavaBits.last || now)) / 1000)); drawLavaBits.last = now; }
+  { const now = performance.now(); drawStormFX(Math.min(0.1, (now - (composite.last || now)) / 1000)); drawFire(Math.min(0.1, (now - (composite.last || now)) / 1000)); composite.last = now; launchStep(now); drawLaunch(); fxLive = biomeFx() | drawLavaGlow() | drawLavaBits(Math.min(0.1, (now - (drawLavaBits.last || now)) / 1000)); drawLavaBits.last = now; }
   // road ghost
   if (roadGhost.length) {
     const a = 0.45 + 0.25 * Math.sin(frame * 0.6);
@@ -3226,7 +3353,7 @@ function composite() {
   // cursor
   if (hover && !(drag && drag.mode === 'pan') && tool !== 'pan') {
     let tiles;
-    if (tool === 'civ5') { const [wx, wy] = t2w(hover.vx, hover.vy); tiles = [[0, 0], [1, 0], [0, 1], [1, 1]].filter(([dx, dy]) => inW(wx + dx, wy + dy)).map(([dx, dy]) => w2vt(wx + dx, wy + dy)); }
+    if (tool === 'civ5' || tool === 'civ9') { const [wx, wy] = t2w(hover.vx, hover.vy); tiles = [[0, 0], [1, 0], [0, 1], [1, 1]].filter(([dx, dy]) => inW(wx + dx, wy + dy)).map(([dx, dy]) => w2vt(wx + dx, wy + dy)); }
     else if (tool === 'road' || tool.startsWith('civ')) tiles = [[hover.vx, hover.vy]];
     else tiles = brushTiles(hover.vx, hover.vy);
     for (const [vx, vy] of tiles) {
@@ -3421,21 +3548,24 @@ function applyTool(h) {
   if (tool === 'water') { const [wx, wy] = t2w(h.vx, h.vy), [mn, mx] = tMinMax(wx, wy); if (mn !== mx && !isWaterW(wx, wy)) { traceStream(wx, wy); dirtyAll(); return; } }
   if (tool.startsWith('civ')) {
     const id = +tool[3], [wx, wy] = t2w(h.vx, h.vy);
-    if (id === 5 && drag && drag.placed) return; // one stadium per click
-    const fp = id === 5 ? [[0, 0], [1, 0], [0, 1], [1, 1]] : [[0, 0]];
+    const big = BIG_CIVIC.has(id);
+    if (big && drag && drag.placed) return; // one big building per click
+    if (id === 9 && !spaceportReady()) { if (drag) drag.placed = true; return; }
+    const fp = big ? [[0, 0], [1, 0], [0, 1], [1, 1]] : [[0, 0]];
     let lvl = null;
     for (const [dx, dy] of fp) {
       const X = wx + dx, Y = wy + dy;
       if (!inW(X, Y)) { toast('Not enough room at the map edge'); return; }
       const t = Y * N + X, [mn, mx] = tMinMax(X, Y);
-      if (id !== 5 && civ[t] === id) return;
-      if (mn !== mx || mn < sea || lake[t] || (lvl !== null && mn !== lvl)) { toast(id === 5 ? 'Stadiums need a flat, dry 2 by 2 lot. Try Level first.' : 'Needs flat, dry ground. Try Level first.'); return; }
+      if (!big && civ[t] === id) return;
+      if (mn !== mx || mn < sea || lake[t] || (lvl !== null && mn !== lvl)) { toast(big ? `${CIVIC[id].name}s need a flat, dry 2 by 2 lot. Try Level first.` : 'Needs flat, dry ground. Try Level first.'); return; }
       lvl = mn;
     }
     const a = wy * N + wx;
     for (const [dx, dy] of fp) { const t = (wy + dy) * N + wx + dx; removeCivAt(t); }
     for (const [dx, dy] of fp) { const t = (wy + dy) * N + wx + dx; civ[t] = id; civA[t] = a; tree[t] = road[t] = zone[t] = bld[t] = 0; dens[t] = 0; }
     if (drag) drag.placed = true;
+    if (id === 9) toast('🚀 Spaceport built! Switch to ✋ Pan and click it to launch.');
     dirtyAll(); return;
   }
   const tiles = brushTiles(h.vx, h.vy);
@@ -3816,7 +3946,7 @@ document.getElementById('g-world').addEventListener('change', updatePlanetUI);
 ['g-hills', 'g-water', 'g-trees', 'g-coast', 'g-river', 'seed', 'g-climate', 'g-world'].forEach(id => document.getElementById(id).addEventListener('input', schedulePreview));
 document.getElementById('g-dice').addEventListener('click', () => { document.getElementById('seed').value = Math.floor(Math.random() * 999999); schedulePreview(); });
 const genModal = document.getElementById('genmodal');
-document.getElementById('btn-new').addEventListener('click', () => { genModal.classList.remove('hidden'); previewGen(); });
+document.getElementById('btn-new').addEventListener('click', () => { refreshWorldBadges(); genModal.classList.remove('hidden'); previewGen(); });
 document.getElementById('btn-gen-cancel').addEventListener('click', () => genModal.classList.add('hidden'));
 document.getElementById('btn-make').addEventListener('click', () => { if (!lastGen) previewGen(); applyGen(lastGen, true); genModal.classList.add('hidden'); toast('Fresh dirt delivered'); });
 
@@ -4028,7 +4158,7 @@ function toast(msg) {
   const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2200);
 }
-const TOOL_NAMES = { raise: 'Raise', lower: 'Lower', level: 'Level', smooth: 'Smooth', water: 'Water', trees: 'Trees', road: 'Road', doze: 'Bulldoze', zone1: 'Residential', zone2: 'Commercial', zone3: 'Industrial', pan: 'Pan', civ1: 'Park', civ2: 'Hospital', civ3: 'Fire station', civ4: 'Police', civ5: 'Stadium', civ6: 'Bus depot', civ7: 'EV charging', civ8: 'Bike share', fire: 'Ignite', storm: 'Storm', quake: 'Earthquake', biome: 'Biome', volcano: 'Volcano' };
+const TOOL_NAMES = { raise: 'Raise', lower: 'Lower', level: 'Level', smooth: 'Smooth', water: 'Water', trees: 'Trees', road: 'Road', doze: 'Bulldoze', zone1: 'Residential', zone2: 'Commercial', zone3: 'Industrial', pan: 'Pan', civ1: 'Park', civ2: 'Hospital', civ3: 'Fire station', civ4: 'Police', civ5: 'Stadium', civ6: 'Bus depot', civ7: 'EV charging', civ8: 'Bike share', civ9: 'Spaceport', fire: 'Ignite', storm: 'Storm', quake: 'Earthquake', biome: 'Biome', volcano: 'Volcano' };
 document.querySelectorAll('.tb[data-tool]').forEach(b => b.addEventListener('click', () => {
   document.querySelectorAll('.tb[data-tool]').forEach(x => x.classList.remove('on'));
   const wasStorm = tool === 'storm';
@@ -4217,7 +4347,7 @@ function updateStatus() {
       if (note === 'growing' && biomeWhy(t, wx, wy)) note = 'growing, ' + biomeWhy(t, wx, wy);
       zt = `${zn} ${dens[t].toFixed(1)}` + (note ? ` (${note})` : ''); }
   }
-  if (civ[t]) zt = `${CIVIC[civ[t]].icon} ${CIVIC[civ[t]].name} (reaches ${CIVIC[civ[t]].r} tiles)`;
+  if (civ[t]) zt = civ[t] === 9 ? '🚀 Spaceport (click it with ✋ Pan to launch)' : `${CIVIC[civ[t]].icon} ${CIVIC[civ[t]].name} (reaches ${CIVIC[civ[t]].r} tiles)`;
   if (biome[t]) zt = (zt === '-' ? '' : zt + ' · ') + `${BIOMES[biome[t]].icon} ${BIOMES[biome[t]].name}`;
   if (hazCls[t] && hazardView()) zt = (zt === '-' ? '' : zt + ' · ') + `🌧️ drainage likelihood ${hazP[t].toFixed(2)} (${HAZ_NAME[hazCls[t]]}) at ${i15} mm/hr`;
   if (layer === 'fire' || layer === 'police' || layer === 'hosp') { const n = (layer === 'fire' ? civFireN : layer === 'police' ? civPoliceN : civHospN)[t]; zt = (zt === '-' ? '' : zt + ' · ') + `${LAYERS[layer].icon} ${n ? n + ' reaching here' : 'not covered'}`; }
@@ -4288,6 +4418,10 @@ canvas.addEventListener('pointermove', e => {
   }
 });
 function endDrag() {
+  if (drag && drag.mode === 'pan' && tool === 'pan' && Math.abs(camX - drag.cx) + Math.abs(camY - drag.cy) < 4) {
+    const h = pick(drag.x, drag.y);
+    if (h) { const [wx, wy] = t2w(h.vx, h.vy), t = wy * N + wx; if (civ[t] === 9) startLaunch(civA[t]); }
+  }
   if (drag && drag.mode === 'road' && roadGhost.length) commitRoad();
   if (drag && drag.mode === 'pan') { cacheDirty = true; canvas.style.cursor = tool === 'pan' ? 'grab' : 'crosshair'; }
   drag = null; clearInterval(holdTimer); holdTimer = null; compDirty = true;
@@ -4339,7 +4473,7 @@ function loop(ts) {
   if (simOn && ts - lastSim > MONTH_MS[speed]) { lastSim = ts; simTick(); }
   if (ts - lastAnim > 110) { lastAnim = ts; frame++; compDirty = true; }
   fireStep(ts); stormStep(ts); volcanoStep(ts);
-  if (carsLive || burning.length || smokeP.length || storm || quake || volcano || lavaBits.length || fxLive || dryVis.length || wetVis.length) compDirty = true;
+  if (carsLive || burning.length || smokeP.length || storm || quake || volcano || launch || lavaBits.length || fxLive || dryVis.length || wetVis.length) compDirty = true;
   if (compDirty) { composite(); compDirty = false; }
   if ((mmBaseDirty || mmViewDirty) && ts - lastMM > 150) {
     lastMM = ts;
