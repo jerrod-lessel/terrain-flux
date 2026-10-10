@@ -21,6 +21,7 @@ New here? A one-minute guided tour runs on your first visit: load Morro Bay, bui
 - 🏔️ **Sculpt terrain** with raise, lower, level, and smooth tools. Hillsides follow the cursor the way they did in 1993.
 - 📍 **Start from a real place:** Morro Bay, Big Sur, Yosemite Valley, or San Francisco, built from 30 m SRTM elevation.
 - 🌊 **Model sea level rise** on coastal real places, in meters, with NOAA 2022 scenario shortcuts and a tally of land, buildings, and people affected.
+- 🚀 **Launch a rocket:** grow a city of 7,000 people with a hospital, build a Spaceport, click it, watch the countdown and liftoff, then follow the rocket to the Moon or Mars.
 - 🌕 **Build on the Moon or Mars:** cratered ground, alien skies, ice instead of water, a space colony building set (inflatable pods, habitat towers, 3D-printed domes, ice drills, a rocket pad), glowing roads and rovers, dust contamination instead of air pollution, Moon fungus and Martian lichen instead of trees, and no fire, rain, biomes, or sea to raise.
 - 🌍 **Paint biomes:** temperate forest, prairie, desert, chaparral, rainforest, bayou, mangrove, savanna, boreal, tundra, alpine, coral reef, and lava rock, each with its own ground, plants, and fire behavior. Or fill a whole map by climate.
 - 🗺️ **Load your own DEM:** drop in any single-band GeoTIFF.
@@ -35,7 +36,7 @@ New here? A one-minute guided tour runs on your first visit: load Morro Bay, bui
 - 🌋 **Raise a volcano:** the ground rumbles, a cone rises, it blasts lava and ash, and lava runs downhill, bury what it meets, start fires, cool into lava rock, and build new land at the sea.
 - 🔥 **Start a wildfire** and watch it run downwind and uphill, leave a burn scar graded by severity, and heal over a few game years.
 - 🏙️ **Zone and grow a city.** 9 building types with 6 styles each, 54 designs, all drawn in code, from A-frame cabins to a certain pyramid-shaped tower.
-- 🏥 **Build civic buildings:** parks, hospitals, fire stations, police stations, stadiums, bus depots, EV charging, and bike share, 38 designs in all. Each one changes how the city around it grows.
+- 🏥 **Build civic buildings:** parks, hospitals, fire stations, police stations, stadiums, bus depots, EV charging, bike share, and spaceports, 39 designs in all. Each one changes how the city around it grows.
 - 🌬️ **Feel the wind:** gusts roll across the map and set the forests they pass swaying.
 - 🌉 **Bridge the water:** drag a road across a river or bay and it becomes a bridge on pillars, up to 16 tiles long.
 - 🚗 **Watch traffic** fill the roads near homes and jobs, while the road to nowhere stays empty.
@@ -155,6 +156,7 @@ The notebook reproduces the shipped presets byte for byte, so you can rebuild th
 - [x] Biomes phase 2: local wind, dust devils, rainforest rain, coastal protection, growth effects
 - [x] Coral reefs and volcanoes
 - [x] Moon and Mars mode (reskin)
+- [x] Spaceport and rocket launches
 - [ ] Real Moon and Mars elevation presets
 
 ## Credits
