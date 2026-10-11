@@ -1,6 +1,6 @@
 # <img src="favicon.svg" width="28" alt=""> Terrain Flux
 
-**Someone has to grade this mess.**
+**You built it. What could go wrong?**
 
 A SimCity 2000 style terrain and city sandbox with real California elevation baked in. Sculpt hills, flood the coast, zone a town, and watch it grow. Or watch it refuse to grow, if you built it somewhere ridiculous.
 
@@ -10,11 +10,20 @@ Part of [Lessel Geospatial Labs](https://lesselgeospatial.com).
 
 ## Play it
 
-**[Launch Terrain Flux](https://lesselgeospatial.com)** <!-- swap in the live URL -->
+**[Launch Terrain Flux](https://jerrod-lessel.github.io/terrain-flux/)** 
 
 It is one self-contained HTML file. No build step, no server, no install. Download `index.html` and open it, or host it anywhere static (GitHub Pages, Vercel, Cloudflare Pages).
 
 New here? A one-minute guided tour runs on your first visit: load Morro Bay, build a starter town, add a fire station, light a fire upwind, make it rain, and read your report card. Replay it anytime from About or Help.
+
+![A town on the Morro Bay coast, built on real SRTM elevation](docs/screenshots/city.png)
+
+| | |
+|---|---|
+| ![A wildfire running downhill toward a town on Big Sur](docs/screenshots/wildfire.png) | ![Fire station coverage rings, with uncovered homes lit up as gaps](docs/screenshots/coverage.png) |
+| ![A domed colony and spaceport on Mars](docs/screenshots/mars.png) | ![A lunar colony with fungus gardens and a rocket on the pad](docs/screenshots/moon.png) |
+
+🌕 **Peek at the Moon:** the Moon and Mars unlock once you launch a rocket, but [this link opens a finished lunar colony](https://jerrod-lessel.github.io/terrain-flux/#tf=z7dvBbhtVFAbg64nTYLVPcdezSENS0XkSJGBhJS61cGKwL21RCBJVVyCBqBBiDQ_ACyDYeMGGJe_BE8RoPKWKEasucizN99mWx5at_5x7fD2r-S1d5ke5uV_nRW4u80fTi7Pc5A8nF7nOH7fvPJ7OZsvcnBzW-em4TBa5OTqqc1lMJsvcHJ_U-XQ-XpbclMWnkzovpk_aj3QvlpPJWW7uP3zwsM6ns-n5uExyk09n4-Vyeprr_HS-mLVp5_P5Rb66ar8wzs1hnc_nF-Vxbt5-56jOy9li896T3Lx3WB_XJ8f1yYMP6nw2_iw3h1cJAAAAAADgja07t5476KT1-vq6vd96flVVmwLS-jpkBdoCqq6AgPzBoNqdAjbht1_A4PVvYJMdsAle7YKUuuigAmKSb4r4A7oZ_jo_oo7t_KCF2IECumUIORndKGC9bs8HsfkBp8PtMq5jluBGDTtRQWABAAAAAAAAAAAAAAAAAAAA8EaqrVv_CgjvHwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP7P4D-P247fcvv50f33Pd_8-51v_v3OD58_AAAAAAAAAAAAAAAAAMCOGbRXYKaqqtJgby-6mADR_fc9P1rX_-YocP2T-QeJ7r_v-QAAAAAAAAAAAAAAAAAAbBum4XCYRqNRGt69G11MgGE6ODjo-r9zJyb_rYO0v9_m34vJP2jz94P6j9b1vzmKmn-b367_vbj8Uc_nPxpF9f_v_rP_AQAAAAAAAAAAAAAAAABolVRKSbPSPfdPSavVKl28_0kqv_wUk__3Kn3-4t1Ufv0jJn-1Sl88_yaV1SogP1rX_-YopP9X-V-9TOWvH8Lyy-XXqXzf3_k_evYidP7Pvp2n8uOfYfnPv_syld9_DsgHAAAAAAAAAAAAAAAAAIBdMRr1O393DKtBaP5eaDoAAAAAAAAAAAAAAAAAAEDvxV50niqXnQMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAu-cf) for anyone.
 
 🔬 **The science:** [METHODS.md](METHODS.md) explains each hazard model (USGS debris flows, NOAA sea level rise, earthquake shaking, wildfire, air pollution, biomes), its sources, and where it stops being true.
 
