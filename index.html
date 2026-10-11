@@ -155,7 +155,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
 
 <header id="top">
   <h1><svg class="logo" xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' aria-hidden='true'><rect width='64' height='64' fill='#000'/><path d='M30 48 44 24 58 48Z' fill='#8c8c8c'/><path d='M6 48 24 14 42 48Z' fill='#fff'/><path d='M8 56c8-4 16-4 24 0s16 4 24 0' fill='none' stroke='#8c8c8c' stroke-width='3' stroke-linecap='round'/></svg>TERRAIN FLUX</h1>
-  <span class="tag">Someone has to grade this mess.</span>
+  <span class="tag">You built it. What could go wrong?</span>
   <div class="hud">
     <div class="lcd" id="hud-date">JAN 1900</div>
     <div class="lcd"><b>POP</b><span id="hud-pop">0</span></div>
@@ -355,7 +355,7 @@ table.rep td{padding:5px 4px;vertical-align:middle;}
       Fonts: Press Start 2P and VT323 (SIL Open Font License).<br>
       Inspired by SimCity 2000 (Maxis, 1993). Every pixel here is drawn in code; no original game assets are used.</p>
       <p>☕ Terrain Flux is free. If it made you smile, you can <a href="https://ko-fi.com/jerrodlessel" target="_blank" rel="noopener">buy me a cup of tea on Ko-fi</a>.</p>
-      <p class="credit">Version 5.15 · MIT license</p>
+      <p class="credit">Version 5.16.1 · MIT license</p>
       <div class="btns"><button class="txt" id="about-tour" style="text-align:center">▶ Take the tour</button><button class="txt" id="about-close" style="text-align:center">Back to the dirt</button></div>
     </div>
   </div>
@@ -1303,7 +1303,7 @@ function drawStadiumPart(g, vx, vy, t, Tx, Ty, lod) {
   g.restore();
   if (!partialMode) {
     dctx.fillStyle = `rgb(${vx + vy + 1},0,0)`; dctx.beginPath();
-    const SH = bid === 9 ? 40 : [12, 26, 30, 12, 15][hash2(ax, ay) % 5]; // real height of each style
+    const SH = bid === 9 ? 46 : [12, 26, 30, 12, 15][hash2(ax, ay) % 5]; // real height of each style
     dctx.moveTo(x - 28, y); dctx.lineTo(x, y + 14); dctx.lineTo(x + 28, y); dctx.lineTo(x + 28, y - SH); dctx.lineTo(x, y - SH - 14); dctx.lineTo(x - 28, y - SH);
     dctx.closePath(); dctx.fill();
   }
@@ -3128,24 +3128,43 @@ function spaceportReady() {
   return true;
 }
 function drawSpaceportSprite(g, x, y, D, rocketHome) {
-  const pad = planet === 'earth' ? '#8a8a86' : planet === 'moon' ? '#7a7a82' : '#7a4a34';
-  g.fillStyle = pad; g.beginPath(); g.ellipse(x + 3, y + 1, 10, 5, 0, 0, Math.PI * 2); g.fill();
-  if (D) { g.strokeStyle = '#f2c230'; g.lineWidth = 0.4; g.beginPath(); g.ellipse(x + 3, y + 1, 8, 4, 0, 0, Math.PI * 2); g.stroke(); g.lineWidth = px1; }
-  box(g, x - 9, y + 2, 4, 5, '#e8e8ec', '#bcc0c8', '#cfd4dc'); // control building
-  if (D) face(g, true, x - 9, y + 2, 4, 5, f => { f.fillStyle = '#8ad0f0'; f.fillRect(0.5, 1, 3, 1.5); });
-  g.strokeStyle = '#b06a2a'; g.lineWidth = 0.7; g.beginPath(); // launch tower lattice
-  g.moveTo(x + 8, y - 1); g.lineTo(x + 8, y - 30); g.moveTo(x + 11, y + 0.5); g.lineTo(x + 11, y - 28.5);
-  for (let k = 0; k < 9; k++) { const yy = y - 1 - k * 3.2; g.moveTo(x + 8, yy); g.lineTo(x + 11, yy + 1.5); g.moveTo(x + 8, yy); g.lineTo(x + 11, yy - 1.5); }
-  g.moveTo(x + 8, y - 22); g.lineTo(x + 5, y - 22); g.stroke(); g.lineWidth = px1;
-  if (rocketHome) drawRocket(g, x + 3, y, 1);
+  const pad = planet === 'earth' ? '#9a9a94' : planet === 'moon' ? '#86868e' : '#86553c';
+  // concrete pad with a hazard ring and a flame trench
+  g.fillStyle = dk(pad, 0.8); g.beginPath(); g.ellipse(x + 2, y + 2, 13, 6.5, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = pad; g.beginPath(); g.ellipse(x + 2, y + 1.5, 12.5, 6.2, 0, 0, Math.PI * 2); g.fill();
+  if (D) { g.strokeStyle = '#f2c230'; g.lineWidth = 0.6; g.setLineDash([1.6, 1.2]); g.beginPath(); g.ellipse(x + 2, y + 1.5, 10, 5, 0, 0, Math.PI * 2); g.stroke(); g.setLineDash([]); g.lineWidth = px1; }
+  g.fillStyle = '#2a2a2c'; g.beginPath(); g.moveTo(x - 1, y + 1.5); g.lineTo(x + 3, y - 0.5); g.lineTo(x + 7, y + 1.5); g.lineTo(x + 3, y + 3.5); g.fill();
+  // fuel tanks and a control building with a dish
+  halfDome(g, x - 9, y + 4, 2.6, 3.4, '#f4f4f6', '#c8ccd2'); halfDome(g, x - 5, y + 6, 2.6, 3.4, '#f4f4f6', '#c8ccd2');
+  box(g, x - 10, y - 1, 3.4, 4.5, '#e8e8ec', '#bcc0c8', '#cfd4dc');
+  if (D) { face(g, true, x - 10, y - 1, 3.4, 4.5, f => { f.fillStyle = '#8ad0f0'; f.fillRect(0.4, 1, 2.6, 1.4); });
+    g.fillStyle = '#ccc'; g.fillRect(x - 10.3, y - 9.5, 0.6, 3); g.fillStyle = '#f2f2f4'; g.beginPath(); g.ellipse(x - 9.6, y - 10, 2.4, 1.3, -0.5, 0, Math.PI * 2); g.fill(); }
+  // a solid launch tower: an orange box with lattice cross-bracing, a crane on top, and a service arm
+  const tx = x + 10, ty = y - 1, TH2 = 36;
+  box(g, tx, ty, 2.2, TH2, '#d0662a', '#a24c1c', '#e07a3a');
+  if (D) {
+    g.strokeStyle = 'rgba(60,24,8,0.7)'; g.lineWidth = 0.35; g.beginPath();
+    for (let k = 0; k < 12; k++) { const yy = ty - k * 3; g.moveTo(tx - 2.2, yy - 1.1); g.lineTo(tx, yy - 3 + 0); g.moveTo(tx, yy); g.lineTo(tx - 2.2, yy - 3 - 1.1);
+      g.moveTo(tx, yy); g.lineTo(tx + 2.2, yy - 3 - 1.1); g.moveTo(tx + 2.2, yy - 1.1); g.lineTo(tx, yy - 3); }
+    g.stroke(); g.lineWidth = px1;
+    g.fillStyle = '#b05020'; g.fillRect(tx - 1, ty - TH2 - 6, 1.2, 6); g.fillRect(tx - 7, ty - TH2 - 6, 7, 1); // crane
+    g.fillStyle = '#ff3a30'; g.fillRect(tx - 0.5, ty - TH2 - 8, 1.2, 1.2); // warning light
+  }
+  if (rocketHome) { g.fillStyle = '#8a8a8a'; g.fillRect(x + 5, y - 24, tx - 2.2 - (x + 5), 1.1); drawRocket(g, x + 3, y, 1); } // service arm reaches the rocket
 }
 function drawRocket(g, x, y, s) {
-  const w = 2.6 * s, h = 26 * s;
-  cyl(g, x, y - 1 * s, w, h, '#f6f6f8', '#c8ccd2', '#f6f6f8');
-  g.fillStyle = '#1e3a78'; g.fillRect(x - w, y - h * 0.45, w * 2, 1.4 * s);
-  polyNoStroke(g, [x - w, y - h - 1 * s, x, y - h - 8 * s, x + w, y - h - 1 * s], '#e04030');
-  polyNoStroke(g, [x - w, y - 3 * s, x - w - 2 * s, y + 1 * s, x - w, y - 1 * s], '#e04030');
-  polyNoStroke(g, [x + w, y - 3 * s, x + w + 2 * s, y + 1 * s, x + w, y - 1 * s], '#b03020');
+  const w = 3 * s, h = 30 * s, bw = 1.3 * s, bh = 17 * s;
+  // side boosters
+  for (const bx of [x - w - bw * 0.6, x + w + bw * 0.6]) {
+    cyl(g, bx, y - 0.5 * s, bw, bh, '#f2f2f4', '#c4c8ce', '#f2f2f4');
+    polyNoStroke(g, [bx - bw, y - bh - 0.5 * s, bx, y - bh - 3.5 * s, bx + bw, y - bh - 0.5 * s], '#d8d8dc');
+  }
+  cyl(g, x, y - 1 * s, w, h, '#f8f8fa', '#c8ccd2', '#f8f8fa');
+  g.fillStyle = '#2a2a2e'; g.fillRect(x - w, y - h * 0.62, w * 2, 1.6 * s); // interstage
+  g.fillStyle = '#1e3a78'; g.fillRect(x - w, y - h * 0.32, w * 2, 2 * s);
+  g.fillStyle = '#d83a2a'; g.fillRect(x - 0.6 * s, y - h * 0.5, 1.2 * s, 3.5 * s); // little flag stripe
+  polyNoStroke(g, [x - w, y - h - 1 * s, x, y - h - 9 * s, x + w, y - h - 1 * s], '#e04030');
+  polyNoStroke(g, [x, y - h - 1 * s, x, y - h - 9 * s, x + w, y - h - 1 * s], '#b8301e');
 }
 function startLaunch(anchor) {
   if (launch) return;
@@ -4670,7 +4689,7 @@ const TOUR = [
     text: 'How exposed are your residents? Grades for wildfire, debris flow, earthquake, sea level rise, air, and services. Click a row to see it on the map.',
     run: () => showReport() },
   { title: "That's the tour!", target: () => document.getElementById('btn-share'),
-    text: 'Grow a city of 7,000 with a hospital, build a 🚀 Spaceport, and launch to unlock the Moon and Mars. Share a link to exactly what you see with 🔗. Earthquakes, sea level rise, and more are in the toolbar. Now go grade this mess.' },
+    text: 'Grow a city of 7,000 with a hospital, build a 🚀 Spaceport, and launch to unlock the Moon and Mars. Share a link to exactly what you see with 🔗. Earthquakes, sea level rise, and more are in the toolbar. Now go build something. What could go wrong?' },
 ];
 function tourGo(i) {
   document.querySelectorAll('.tour-hl').forEach(e => e.classList.remove('tour-hl'));
